@@ -193,6 +193,41 @@
   .mag-avigliana { background: #EBF0FC; color: #1A4FBF; }
   .mag-napoli { background: #F0EDFC; color: #5B3DB5; }
   .mag-totale { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+
+  /* CASSA */
+  .cassa-layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; min-height: calc(100vh - 120px); }
+  .cassa-main { display: flex; flex-direction: column; gap: 12px; }
+  .cassa-sidebar { display: flex; flex-direction: column; gap: 12px; }
+  .cassa-step { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); margin-bottom: 10px; }
+  .logo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .logo-btn { padding: 14px 10px; border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; font-size: 14px; font-weight: 600; background: var(--surface); color: var(--text); text-align: center; transition: all .15s; line-height: 1.3; }
+  .logo-btn:hover, .logo-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cat-btn { padding: 16px 12px; border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; font-size: 13px; font-weight: 500; background: var(--surface); color: var(--text); text-align: center; transition: all .15s; }
+  .cat-btn:hover, .cat-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .cat-btn.disabled { opacity: .35; cursor: default; pointer-events: none; }
+  .taglia-btn-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .taglia-btn { padding: 14px 8px; border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; font-size: 15px; font-weight: 600; background: var(--surface); color: var(--text); text-align: center; transition: all .15s; font-family: 'IBM Plex Mono', monospace; }
+  .taglia-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .taglia-btn.esaurito { opacity: .3; cursor: default; pointer-events: none; }
+  .scontrino-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .scontrino-item:last-child { border-bottom: none; }
+  .scontrino-item-info { flex: 1; font-size: 13px; }
+  .scontrino-item-nome { font-weight: 500; }
+  .scontrino-item-sub { font-size: 11px; color: var(--text3); }
+  .scontrino-prezzo { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; min-width: 60px; text-align: right; }
+  .scontrino-totale { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 0; border-top: 2px solid var(--text); margin-top: 8px; }
+  .scontrino-totale .label { font-weight: 600; font-size: 15px; }
+  .scontrino-totale .value { font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 500; }
+  .btn-cassa { width: 100%; padding: 16px; font-size: 16px; font-weight: 600; border-radius: var(--radius-lg); cursor: pointer; border: none; transition: all .15s; }
+  .btn-cassa-ok { background: var(--green); color: #fff; }
+  .btn-cassa-ok:hover { background: #145C38; }
+  .btn-cassa-ok:disabled { opacity: .4; cursor: default; }
+  .btn-cassa-del { background: var(--red-light); color: var(--red); border: 1px solid #E8BEBE; }
+  .evento-attivo-bar { background: var(--accent-light); border: 1px solid #C5D3F5; border-radius: var(--radius-lg); padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .evento-attivo-nome { font-weight: 600; flex: 1; }
+  .prezzo-input { font-family: 'IBM Plex Mono', monospace; font-size: 13px; width: 70px; text-align: right; padding: 3px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+  @media (max-width: 900px) { .cassa-layout { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -225,6 +260,16 @@
     </div>
     <div class="nav-item" onclick="showSection('trasferimenti',this)">
       <span class="nav-icon">⇄</span> Trasferimenti
+    </div>
+    <div class="nav-section">Vendite</div>
+    <div class="nav-item" onclick="showSection('eventi',this)">
+      <span class="nav-icon">★</span> Eventi
+    </div>
+    <div class="nav-item" onclick="showSection('cassa',this)">
+      <span class="nav-icon">⊕</span> Cassa
+    </div>
+    <div class="nav-item" onclick="showSection('vendite',this)">
+      <span class="nav-icon">◱</span> Storico vendite
     </div>
   </nav>
   <div class="sidebar-footer" id="storage-info">Caricamento...</div>
@@ -440,6 +485,109 @@
         <div class="table-wrap">
           <table><thead><tr><th>Data</th><th>Da</th><th>A</th><th>Logo</th><th>Categoria</th><th>Taglia</th><th>Qtà</th><th>Note</th></tr></thead>
           <tbody id="tab-trasferimenti"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+
+    <!-- EVENTI -->
+    <div class="section" id="sec-eventi">
+      <div class="card">
+        <div class="card-title">Nuovo evento</div>
+        <div class="form-row cols3">
+          <div class="form-group"><label>Nome evento *</label><input id="ev-nome" placeholder="es. Gothic Festival Milano"></div>
+          <div class="form-group"><label>Località</label><input id="ev-localita" placeholder="es. Milano"></div>
+          <div class="form-group"><label>Nazione</label><input id="ev-nazione" placeholder="es. Italia"></div>
+        </div>
+        <div class="form-row cols3">
+          <div class="form-group"><label>Data inizio</label><input id="ev-inizio" type="date"></div>
+          <div class="form-group"><label>Data fine</label><input id="ev-fine" type="date"></div>
+          <div class="form-group"><label>Magazzino</label>
+            <select id="ev-mag">
+              <option value="avigliana">Avigliana</option>
+              <option value="napoli">Napoli</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="aggiungiEvento()">Aggiungi evento</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Elenco eventi</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Vendite</th><th>Incasso</th><th></th></tr></thead>
+          <tbody id="tab-eventi"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- CASSA -->
+    <div class="section" id="sec-cassa">
+      <div id="cassa-no-evento" style="display:none">
+        <div class="alert alert-amber">⚠ Nessun evento attivo. Seleziona o crea un evento nella sezione <strong>Eventi</strong> e poi clicca "Usa in cassa".</div>
+      </div>
+      <div id="cassa-main-ui">
+        <div class="evento-attivo-bar" style="margin-bottom:16px">
+          <span>🎪</span>
+          <span class="evento-attivo-nome" id="cassa-evento-nome">Nessun evento selezionato</span>
+          <span class="mag-badge" id="cassa-evento-mag"></span>
+          <button class="btn btn-sm" onclick="showSection('eventi', document.querySelector('.nav-item:nth-child(12)'))">Cambia evento</button>
+        </div>
+        <div class="cassa-layout">
+          <div class="cassa-main">
+            <!-- Step 1: Logo -->
+            <div class="card" id="cassa-step1">
+              <div class="cassa-step">1 — Seleziona logo</div>
+              <div class="logo-grid" id="cassa-loghi-grid"></div>
+            </div>
+            <!-- Step 2: Categoria -->
+            <div class="card" id="cassa-step2" style="opacity:.4;pointer-events:none">
+              <div class="cassa-step">2 — Categoria</div>
+              <div class="cat-grid" id="cassa-cat-grid"></div>
+            </div>
+            <!-- Step 3: Taglia -->
+            <div class="card" id="cassa-step3" style="opacity:.4;pointer-events:none">
+              <div class="cassa-step">3 — Taglia</div>
+              <div class="taglia-btn-grid" id="cassa-taglia-grid"></div>
+            </div>
+          </div>
+          <!-- Scontrino -->
+          <div class="cassa-sidebar">
+            <div class="card" style="flex:1">
+              <div class="cassa-step">Scontrino</div>
+              <div id="scontrino-items"><p style="color:var(--text3);font-size:13px">Nessun articolo</p></div>
+              <div class="scontrino-totale">
+                <span class="label">Totale</span>
+                <span class="value" id="scontrino-totale">€ 0.00</span>
+              </div>
+            </div>
+            <button class="btn-cassa btn-cassa-ok" id="btn-concludi" onclick="concludiVendita()" disabled>
+              ✓ Concludi vendita
+            </button>
+            <button class="btn-cassa btn-cassa-del" onclick="svuotaScontrino()">
+              ✕ Svuota scontrino
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORICO VENDITE -->
+    <div class="section" id="sec-vendite">
+      <div class="card">
+        <div class="flex-row" style="gap:8px;margin-bottom:0">
+          <select id="filter-vend-evento" onchange="renderVendite()" style="max-width:260px">
+            <option value="">Tutti gli eventi</option>
+          </select>
+          <input id="filter-vend-data" type="date" onchange="renderVendite()" style="max-width:160px">
+          <button class="btn btn-sm" onclick="document.getElementById('filter-vend-data').value='';renderVendite()">Reset data</button>
+        </div>
+      </div>
+      <div id="vendite-metrics" class="grid4" style="margin-bottom:16px"></div>
+      <div class="card">
+        <div class="card-title">Scontrini</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Articoli</th><th>Totale</th><th></th></tr></thead>
+          <tbody id="tab-vendite"></tbody>
         </table></div>
       </div>
     </div>
@@ -685,7 +833,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('sec-' + s).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock', trasferimenti:'Trasferimenti' };
+  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock', trasferimenti:'Trasferimenti', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite' };
   document.getElementById('page-title').textContent = titles[s] || s;
   if (s === 'dashboard') renderDashboard();
   if (s === 'fornitori') renderFornitori();
@@ -693,6 +841,9 @@ function showSection(s, el) {
   if (s === 'ordini') { renderOrdini(); populateFornSelects(); if (loghiOrdine.length === 0) addLogoOrdine(); document.getElementById('o-data').value = today(); }
   if (s === 'stock') { renderStock(); populateFornSelects(); renderStockMetrics(); }
   if (s === 'trasferimenti') { renderTrasferimenti(); populateFornSelects(); document.getElementById('tr-data').value = today(); if (trItems.length === 0) addTrItem(); }
+  if (s === 'eventi') { renderEventi(); }
+  if (s === 'cassa') { initCassa(); }
+  if (s === 'vendite') { renderVendite(); populateEventiFilter(); }
 }
 
 // ─────────────────────────────────────────────
@@ -1511,6 +1662,19 @@ function executeDel() {
   const { tipo, id } = pendingDel;
   if (tipo === 'fornitore') { db.fornitori = db.fornitori.filter(f => f.id !== id); renderFornitori(); }
   if (tipo === 'logo') { db.loghi = db.loghi.filter(l => l.id !== id); renderLoghi(); }
+  if (tipo === 'evento') { db.eventi = (db.eventi||[]).filter(e => e.id !== id); renderEventi(); }
+  if (tipo === 'vendita') {
+    const v = (db.vendite||[]).find(x => x.id === id);
+    if (v) {
+      // restore stock
+      const ev = getEvento(v.eventoId);
+      v.items.forEach(it => {
+        db.movimenti.push({ id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: 1, tipo: 'carico', magazzino: ev ? ev.magazzino : 'avigliana', vendita: false, data: today(), note: 'Storno vendita' });
+      });
+    }
+    db.vendite = (db.vendite||[]).filter(v => v.id !== id);
+    renderVendite();
+  }
   saveDB();
   closeModal('modal-del');
   showToast('Elemento rimosso');
@@ -1544,6 +1708,325 @@ function showToast(msg, type='green') {
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2500);
+}
+
+// ─────────────────────────────────────────────
+// EVENTI
+// ─────────────────────────────────────────────
+function aggiungiEvento() {
+  const nome = document.getElementById('ev-nome').value.trim();
+  if (!nome) { showToast('Il nome evento è obbligatorio', 'red'); return; }
+  if (!db.eventi) db.eventi = [];
+  if (!db.nextEvId) db.nextEvId = 1;
+  db.eventi.push({
+    id: db.nextEvId++, nome,
+    localita: document.getElementById('ev-localita').value.trim(),
+    nazione: document.getElementById('ev-nazione').value.trim(),
+    inizio: document.getElementById('ev-inizio').value,
+    fine: document.getElementById('ev-fine').value,
+    magazzino: document.getElementById('ev-mag').value,
+  });
+  saveDB();
+  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine'].forEach(id => document.getElementById(id).value = '');
+  renderEventi();
+  showToast('Evento aggiunto');
+}
+
+function getEvento(id) { return (db.eventi||[]).find(e => e.id === id); }
+
+function renderEventi() {
+  const eventi = [...(db.eventi||[])].sort((a,b) => (b.inizio||'').localeCompare(a.inizio||''));
+  document.getElementById('tab-eventi').innerHTML = eventi.length ?
+    eventi.map(ev => {
+      const vend = (db.vendite||[]).filter(v => v.eventoId === ev.id);
+      const incasso = vend.reduce((a,v) => a + v.totale, 0);
+      return `<tr>
+        <td style="font-weight:600">${ev.nome}</td>
+        <td class="mono">${fmtDate(ev.inizio)}</td>
+        <td class="mono">${fmtDate(ev.fine)}</td>
+        <td>${ev.localita||'-'}</td>
+        <td>${ev.nazione||'-'}</td>
+        <td><span class="mag-badge mag-${ev.magazzino}">${ev.magazzino.charAt(0).toUpperCase()+ev.magazzino.slice(1)}</span></td>
+        <td class="mono">${vend.length}</td>
+        <td class="mono" style="font-weight:500">${fmt(incasso)}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>
+        </td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="9" class="empty">Nessun evento inserito</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// CASSA
+// ─────────────────────────────────────────────
+let cassaEventoId = null;
+let cassaLogoId = null;
+let cassaCatId = null;
+let scontrino = []; // [{logoId, catId, taglia, prezzo, nome, sub}]
+
+function attivaEvento(id) {
+  cassaEventoId = id;
+  localStorage.setItem('cassaEventoId', id);
+  showToast('Evento attivato in cassa');
+  // navigate to cassa
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('sec-cassa').classList.add('active');
+  document.getElementById('page-title').textContent = 'Cassa';
+  initCassa();
+}
+
+function initCassa() {
+  // restore last active evento
+  if (!cassaEventoId) {
+    const saved = localStorage.getItem('cassaEventoId');
+    if (saved) cassaEventoId = parseInt(saved);
+  }
+  const ev = getEvento(cassaEventoId);
+  if (!ev) {
+    document.getElementById('cassa-no-evento').style.display = 'block';
+    document.getElementById('cassa-main-ui').style.display = 'none';
+    return;
+  }
+  document.getElementById('cassa-no-evento').style.display = 'none';
+  document.getElementById('cassa-main-ui').style.display = 'block';
+  document.getElementById('cassa-evento-nome').textContent = ev.nome + (ev.localita ? ' — ' + ev.localita : '');
+  const magBadge = document.getElementById('cassa-evento-mag');
+  magBadge.textContent = ev.magazzino.charAt(0).toUpperCase() + ev.magazzino.slice(1);
+  magBadge.className = 'mag-badge mag-' + ev.magazzino;
+  buildLoghiGrid();
+  resetCassaSteps();
+}
+
+function buildLoghiGrid() {
+  const ev = getEvento(cassaEventoId);
+  const mag = ev ? ev.magazzino : null;
+  const loghi = [...db.loghi].filter(l => l.stato !== 'archiviato').sort((a,b) => a.nome.localeCompare(b.nome,'it'));
+  document.getElementById('cassa-loghi-grid').innerHTML = loghi.map(l => {
+    const tot = getTotaleLogoStock(l.id, mag);
+    return `<button class="logo-btn ${tot===0?'esaurito':''}" onclick="cassaSelLogo(${l.id})" ${tot===0?'disabled':''}>
+      ${l.nome}
+      <div style="font-size:11px;font-weight:400;margin-top:4px;opacity:.7">${tot} pz</div>
+    </button>`;
+  }).join('');
+}
+
+function cassaSelLogo(logoId) {
+  cassaLogoId = logoId;
+  cassaCatId = null;
+  document.querySelectorAll('.logo-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  // enable step 2
+  const step2 = document.getElementById('cassa-step2');
+  step2.style.opacity = '1';
+  step2.style.pointerEvents = 'auto';
+  // build categorie
+  const ev = getEvento(cassaEventoId);
+  const mag = ev ? ev.magazzino : null;
+  const p = getPrezzi(db.loghi.find(l=>l.id===logoId)||{});
+  document.getElementById('cassa-cat-grid').innerHTML = CATEGORIE.map(cat => {
+    const tot = getTotaleStock(logoId, cat.id, mag);
+    return `<button class="cat-btn ${tot===0?'disabled':''}" onclick="cassaSelCat('${cat.id}')">
+      ${cat.label}
+      <div style="font-size:11px;font-weight:400;margin-top:4px;opacity:.7">${tot} pz disp.</div>
+    </button>`;
+  }).join('');
+  // reset step 3
+  const step3 = document.getElementById('cassa-step3');
+  step3.style.opacity = '.4';
+  step3.style.pointerEvents = 'none';
+  document.getElementById('cassa-taglia-grid').innerHTML = '';
+}
+
+function cassaSelCat(catId) {
+  cassaCatId = catId;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  const cat = getCat(catId);
+  const ev = getEvento(cassaEventoId);
+  const mag = ev ? ev.magazzino : null;
+  const step3 = document.getElementById('cassa-step3');
+
+  if (!cat.taglie) {
+    // Shoppers: aggiungi direttamente
+    step3.style.opacity = '.4';
+    step3.style.pointerEvents = 'none';
+    aggiungiAlScontrino(null);
+    return;
+  }
+
+  step3.style.opacity = '1';
+  step3.style.pointerEvents = 'auto';
+  document.getElementById('cassa-taglia-grid').innerHTML = TAGLIE.map(t => {
+    const s = getStock(cassaLogoId, catId, t, mag);
+    return `<button class="taglia-btn ${s===0?'esaurito':''}" onclick="cassaSelTaglia('${t}')" ${s===0?'disabled':''}>
+      ${t}
+      <div style="font-size:10px;font-weight:400;margin-top:3px">${s}</div>
+    </button>`;
+  }).join('');
+}
+
+function cassaSelTaglia(taglia) {
+  aggiungiAlScontrino(taglia);
+}
+
+function aggiungiAlScontrino(taglia) {
+  const logo = db.loghi.find(l => l.id === cassaLogoId);
+  const cat = getCat(cassaCatId);
+  const p = getPrezzi(logo||{});
+  const prezzo = (p[cassaCatId]||{prezzo:0}).prezzo;
+  scontrino.push({
+    id: Date.now(),
+    logoId: cassaLogoId,
+    catId: cassaCatId,
+    taglia,
+    prezzo,
+    nome: logo ? logo.nome : '?',
+    sub: cat.label + (taglia ? ' — ' + taglia : ''),
+  });
+  renderScontrino();
+  // reset to step 1 for next item
+  resetCassaSteps();
+  buildLoghiGrid();
+}
+
+function resetCassaSteps() {
+  cassaLogoId = null;
+  cassaCatId = null;
+  document.querySelectorAll('.logo-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('cassa-step2').style.opacity = '.4';
+  document.getElementById('cassa-step2').style.pointerEvents = 'none';
+  document.getElementById('cassa-step3').style.opacity = '.4';
+  document.getElementById('cassa-step3').style.pointerEvents = 'none';
+  document.getElementById('cassa-cat-grid').innerHTML = '';
+  document.getElementById('cassa-taglia-grid').innerHTML = '';
+}
+
+function renderScontrino() {
+  const el = document.getElementById('scontrino-items');
+  if (!scontrino.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px">Nessun articolo</p>';
+    document.getElementById('scontrino-totale').textContent = '€ 0.00';
+    document.getElementById('btn-concludi').disabled = true;
+    return;
+  }
+  el.innerHTML = scontrino.map(item => `
+    <div class="scontrino-item">
+      <div class="scontrino-item-info">
+        <div class="scontrino-item-nome">${item.nome}</div>
+        <div class="scontrino-item-sub">${item.sub}</div>
+      </div>
+      <input class="prezzo-input" type="number" min="0" step="0.01" value="${item.prezzo.toFixed(2)}"
+        onchange="aggiornaPrezzo(${item.id}, this.value)">
+      <button onclick="rimuoviDaScontrino(${item.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:4px">✕</button>
+    </div>
+  `).join('');
+  const tot = scontrino.reduce((a,i) => a + i.prezzo, 0);
+  document.getElementById('scontrino-totale').textContent = fmt(tot);
+  document.getElementById('btn-concludi').disabled = false;
+}
+
+function aggiornaPrezzo(id, val) {
+  const item = scontrino.find(x => x.id === id);
+  if (item) item.prezzo = parseFloat(val) || 0;
+  const tot = scontrino.reduce((a,i) => a + i.prezzo, 0);
+  document.getElementById('scontrino-totale').textContent = fmt(tot);
+}
+
+function rimuoviDaScontrino(id) {
+  scontrino = scontrino.filter(x => x.id !== id);
+  renderScontrino();
+}
+
+function svuotaScontrino() {
+  scontrino = [];
+  renderScontrino();
+  resetCassaSteps();
+  buildLoghiGrid();
+}
+
+async function concludiVendita() {
+  if (!scontrino.length || !cassaEventoId) return;
+  const ev = getEvento(cassaEventoId);
+  const now = new Date();
+  const dataOra = now.toISOString();
+  const totale = scontrino.reduce((a,i) => a + i.prezzo, 0);
+  if (!db.vendite) db.vendite = [];
+  if (!db.nextVendId) db.nextVendId = 1;
+  // Save vendita
+  db.vendite.push({
+    id: db.nextVendId++,
+    eventoId: cassaEventoId,
+    dataOra,
+    totale: parseFloat(totale.toFixed(2)),
+    items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo })),
+  });
+  // Scarica magazzino
+  scontrino.forEach(it => {
+    db.movimenti.push({
+      id: db.nextMovId++,
+      logoId: it.logoId,
+      catId: it.catId,
+      taglia: it.taglia,
+      qty: 1,
+      tipo: 'scarico',
+      magazzino: ev.magazzino,
+      vendita: true,
+      data: now.toISOString().split('T')[0],
+    });
+  });
+  await saveDB();
+  svuotaScontrino();
+  showToast('Vendita registrata ✓');
+}
+
+// ─────────────────────────────────────────────
+// STORICO VENDITE
+// ─────────────────────────────────────────────
+function populateEventiFilter() {
+  const opts = '<option value="">Tutti gli eventi</option>' +
+    [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||'')).map(ev =>
+      `<option value="${ev.id}">${ev.nome}</option>`).join('');
+  const el = document.getElementById('filter-vend-evento');
+  if (el) el.innerHTML = opts;
+}
+
+function renderVendite() {
+  populateEventiFilter();
+  const evId = parseInt((document.getElementById('filter-vend-evento')||{}).value)||0;
+  const datFilt = (document.getElementById('filter-vend-data')||{}).value||'';
+  let list = [...(db.vendite||[])].filter(v =>
+    (!evId || v.eventoId === evId) &&
+    (!datFilt || v.dataOra.startsWith(datFilt))
+  ).sort((a,b) => b.dataOra.localeCompare(a.dataOra));
+
+  // Metrics
+  const totIncasso = list.reduce((a,v) => a+v.totale, 0);
+  const nClienti = list.length;
+  const nArticoli = list.reduce((a,v) => a+v.items.length, 0);
+  const mediaSco = nClienti > 0 ? totIncasso/nClienti : 0;
+  document.getElementById('vendite-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${nClienti}</div></div>
+    <div class="metric"><div class="metric-label">Articoli venduti</div><div class="metric-value">${nArticoli}</div></div>
+    <div class="metric"><div class="metric-label">Incasso totale</div><div class="metric-value green">${fmt(totIncasso)}</div></div>
+    <div class="metric"><div class="metric-label">Scontrino medio</div><div class="metric-value">${fmt(mediaSco)}</div></div>
+  `;
+
+  document.getElementById('tab-vendite').innerHTML = list.length ?
+    list.map(v => {
+      const ev = getEvento(v.eventoId);
+      const d = new Date(v.dataOra);
+      const dataOraFmt = `${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}`;
+      const arts = v.items.map(it => { const l=db.loghi.find(x=>x.id===it.logoId); const c=getCat(it.catId); return `${l?l.nome:'?'} ${c?c.label:''} ${it.taglia||''}`.trim(); }).join(', ');
+      return `<tr>
+        <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
+        <td style="font-weight:500">${ev?ev.nome:'-'}</td>
+        <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
+        <td class="mono" style="font-weight:500">${fmt(v.totale)}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="5" class="empty">Nessuna vendita trovata</td></tr>';
 }
 
 // ─────────────────────────────────────────────
