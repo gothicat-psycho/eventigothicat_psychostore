@@ -1161,6 +1161,8 @@ function renderStockMetrics() {
 }
 
 function renderStock() {
+  const mag = stockTab === 'totale' ? null : stockTab;
+  const isTotale = stockTab === 'totale';
   renderStockMetrics();
   const q = (document.getElementById('search-stock')||{}).value?.toLowerCase()||'';
   const fornId = parseInt((document.getElementById('filter-stock-forn')||{}).value)||0;
@@ -1171,11 +1173,11 @@ function renderStock() {
     if (fornId && l.fornId !== fornId) return false;
     if (statoFilt) {
       const hasLow = CATEGORIE.some(cat => cat.taglie
-        ? TAGLIE.some(t => { const s=getStock(l.id,cat.id,t); return s>0&&s<=(l.minimo||3); })
-        : (() => { const s=getStock(l.id,cat.id,null); return s>0&&s<=(l.minimo||3); })());
+        ? TAGLIE.some(t => { const s=getStock(l.id,cat.id,t,mag); return s>0&&s<=(l.minimo||3); })
+        : (() => { const s=getStock(l.id,cat.id,null,mag); return s>0&&s<=(l.minimo||3); })());
       const hasOut = CATEGORIE.some(cat => cat.taglie
-        ? TAGLIE.some(t => getStock(l.id,cat.id,t)===0)
-        : getStock(l.id,cat.id,null)===0);
+        ? TAGLIE.some(t => getStock(l.id,cat.id,t,mag)===0)
+        : getStock(l.id,cat.id,null,mag)===0);
       if (statoFilt==='ok' && (hasLow||hasOut)) return false;
       if (statoFilt==='low' && !hasLow) return false;
       if (statoFilt==='out' && !hasOut) return false;
@@ -1187,8 +1189,6 @@ function renderStock() {
     document.getElementById('stock-content').innerHTML = '<div class="card"><p class="empty">Nessun logo trovato con i filtri selezionati</p></div>';
     return;
   }
-
-  const isTotale = stockTab === 'totale';
   document.getElementById('stock-content').innerHTML = list.map(l => {
     const f = getForn(l.fornId);
     const tot = getTotaleLogoStock(l.id, mag);
