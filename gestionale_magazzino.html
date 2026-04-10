@@ -161,6 +161,9 @@
   .taglia-stock.zero { color: var(--text3); }
   .taglia-stock.low { color: var(--amber); background: var(--amber-light); border-color: #F0D080; }
   .taglia-stock.ok { color: var(--green); }
+  .taglia-stock.editable { cursor: pointer; }
+  .taglia-stock.editable:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .taglia-stock-editing { text-align: center; padding: 3px 2px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); width: 100%; outline: none; }
 
   /* STOCK TABLE */
   .stock-logo-block { margin-bottom: 20px; }
@@ -1111,14 +1114,18 @@ function renderStock() {
             <div class="taglia-label">Stock</div>
             ${TAGLIE.map(t => {
               const s = getStock(l.id, cat.id, t);
-              return `<div class="taglia-stock ${getStockClass(s, l.minimo||3)}">${s}</div>`;
+              return `<div class="taglia-stock editable ${getStockClass(s, l.minimo||3)}" 
+                title="Clicca per modificare"
+                onclick="apriEditStock(this, ${l.id}, '${cat.id}', '${t}')">${s}</div>`;
             }).join('')}
           </div>`;
       } else {
         const s = getStock(l.id, cat.id, null);
         return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
           <div class="stock-genere-title" style="margin:0;min-width:140px">${cat.label}</div>
-          <div class="taglia-stock ${getStockClass(s, l.minimo||3)}" style="min-width:60px">${s} pz</div>
+          <div class="taglia-stock editable ${getStockClass(s, l.minimo||3)}" style="min-width:60px;cursor:pointer"
+            title="Clicca per modificare"
+            onclick="apriEditStock(this, ${l.id}, '${cat.id}', null)">${s} pz</div>
         </div>`;
       }
     }).join('');
@@ -1131,6 +1138,51 @@ function renderStock() {
       ${catBlocks}
     </div>`;
   }).join('');
+}
+
+// ─────────────────────────────────────────────
+// EDIT STOCK INLINE
+// ─────────────────────────────────────────────
+function apriEditStock(el, logoId, catId, taglia) {
+  // If already editing this cell, ignore
+  if (el.querySelector('input')) return;
+  const stockAttuale = getStock(logoId, catId, taglia);
+  const originalHtml = el.innerHTML;
+  el.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.value = stockAttuale;
+  input.className = 'taglia-stock-editing';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  async function conferma() {
+    const nuovoStock = parseInt(input.value);
+    if (isNaN(nuovoStock) || nuovoStock < 0) { el.innerHTML = originalHtml; return; }
+    if (nuovoStock === stockAttuale) { el.innerHTML = originalHtml; return; }
+    // Calculate the delta needed
+    const delta = nuovoStock - stockAttuale;
+    db.movimenti.push({
+      id: db.nextMovId++,
+      logoId, catId, taglia,
+      qty: Math.abs(delta),
+      tipo: delta > 0 ? 'carico' : 'scarico',
+      ordineId: null,
+      data: today(),
+      note: 'Rettifica manuale',
+    });
+    await saveDB();
+    renderStock();
+    showToast(`Stock aggiornato: ${stockAttuale} → ${nuovoStock}`);
+  }
+
+  input.addEventListener('blur', conferma);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { el.innerHTML = originalHtml; input.removeEventListener('blur', conferma); }
+  });
 }
 
 
