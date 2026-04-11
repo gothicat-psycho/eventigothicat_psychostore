@@ -193,6 +193,12 @@
   .mag-avigliana { background: #EBF0FC; color: #1A4FBF; }
   .mag-napoli { background: #F0EDFC; color: #5B3DB5; }
   .mag-totale { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .logo-img { width: 48px; height: 48px; object-fit: contain; border-radius: 4px; background: var(--surface2); }
+  .logo-img-sm { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; background: var(--surface2); }
+  .logo-img-placeholder { width: 48px; height: 48px; border-radius: 4px; background: var(--surface2); border: 1px dashed var(--border); display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--text3); }
+  .logo-btn-img { width: 100%; height: 80px; object-fit: contain; margin-bottom: 6px; border-radius: 4px; }
+  .logo-img-upload { display:flex; align-items:center; gap:10px; }
+  .logo-img-preview { width:64px; height:64px; object-fit:contain; border-radius:6px; background:var(--surface2); border:1px solid var(--border); }
 
   /* CASSA */
   .cassa-layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; min-height: calc(100vh - 120px); }
@@ -334,10 +340,16 @@
     <div class="section" id="sec-loghi">
       <div class="card">
         <div class="card-title">Aggiungi logo</div>
-        <div class="form-row cols3">
+        <div class="form-row cols4">
           <div class="form-group"><label>Nome logo *</label><input id="l-nome" placeholder="es. Meow Division"></div>
           <div class="form-group"><label>Fornitore principale</label><select id="l-fornitore"><option value="">-- seleziona --</option></select></div>
           <div class="form-group"><label>Scorta minima per variante</label><input id="l-minimo" type="number" min="0" placeholder="3"></div>
+          <div class="form-group"><label>Immagine logo</label>
+            <div class="logo-img-upload">
+              <input type="file" id="l-immagine" accept="image/*" onchange="previewLogoImg('l-immagine','l-img-preview')" style="flex:1;font-size:12px">
+              <img id="l-img-preview" class="logo-img-preview" style="display:none">
+            </div>
+          </div>
         </div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px">
           <div class="card-title" style="margin-bottom:10px">Prezzi per categoria</div>
@@ -381,7 +393,7 @@
           </select>
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Nome logo</th><th>Fornitore</th><th>T-shirt U/D acq.</th><th>T-shirt vend.</th><th>Canotte acq./vend.</th><th>Shoppers acq./vend.</th><th>Scorta min.</th><th>Stock tot.</th><th>Stato</th><th></th></tr></thead>
+          <table><thead><tr><th></th><th>Nome logo</th><th>Fornitore</th><th>T-shirt U/D acq.</th><th>T-shirt vend.</th><th>Canotte acq./vend.</th><th>Shoppers acq./vend.</th><th>Scorta min.</th><th>Stock tot.</th><th>Stato</th><th></th></tr></thead>
           <tbody id="tab-loghi"></tbody></table>
         </div>
       </div>
@@ -650,6 +662,13 @@
       <div class="form-group"><label>Nome logo *</label><input id="el-nome" placeholder="Nome logo"></div>
       <div class="form-group"><label>Fornitore principale</label><select id="el-fornitore"></select></div>
       <div class="form-group"><label>Scorta minima</label><input id="el-minimo" type="number" min="0" placeholder="3"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Immagine logo</label>
+      <div class="logo-img-upload">
+        <input type="file" id="el-immagine" accept="image/*" onchange="previewLogoImg('el-immagine','el-img-preview')" style="flex:1;font-size:12px">
+        <img id="el-img-preview" class="logo-img-preview" style="display:none">
+      </div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:8px">Prezzi per categoria</div>
@@ -983,28 +1002,69 @@ function renderFornitori() {
 // ─────────────────────────────────────────────
 // LOGHI
 // ─────────────────────────────────────────────
-function aggiungiLogo() {
+function resizeImage(file, maxSize, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function previewLogoImg(inputId, previewId) {
+  const file = document.getElementById(inputId).files[0];
+  const preview = document.getElementById(previewId);
+  if (!file) { preview.style.display='none'; return; }
+  resizeImage(file, 300, data => {
+    preview.src = data;
+    preview.style.display = 'block';
+  });
+}
+
+async function aggiungiLogo() {
   const nome = document.getElementById('l-nome').value.trim();
   if (!nome) { showToast('Il nome logo è obbligatorio', 'red'); return; }
-  db.loghi.push({
-    id: db.nextLogoId++, nome,
-    fornId: parseInt(document.getElementById('l-fornitore').value) || null,
-    prezzi: {
-      tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-      tshirt_donna: { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-      canotte:      { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
-      shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
-    },
-    minimo: parseInt(document.getElementById('l-minimo').value) || 3,
-    note: document.getElementById('l-note').value.trim(),
-    stato: document.getElementById('l-stato').value,
-  });
-  saveDB();
-  ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-prezzo-tshirt',
-   'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers','l-minimo','l-note']
-    .forEach(id => document.getElementById(id).value = '');
-  renderLoghi();
-  showToast('Logo aggiunto');
+  const fileInput = document.getElementById('l-immagine');
+  const file = fileInput.files[0];
+
+  const salva = (immagine) => {
+    db.loghi.push({
+      id: db.nextLogoId++, nome,
+      fornId: parseInt(document.getElementById('l-fornitore').value) || null,
+      immagine: immagine || null,
+      prezzi: {
+        tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+        tshirt_donna: { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+        canotte:      { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
+        shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
+      },
+      minimo: parseInt(document.getElementById('l-minimo').value) || 3,
+      note: document.getElementById('l-note').value.trim(),
+      stato: document.getElementById('l-stato').value,
+    });
+    saveDB();
+    ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-prezzo-tshirt',
+     'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers','l-minimo','l-note']
+      .forEach(id => document.getElementById(id).value = '');
+    fileInput.value = '';
+    document.getElementById('l-img-preview').style.display = 'none';
+    renderLoghi();
+    showToast('Logo aggiunto');
+  };
+
+  if (file) { resizeImage(file, 300, salva); }
+  else { salva(null); }
 }
 
 function getPrezzi(l) {
@@ -1033,7 +1093,11 @@ function renderLoghi() {
       const tot = getTotaleLogoStock(l.id, null);
       const statoBadge = l.stato === 'attivo' ? 'badge-ok' : l.stato === 'storico' ? 'badge-amber' : 'badge-gray';
       const p = getPrezzi(l);
+      const imgHtml = l.immagine
+        ? `<img src="${l.immagine}" class="logo-img-sm" alt="${l.nome}">`
+        : `<div class="logo-img-placeholder" style="width:32px;height:32px;font-size:14px">?</div>`;
       return `<tr>
+        <td style="padding:6px 8px">${imgHtml}</td>
         <td style="font-weight:600">${l.nome}</td>
         <td>${f?f.nome:'<span style="color:var(--text3)">—</span>'}</td>
         <td class="mono" style="font-size:12px">${fmt(p.tshirt_uomo.costo)} / ${fmt(p.tshirt_donna.costo)}</td>
@@ -1083,6 +1147,14 @@ function buildLogoOpts(selectedId) {
       .sort((a,b) => a.nome.localeCompare(b.nome, 'it'))
       .map(l => `<option value="${l.id}" ${l.id === selectedId ? 'selected' : ''}>${l.nome}</option>`)
       .join('');
+}
+
+function getLogoImgHtml(logoId, size) {
+  const l = getLogo(logoId);
+  if (!l) return '';
+  const s = size || 40;
+  if (l.immagine) return `<img src="${l.immagine}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:4px;background:var(--surface2);display:block">`;
+  return `<div style="width:${s}px;height:${s}px;border-radius:4px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:${Math.round(s*0.4)}px">🎨</div>`;
 }
 
 function renderLoghiOrdine() {
@@ -1390,9 +1462,13 @@ function renderStock() {
         }
       }
     }).join('');
+    const logoImg = l.immagine
+      ? `<img src="${l.immagine}" style="width:40px;height:40px;object-fit:contain;border-radius:4px;background:var(--surface2);flex-shrink:0">`
+      : '';
     return `<div class="card stock-logo-block">
       <div class="stock-logo-title">
-        <span>${l.nome}</span>
+        ${logoImg}
+        <span style="font-weight:600">${l.nome}</span>
         ${f ? `<span class="badge badge-gray" style="font-size:11px">${f.nome}</span>` : ''}
         <span class="mag-badge mag-${isTotale?'totale':mag}" style="font-size:11px">${isTotale?'Totale':mag.charAt(0).toUpperCase()+mag.slice(1)}</span>
         <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2)">Tot. ${tot} pz</span>
@@ -1617,6 +1693,12 @@ function apriEditLogo(id) {
   document.getElementById('el-prezzo-canotte').value = p.canotte.prezzo || '';
   document.getElementById('el-costo-shoppers').value = p.shoppers.costo || '';
   document.getElementById('el-prezzo-shoppers').value = p.shoppers.prezzo || '';
+  // show current image
+  const prev = document.getElementById('el-img-preview');
+  const fileInput = document.getElementById('el-immagine');
+  fileInput.value = '';
+  if (l.immagine) { prev.src = l.immagine; prev.style.display = 'block'; }
+  else { prev.style.display = 'none'; }
   document.getElementById('modal-edit-logo').classList.add('open');
 }
 
@@ -1625,24 +1707,31 @@ function salvaLogo() {
   if (!l) return;
   const nome = document.getElementById('el-nome').value.trim();
   if (!nome) { showToast('Il nome logo è obbligatorio', 'red'); return; }
-  const prezzoTshirt = parseFloat(document.getElementById('el-prezzo-tshirt').value) || 0;
-  l.nome = nome;
-  l.fornId = parseInt(document.getElementById('el-fornitore').value) || null;
-  l.minimo = parseInt(document.getElementById('el-minimo').value) || 3;
-  l.stato = document.getElementById('el-stato').value;
-  l.note = document.getElementById('el-note').value.trim();
-  l.prezzi = {
-    tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
-    tshirt_donna: { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
-    canotte:      { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
-    shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
+
+  const doSalva = (immagine) => {
+    const prezzoTshirt = parseFloat(document.getElementById('el-prezzo-tshirt').value) || 0;
+    l.nome = nome;
+    l.fornId = parseInt(document.getElementById('el-fornitore').value) || null;
+    l.minimo = parseInt(document.getElementById('el-minimo').value) || 3;
+    l.stato = document.getElementById('el-stato').value;
+    l.note = document.getElementById('el-note').value.trim();
+    if (immagine) l.immagine = immagine;
+    l.prezzi = {
+      tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
+      tshirt_donna: { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
+      canotte:      { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
+      shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
+    };
+    delete l.costo; delete l.prezzo;
+    saveDB();
+    closeModal('modal-edit-logo');
+    renderLoghi();
+    showToast('Logo aggiornato');
   };
-  // remove old flat fields for cleanliness
-  delete l.costo; delete l.prezzo;
-  saveDB();
-  closeModal('modal-edit-logo');
-  renderLoghi();
-  showToast('Logo aggiornato');
+
+  const file = document.getElementById('el-immagine').files[0];
+  if (file) { resizeImage(file, 300, doSalva); }
+  else { doSalva(null); }
 }
 
 // ─────────────────────────────────────────────
@@ -1805,7 +1894,11 @@ function buildLoghiGrid() {
   const loghi = [...db.loghi].filter(l => l.stato !== 'archiviato').sort((a,b) => a.nome.localeCompare(b.nome,'it'));
   document.getElementById('cassa-loghi-grid').innerHTML = loghi.map(l => {
     const tot = getTotaleLogoStock(l.id, mag);
+    const imgHtml = l.immagine
+      ? `<img src="${l.immagine}" class="logo-btn-img" alt="${l.nome}">`
+      : `<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text3)">🎨</div>`;
     return `<button class="logo-btn ${tot===0?'esaurito':''}" onclick="cassaSelLogo(${l.id})" ${tot===0?'disabled':''}>
+      ${imgHtml}
       ${l.nome}
       <div style="font-size:11px;font-weight:400;margin-top:4px;opacity:.7">${tot} pz</div>
     </button>`;
