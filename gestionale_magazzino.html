@@ -2594,95 +2594,107 @@ function stopVoice() {
 
 // ── Modalità Ciro (ascolto continuo con wake word) ──
 function toggleCiro() {
-  if (ciroActive) { stopCiro(); return; }
-  startCiro();
-}
-
-function startCiro() {
+  if (ciroSessionActive) {
+    // Cancel current session
+    ciroSessionActive = false;
+    ciroActive = false;
+    if (ciroCountdown) { clearInterval(ciroCountdown); ciroCountdown = null; }
+    try { if (ciroRecognition) ciroRecognition.abort(); } catch(e) {}
+    const btn = document.getElementById('mic-ciro-btn');
+    if (btn) { btn.classList.remove('ciro-active'); btn.textContent = 'CIRO'; }
+    return;
+  }
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) { showToast('Ricerca vocale non supportata da questo browser', 'red'); return; }
+  if (!SpeechRecognition) { showToast('Ricerca vocale non supportata', 'red'); return; }
   ciroActive = true;
-  const btn = document.getElementById('mic-ciro-btn');
-  btn.classList.add('ciro-active');
-  btn.textContent = '● CIRO';
-  showToast('Ciro attivo — di\' Ciro seguito dalla tua domanda');
   ascoltaCiro();
+  showToast('Ciro in ascolto per 10 secondi — parla!');
 }
 
-let ciroInAttesaDomanda = false;
-let ciroRestartTimer = null;
+// Ciro: single session, listens for up to 10 seconds
+let ciroSessionActive = false;
+let ciroCountdown = null;
 
 function ascoltaCiro() {
-  if (!ciroActive) return;
-  try {
-    if (ciroRecognition) { try { ciroRecognition.abort(); } catch(e) {} ciroRecognition = null; }
+  if (ciroSessionActive) return; // prevent double session
+  ciroSessionActive = true;
 
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    ciroRecognition = new SR();
-    ciroRecognition.lang = 'it-IT';
-    ciroRecognition.continuous = false;
-    ciroRecognition.interimResults = false;
-    ciroRecognition.maxAlternatives = 1;
+  // Update button with countdown
+  let sec = 10;
+  const btn = document.getElementById('mic-ciro-btn');
+  btn.classList.add('ciro-active');
+  btn.textContent = '● CIRO ' + sec + 's';
 
-    ciroRecognition.onresult = e => {
-      const testo = e.results[0][0].transcript.toLowerCase().trim();
+  if (ciroCountdown) clearInterval(ciroCountdown);
+  ciroCountdown = setInterval(() => {
+    sec--;
+    if (btn) btn.textContent = '● CIRO ' + sec + 's';
+    if (sec <= 0) { clearInterval(ciroCountdown); ciroCountdown = null; }
+  }, 1000);
 
-      if (ciroInAttesaDomanda) {
-        ciroInAttesaDomanda = false;
-        if (testo.length > 1) {
-          navigaStockSeNecessario();
-          processaVoce(testo);
-          // Restart after speech ends
-          attendiEriavvia();
-        } else {
-          riavviaDopoDelay(800);
-        }
-        return;
-      }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  ciroRecognition = new SR();
+  ciroRecognition.lang = 'it-IT';
+  ciroRecognition.continuous = false;
+  ciroRecognition.interimResults = false;
+  ciroRecognition.maxAlternatives = 1;
 
-      if (testo.includes(WAKE_WORD)) {
-        const idx = testo.indexOf(WAKE_WORD);
-        const query = testo.slice(idx + WAKE_WORD.length).replace(/^[,. ]+/, '').trim();
-        if (query.length > 2) {
-          navigaStockSeNecessario();
-          processaVoce(query);
-          attendiEriavvia();
-        } else {
-          ciroInAttesaDomanda = true;
-          parla('Dimmi pure!');
-          attendiEriavvia();
-        }
+  let gotResult = false;
+
+  ciroRecognition.onresult = e => {
+    gotResult = true;
+    const testo = e.results[0][0].transcript.toLowerCase().trim();
+    clearInterval(ciroCountdown);
+
+    // Strip wake word if present
+    let query = testo;
+    if (testo.includes(WAKE_WORD)) {
+      const idx = testo.indexOf(WAKE_WORD);
+      query = testo.slice(idx + WAKE_WORD.length).replace(/^[,. ]+/, '').trim();
+    }
+
+    if (query.length > 1) {
+      navigaStockSeNecessario();
+      processaVoce(query);
+    } else {
+      parla('Dimmi pure e premi di nuovo CIRO!');
+    }
+
+    // Reset after speech ends
+    const waitEnd = () => {
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        setTimeout(waitEnd, 300);
       } else {
-        riavviaDopoDelay(200);
+        ciroSessionActive = false;
+        if (btn) { btn.classList.remove('ciro-active'); btn.textContent = 'CIRO'; }
+        ciroActive = false;
       }
     };
+    setTimeout(waitEnd, 800);
+  };
 
-    ciroRecognition.onerror = e => {
-      if (!ciroActive) return;
-      if (e.error === 'not-allowed') {
-        stopCiro(); showToast('Permesso microfono negato', 'red');
-      } else if (e.error === 'aborted') {
-        riavviaDopoDelay(1000);
-      } else {
-        riavviaDopoDelay(800);
+  ciroRecognition.onerror = e => {
+    if (!gotResult) {
+      clearInterval(ciroCountdown);
+      ciroSessionActive = false;
+      ciroActive = false;
+      if (btn) { btn.classList.remove('ciro-active'); btn.textContent = 'CIRO'; }
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        showToast('Errore microfono: ' + e.error, 'red');
       }
-    };
+    }
+  };
 
-    ciroRecognition.onend = () => {
-      if (!ciroActive) return;
-      if (!ciroInAttesaDomanda) riavviaDopoDelay(400);
-    };
+  ciroRecognition.onend = () => {
+    if (!gotResult) {
+      clearInterval(ciroCountdown);
+      ciroSessionActive = false;
+      ciroActive = false;
+      if (btn) { btn.classList.remove('ciro-active'); btn.textContent = 'CIRO'; }
+    }
+  };
 
-    ciroRecognition.start();
-  } catch(e) {
-    riavviaDopoDelay(1500);
-  }
-}
-
-function riavviaDopoDelay(ms) {
-  if (!ciroActive) return;
-  if (ciroRestartTimer) clearTimeout(ciroRestartTimer);
-  ciroRestartTimer = setTimeout(() => { ciroRestartTimer = null; ascoltaCiro(); }, ms || 500);
+  ciroRecognition.start();
 }
 
 function navigaStockSeNecessario() {
@@ -2696,29 +2708,9 @@ function navigaStockSeNecessario() {
   }
 }
 
-function attendiEriavvia() {
-  // Give speech synthesis time to start, then wait for it to finish
-  setTimeout(() => {
-    const wait = () => {
-      if (window.speechSynthesis && window.speechSynthesis.speaking) {
-        setTimeout(wait, 300);
-      } else {
-        riavviaDopoDelay(500);
-      }
-    };
-    wait();
-  }, 800);
-}
+function attendiEriavvia() {} // unused
 
-function stopCiro() {
-  ciroActive = false;
-  ciroInAttesaDomanda = false;
-  if (ciroRestartTimer) { clearTimeout(ciroRestartTimer); ciroRestartTimer = null; }
-  const btn = document.getElementById('mic-ciro-btn');
-  if (btn) { btn.classList.remove('ciro-active'); btn.textContent = 'CIRO'; }
-  try { if (ciroRecognition) { ciroRecognition.abort(); ciroRecognition = null; } } catch(e) {}
-  showToast('Ciro disattivato');
-}
+// stopCiro handled inside toggleCiro
 
 function processaVoce(testo) {
   const testoLow = testo.toLowerCase().trim();
