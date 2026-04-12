@@ -707,7 +707,7 @@
       <div class="card">
         <div class="card-title">Elenco eventi</div>
         <div class="table-wrap">
-          <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th></th></tr></thead>
+          <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale in €</th><th></th></tr></thead>
           <tbody id="tab-eventi"></tbody>
         </table></div>
       </div>
@@ -2171,6 +2171,16 @@ function renderEventi() {
         <td class="mono">${vend.length}</td>
         <td class="mono" style="font-weight:500">${fmt(incassoEur)}</td>
         <td class="mono" style="font-weight:500">${incassoCzk > 0 ? incassoCzk.toFixed(0) + ' CZK' : '-'}</td>
+        <td class="mono" style="font-weight:600;color:var(--green)">${(() => {
+          if (ev.czkRate && incassoCzk > 0) {
+            const tot = incassoEur + (incassoCzk / ev.czkRate);
+            return fmt(tot);
+          } else if (incassoCzk > 0 && !ev.czkRate) {
+            return '<span style="color:var(--amber);font-size:11px">Inserire tasso CZK</span>';
+          } else {
+            return fmt(incassoEur);
+          }
+        })()}</td>
         <td style="display:flex;gap:6px">
           <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
           <button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
