@@ -2765,6 +2765,8 @@ function processaVoce(testo) {
     voiceAnswer.textContent = msg;
     voiceResult.classList.add('show');
     parla(msg);
+    setTimeout(() => voiceResult.classList.remove('show'), 4000);
+    attendiEriavvia();
     return;
   }
 
