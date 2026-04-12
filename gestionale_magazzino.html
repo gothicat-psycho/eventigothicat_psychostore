@@ -653,7 +653,7 @@
           <div class="form-group"><label>Località</label><input id="ev-localita" placeholder="es. Milano"></div>
           <div class="form-group"><label>Nazione</label><input id="ev-nazione" placeholder="es. Italia"></div>
         </div>
-        <div class="form-row cols3">
+        <div class="form-row cols4">
           <div class="form-group"><label>Data inizio</label><input id="ev-inizio" type="date"></div>
           <div class="form-group"><label>Data fine</label><input id="ev-fine" type="date"></div>
           <div class="form-group"><label>Magazzino</label>
@@ -662,13 +662,52 @@
               <option value="napoli">Napoli</option>
             </select>
           </div>
+          <div class="form-group"><label>Tasso CZK/EUR <span style="font-size:10px;color:var(--text3)">(solo eventi CZ)</span></label>
+            <input id="ev-czk" type="number" min="0" step="0.01" placeholder="es. 25.50">
+          </div>
         </div>
         <button class="btn btn-primary" onclick="aggiungiEvento()">Aggiungi evento</button>
       </div>
+      <div class="card" id="czk-prezzi-card" style="display:none">
+        <div class="card-title">Prezzi in CZK per categoria</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Imposta i prezzi di vendita in CZK per ogni categoria. Verranno usati in cassa quando l'evento è in Repubblica Ceca.</p>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">T-shirt (Uomo+Donna)</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-tshirt" type="number" min="0" step="1" placeholder="es. 650"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Canotte Unisex</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-canotte" type="number" min="0" step="1" placeholder="es. 650"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Shoppers</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-shoppers" type="number" min="0" step="1" placeholder="es. 280"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Toppe</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-toppe" type="number" min="0" step="1" placeholder="es. 150"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Badge</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-badge" type="number" min="0" step="1" placeholder="es. 100"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Adesivi</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-adesivi" type="number" min="0" step="1" placeholder="es. 50"></div>
+          <div></div><div></div>
+        </div>
+        <button class="btn btn-primary" onclick="salvaPrezzicCzk()">Salva prezzi CZK</button>
+      </div>
+
       <div class="card">
         <div class="card-title">Elenco eventi</div>
         <div class="table-wrap">
-          <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Vendite</th><th>Incasso</th><th></th></tr></thead>
+          <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th></th></tr></thead>
           <tbody id="tab-eventi"></tbody>
         </table></div>
       </div>
@@ -696,6 +735,11 @@
           <span>🎪</span>
           <span class="evento-attivo-nome" id="cassa-evento-nome">Nessun evento selezionato</span>
           <span class="mag-badge" id="cassa-evento-mag"></span>
+          <div id="cassa-valuta-sel" style="display:none;gap:6px;align-items:center">
+            <span style="font-size:12px;color:var(--text2)">Valuta:</span>
+            <button id="btn-eur" class="btn btn-sm btn-primary" onclick="setCassaValuta('EUR')">€ EUR</button>
+            <button id="btn-czk" class="btn btn-sm" onclick="setCassaValuta('CZK')">CZK</button>
+          </div>
           <button class="btn btn-sm" onclick="showSection('eventi', document.querySelector('.nav-item:nth-child(12)'))">Cambia evento</button>
         </div>
         <div class="cassa-layout">
@@ -741,7 +785,7 @@
       <div class="card">
         <div class="card-title">Scontrini</div>
         <div class="table-wrap">
-          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Articoli</th><th>Totale</th><th></th></tr></thead>
+          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Valuta</th><th>Articoli</th><th>Totale</th><th></th></tr></thead>
           <tbody id="tab-vendite"></tbody>
         </table></div>
       </div>
@@ -772,7 +816,7 @@
       <div class="form-group"><label>Località</label><input id="ee-localita" placeholder="Località"></div>
       <div class="form-group"><label>Nazione</label><input id="ee-nazione" placeholder="Nazione"></div>
     </div>
-    <div class="form-row cols3">
+    <div class="form-row cols4">
       <div class="form-group"><label>Data inizio</label><input id="ee-inizio" type="date"></div>
       <div class="form-group"><label>Data fine</label><input id="ee-fine" type="date"></div>
       <div class="form-group"><label>Magazzino</label>
@@ -781,6 +825,7 @@
           <option value="napoli">Napoli</option>
         </select>
       </div>
+      <div class="form-group"><label>Tasso CZK/EUR</label><input id="ee-czk" type="number" min="0" step="0.01" placeholder="es. 25.50"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('modal-edit-evento')">Annulla</button>
@@ -2023,6 +2068,7 @@ function apriEditEvento(id) {
   document.getElementById('ee-inizio').value = ev.inizio || '';
   document.getElementById('ee-fine').value = ev.fine || '';
   document.getElementById('ee-mag').value = ev.magazzino || 'avigliana';
+  document.getElementById('ee-czk').value = ev.czkRate || '';
   document.getElementById('modal-edit-evento').classList.add('open');
 }
 
@@ -2037,10 +2083,15 @@ function salvaEvento() {
   ev.inizio = document.getElementById('ee-inizio').value;
   ev.fine = document.getElementById('ee-fine').value;
   ev.magazzino = document.getElementById('ee-mag').value;
+  ev.czkRate = parseFloat(document.getElementById('ee-czk').value) || null;
   saveDB();
   closeModal('modal-edit-evento');
   renderEventi();
   showToast('Evento aggiornato');
+}
+
+function isCzEvent(ev) {
+  return ev && (ev.nazione||'').toLowerCase().includes('cec');
 }
 
 function aggiungiEvento() {
@@ -2055,21 +2106,59 @@ function aggiungiEvento() {
     inizio: document.getElementById('ev-inizio').value,
     fine: document.getElementById('ev-fine').value,
     magazzino: document.getElementById('ev-mag').value,
+    czkRate: parseFloat(document.getElementById('ev-czk').value) || null,
   });
   saveDB();
-  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine'].forEach(id => document.getElementById(id).value = '');
+  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine','ev-czk'].forEach(id => document.getElementById(id).value = '');
   renderEventi();
   showToast('Evento aggiunto');
+}
+
+function salvaPrezzicCzk() {
+  if (!db.prezziCzk) db.prezziCzk = {};
+  db.prezziCzk = {
+    tshirt: parseFloat(document.getElementById('czk-tshirt').value) || 0,
+    canotte: parseFloat(document.getElementById('czk-canotte').value) || 0,
+    shoppers: parseFloat(document.getElementById('czk-shoppers').value) || 0,
+    toppe: parseFloat(document.getElementById('czk-toppe').value) || 0,
+    badge: parseFloat(document.getElementById('czk-badge').value) || 0,
+    adesivi: parseFloat(document.getElementById('czk-adesivi').value) || 0,
+  };
+  saveDB();
+  showToast('Prezzi CZK salvati');
+}
+
+function loadPrezzicCzk() {
+  const p = db.prezziCzk || {};
+  ['tshirt','canotte','shoppers','toppe','badge','adesivi'].forEach(k => {
+    const el = document.getElementById('czk-' + k);
+    if (el) el.value = p[k] || '';
+  });
+}
+
+function getPrezzoCzk(catId, accCatId) {
+  const p = db.prezziCzk || {};
+  if (accCatId) return p[accCatId] || 0;
+  if (catId === 'tshirt_uomo' || catId === 'tshirt_donna') return p.tshirt || 0;
+  if (catId === 'canotte') return p.canotte || 0;
+  if (catId === 'shoppers') return p.shoppers || 0;
+  return 0;
 }
 
 function getEvento(id) { return (db.eventi||[]).find(e => e.id === id); }
 
 function renderEventi() {
+  // Show CZK prices card
+  const hasCzEv = (db.eventi||[]).some(isCzEvent);
+  const czkCard = document.getElementById('czk-prezzi-card');
+  if (czkCard) { czkCard.style.display = hasCzEv ? 'block' : 'none'; loadPrezzicCzk(); }
   const eventi = [...(db.eventi||[])].sort((a,b) => (b.inizio||'').localeCompare(a.inizio||''));
   document.getElementById('tab-eventi').innerHTML = eventi.length ?
     eventi.map(ev => {
       const vend = (db.vendite||[]).filter(v => v.eventoId === ev.id);
-      const incasso = vend.reduce((a,v) => a + v.totale, 0);
+      const incassoEur = vend.filter(v=>v.valuta!=='CZK').reduce((a,v) => a + v.totale, 0);
+      const incassoCzk = vend.filter(v=>v.valuta==='CZK').reduce((a,v) => a + v.totale, 0);
+      const isCz = isCzEvent(ev);
       return `<tr>
         <td style="font-weight:600">${ev.nome}</td>
         <td class="mono">${fmtDate(ev.inizio)}</td>
@@ -2077,8 +2166,11 @@ function renderEventi() {
         <td>${ev.localita||'-'}</td>
         <td>${ev.nazione||'-'}</td>
         <td><span class="mag-badge mag-${ev.magazzino}">${ev.magazzino.charAt(0).toUpperCase()+ev.magazzino.slice(1)}</span></td>
+        <td>${isCz?'<span class="badge badge-blue">€ + CZK</span>':'<span class="badge badge-gray">€ EUR</span>'}</td>
+        <td class="mono">${ev.czkRate ? ev.czkRate + ' CZK/€' : '-'}</td>
         <td class="mono">${vend.length}</td>
-        <td class="mono" style="font-weight:500">${fmt(incasso)}</td>
+        <td class="mono" style="font-weight:500">${fmt(incassoEur)}</td>
+        <td class="mono" style="font-weight:500">${incassoCzk > 0 ? incassoCzk.toFixed(0) + ' CZK' : '-'}</td>
         <td style="display:flex;gap:6px">
           <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
           <button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
@@ -2094,7 +2186,8 @@ function renderEventi() {
 let cassaEventoId = null;
 let cassaLogoId = null;
 let cassaCatId = null;
-let scontrino = []; // [{logoId, catId, taglia, prezzo, nome, sub}]
+let cassaValuta = 'EUR'; // EUR or CZK
+let scontrino = [];
 
 function attivaEvento(id) {
   cassaEventoId = id;
@@ -2106,6 +2199,16 @@ function attivaEvento(id) {
   document.getElementById('sec-cassa').classList.add('active');
   document.getElementById('page-title').textContent = 'Cassa';
   initCassa();
+}
+
+function setCassaValuta(val) {
+  cassaValuta = val;
+  document.getElementById('btn-eur').className = val === 'EUR' ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+  document.getElementById('btn-czk').className = val === 'CZK' ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+  // Rebuild scontrino with new currency prices
+  scontrino = [];
+  renderScontrino();
+  buildLoghiGrid();
 }
 
 function initCassa() {
@@ -2126,6 +2229,16 @@ function initCassa() {
   const magBadge = document.getElementById('cassa-evento-mag');
   magBadge.textContent = ev.magazzino.charAt(0).toUpperCase() + ev.magazzino.slice(1);
   magBadge.className = 'mag-badge mag-' + ev.magazzino;
+  // Show CZK selector only for Czech events
+  const valutaSel = document.getElementById('cassa-valuta-sel');
+  if (isCzEvent(ev)) {
+    valutaSel.style.display = 'flex';
+    cassaValuta = 'EUR'; // reset to EUR
+    setCassaValuta('EUR');
+  } else {
+    valutaSel.style.display = 'none';
+    cassaValuta = 'EUR';
+  }
   buildLoghiGrid();
   resetCassaSteps();
 }
@@ -2224,19 +2337,23 @@ function aggiungiAccessorio(catId) {
   const mag = ev ? ev.magazzino : null;
   const s = getAccStock(catId, mag);
   if (qty > s) { showToast(`Solo ${s} pz disponibili`, 'red'); return; }
-  const prezzi = getAccPrezzi();
-  const p = prezzi[catId] || { prezzo: 0 };
   const cat = ACC_CATS.find(c => c.id === catId);
-  // Add one scontrino line per qty (so each shows in receipt and scarica 1 per volta)
-  // Actually add as single line with qty field
+  let prezzoUnit;
+  if (cassaValuta === 'CZK') {
+    prezzoUnit = getPrezzoCzk(null, catId);
+  } else {
+    const prezzi = getAccPrezzi();
+    prezzoUnit = (prezzi[catId] || { prezzo: 0 }).prezzo;
+  }
   scontrino.push({
     id: Date.now(),
     logoId: null, catId: null,
     accCatId: catId,
     taglia: null,
     qty,
-    prezzo: p.prezzo * qty,
-    prezzoUnit: p.prezzo,
+    prezzo: prezzoUnit * qty,
+    prezzoUnit,
+    valuta: cassaValuta,
     nome: cat ? cat.label : catId,
     sub: `Accessorio × ${qty}`,
     isAccessorio: true,
@@ -2331,17 +2448,29 @@ function cassaSelTaglia(taglia) {
   chiudiPopup();
 }
 
+function getPrezzoCassa(catId, logoId) {
+  if (cassaValuta === 'CZK') return getPrezzoCzk(catId, null);
+  const logo = db.loghi.find(l => l.id === logoId);
+  const p = getPrezzi(logo||{});
+  return (p[catId]||{prezzo:0}).prezzo;
+}
+
+function fmtValuta(n) {
+  if (cassaValuta === 'CZK') return Math.round(n) + ' CZK';
+  return '€ ' + parseFloat(n||0).toFixed(2);
+}
+
 function aggiungiAlScontrino(taglia) {
   const logo = db.loghi.find(l => l.id === cassaLogoId);
   const cat = getCat(cassaCatId);
-  const p = getPrezzi(logo||{});
-  const prezzo = (p[cassaCatId]||{prezzo:0}).prezzo;
+  const prezzo = getPrezzoCassa(cassaCatId, cassaLogoId);
   scontrino.push({
     id: Date.now(),
     logoId: cassaLogoId,
     catId: cassaCatId,
     taglia,
     prezzo,
+    valuta: cassaValuta,
     nome: logo ? logo.nome : '?',
     sub: cat.label + (taglia ? ' — ' + taglia : ''),
   });
@@ -2375,7 +2504,7 @@ function renderScontrino() {
     </div>
   `).join('');
   const tot = scontrino.reduce((a,i) => a + i.prezzo, 0);
-  document.getElementById('scontrino-totale').textContent = fmt(tot);
+  document.getElementById('scontrino-totale').textContent = fmtValuta(tot);
   document.getElementById('btn-concludi').disabled = false;
 }
 
@@ -2411,6 +2540,7 @@ async function concludiVendita() {
     id: db.nextVendId++,
     eventoId: cassaEventoId,
     dataOra,
+    valuta: cassaValuta,
     totale: parseFloat(totale.toFixed(2)),
     items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
   });
@@ -2483,11 +2613,16 @@ function renderVendite() {
       const d = new Date(v.dataOra);
       const dataOraFmt = `${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}`;
       const arts = fmtArts(v.items);
+      const valBadge = v.valuta === 'CZK'
+        ? '<span class="badge badge-blue">CZK</span>'
+        : '<span class="badge badge-gray">€ EUR</span>';
+      const totFmt = v.valuta === 'CZK' ? Math.round(v.totale) + ' CZK' : fmt(v.totale);
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
         <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
+        <td>${valBadge}</td>
         <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
-        <td class="mono" style="font-weight:500">${fmt(v.totale)}</td>
+        <td class="mono" style="font-weight:500">${totFmt}</td>
         <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button></td>
       </tr>`;
     }).join('') : '<tr><td colspan="5" class="empty">Nessuna vendita trovata</td></tr>';
