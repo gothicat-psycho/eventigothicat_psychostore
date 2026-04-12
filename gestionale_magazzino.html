@@ -223,7 +223,7 @@
   .logo-img-preview { width:64px; height:64px; object-fit:contain; border-radius:6px; background:var(--surface2); border:1px solid var(--border); }
 
   /* CASSA */
-  .cassa-layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+  .cassa-layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
   .cassa-main { display: flex; flex-direction: column; gap: 12px; }
   .cassa-sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; max-height: calc(100vh - 100px); }
   .cassa-step { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); margin-bottom: 10px; }
@@ -731,7 +731,7 @@
         <div class="alert alert-amber">⚠ Nessun evento attivo. Seleziona o crea un evento nella sezione <strong>Eventi</strong> e poi clicca "Usa in cassa".</div>
       </div>
       <div id="cassa-main-ui">
-        <div class="evento-attivo-bar" style="margin-bottom:16px">
+        <div class="evento-attivo-bar" style="margin-bottom:16px;position:sticky;top:0;z-index:40">
           <span>🎪</span>
           <span class="evento-attivo-nome" id="cassa-evento-nome">Nessun evento selezionato</span>
           <span class="mag-badge" id="cassa-evento-mag"></span>
@@ -744,7 +744,7 @@
         </div>
         <div class="cassa-layout">
           <div class="cassa-main">
-            <div class="card">
+            <div class="card" style="overflow-y:auto;max-height:calc(100vh - 140px)">
               <div class="cassa-step">Tocca un logo per aggiungere un articolo</div>
               <div class="logo-grid" id="cassa-loghi-grid"></div>
             </div>
