@@ -176,6 +176,11 @@
   .stock-cat-label.cat-donna { background: #FCE7F3; color: #9D174D; }
   .stock-cat-label.cat-can   { background: #D1FAE5; color: #065F46; }
   .stock-cat-label.cat-shop  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .stock-cat-tot { font-size: 14px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; vertical-align: middle; }
+  .stock-cat-tot.cat-uomo  { color: #1E40AF; }
+  .stock-cat-tot.cat-donna { color: #9D174D; }
+  .stock-cat-tot.cat-can   { color: #065F46; }
+  .stock-cat-tot.cat-shop  { color: var(--text2); }
   .stock-taglia-row { display: flex; gap: 3px; flex-wrap: nowrap; }
   .stock-cell { flex: 1; min-width: 28px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 5px 2px; background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); }
   .stock-cell.zero { color: var(--text3); }
@@ -742,10 +747,10 @@ const TAGLIE = ['S','M','L','XL','XXL','3XL'];
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','XXL']; // no 3XL for donna
 const CATEGORIE = [
-  { id: 'tshirt_uomo',   label: 'T-shirt U',   shortLabel: 'Uomo',   taglie: true,  taglieLista: TAGLIE, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
-  { id: 'tshirt_donna',  label: 'T-shirt D',   shortLabel: 'Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
-  { id: 'canotte',       label: 'Canotte',      shortLabel: 'Can.',   taglie: true,  taglieLista: TAGLIE, prezzoProprio: true,  gruppoPrezzo: null },
-  { id: 'shoppers',      label: 'Shoppers',     shortLabel: 'Shop.',  taglie: false, taglieLista: [],     prezzoProprio: true,  gruppoPrezzo: null },
+  { id: 'tshirt_uomo',   label: 'T-Shirt Uomo',   taglie: true,  taglieLista: TAGLIE,       prezzoProprio: false, gruppoPrezzo: 'tshirt' },
+  { id: 'tshirt_donna',  label: 'T-Shirt Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
+  { id: 'canotte',       label: 'Canotte Unisex', taglie: true,  taglieLista: TAGLIE,       prezzoProprio: true,  gruppoPrezzo: null },
+  { id: 'shoppers',      label: 'Shoppers',        taglie: false, taglieLista: [],           prezzoProprio: true,  gruppoPrezzo: null },
 ];
 
 function getCat(id) { return CATEGORIE.find(c => c.id === id); }
@@ -1464,7 +1469,7 @@ function renderStock() {
         }).join('');
         const hdrs = catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('');
         return `<div class="stock-cat-block">
-          <div><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span style="font-size:10px;color:var(--text3)">${catTot}pz</span></div>
+          <div style="margin-bottom:2px"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
           <div class="stock-taglia-headers">${hdrs}</div>
           <div class="stock-taglia-row">${cells}</div>
         </div>`;
@@ -1486,8 +1491,9 @@ function renderStock() {
           </div>`;
         }
         return `<div class="stock-cat-block">
-          <div><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span style="font-size:10px;color:var(--text3)">${catTot}pz</span></div>
-          <div class="stock-shopper-val">
+          <div style="margin-bottom:2px"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
+          <div class="stock-taglia-headers"><div class="stock-taglia-hdr">tot</div></div>
+          <div class="stock-taglia-row">
             <div class="stock-cell editable ${cls}" title="Clicca per modificare"
               onclick="apriEditStock(this,${l.id},'${cat.id}',null,'${magFilter}')" style="min-width:44px">${s}</div>
           </div>
@@ -1521,12 +1527,13 @@ function renderStock() {
           } else {
             return `<div class="stock-cat-block">
               <div><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-              <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+              <div class="stock-taglia-headers"><div class="stock-taglia-hdr">mag.</div><div class="stock-taglia-hdr">pz</div></div>
+              <div style="display:flex;flex-direction:column;gap:3px">
                 ${MAGAZZINI.map(m => {
                   const s = getStock(l.id, cat.id, null, m);
-                  return `<div style="display:flex;align-items:center;gap:4px">
-                    <span class="mag-badge mag-${m}" style="font-size:9px;min-width:28px">${m.slice(0,3).toUpperCase()}</span>
-                    <div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>
+                  return `<div style="display:flex;gap:3px;align-items:center">
+                    <span class="mag-badge mag-${m}" style="font-size:9px">${m.slice(0,3).toUpperCase()}</span>
+                    <div class="stock-cell ${getStockClass(s,l.minimo||3)}" style="min-width:44px">${s}</div>
                   </div>`;
                 }).join('')}
               </div>
