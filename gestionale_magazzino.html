@@ -2081,6 +2081,7 @@ function renderEventi() {
         <td class="mono" style="font-weight:500">${fmt(incasso)}</td>
         <td style="display:flex;gap:6px">
           <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
+          <button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
           <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>
         </td>
       </tr>`;
