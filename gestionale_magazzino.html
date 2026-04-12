@@ -763,6 +763,32 @@
   </div>
 </div>
 
+<!-- MODAL modifica evento -->
+<div class="modal-backdrop" id="modal-edit-evento">
+  <div class="modal">
+    <div class="modal-title">Modifica evento</div>
+    <div class="form-row cols3">
+      <div class="form-group"><label>Nome evento *</label><input id="ee-nome" placeholder="Nome evento"></div>
+      <div class="form-group"><label>Località</label><input id="ee-localita" placeholder="Località"></div>
+      <div class="form-group"><label>Nazione</label><input id="ee-nazione" placeholder="Nazione"></div>
+    </div>
+    <div class="form-row cols3">
+      <div class="form-group"><label>Data inizio</label><input id="ee-inizio" type="date"></div>
+      <div class="form-group"><label>Data fine</label><input id="ee-fine" type="date"></div>
+      <div class="form-group"><label>Magazzino</label>
+        <select id="ee-mag">
+          <option value="avigliana">Avigliana</option>
+          <option value="napoli">Napoli</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-edit-evento')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaEvento()">Salva modifiche</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL password vendite -->
 <div class="modal-backdrop" id="modal-pwd">
   <div class="modal" style="width:360px">
@@ -1955,6 +1981,7 @@ function closeModal(id) {
   if (id === 'modal-del') pendingDel = null;
   if (id === 'modal-edit-forn') editFornId = null;
   if (id === 'modal-edit-logo') editLogoId = null;
+  if (id === 'modal-edit-evento') editEventoId = null;
 }
 
 
@@ -1984,6 +2011,38 @@ function showToast(msg, type='green') {
 // ─────────────────────────────────────────────
 // EVENTI
 // ─────────────────────────────────────────────
+let editEventoId = null;
+
+function apriEditEvento(id) {
+  const ev = getEvento(id);
+  if (!ev) return;
+  editEventoId = id;
+  document.getElementById('ee-nome').value = ev.nome || '';
+  document.getElementById('ee-localita').value = ev.localita || '';
+  document.getElementById('ee-nazione').value = ev.nazione || '';
+  document.getElementById('ee-inizio').value = ev.inizio || '';
+  document.getElementById('ee-fine').value = ev.fine || '';
+  document.getElementById('ee-mag').value = ev.magazzino || 'avigliana';
+  document.getElementById('modal-edit-evento').classList.add('open');
+}
+
+function salvaEvento() {
+  const ev = getEvento(editEventoId);
+  if (!ev) return;
+  const nome = document.getElementById('ee-nome').value.trim();
+  if (!nome) { showToast('Il nome evento è obbligatorio', 'red'); return; }
+  ev.nome = nome;
+  ev.localita = document.getElementById('ee-localita').value.trim();
+  ev.nazione = document.getElementById('ee-nazione').value.trim();
+  ev.inizio = document.getElementById('ee-inizio').value;
+  ev.fine = document.getElementById('ee-fine').value;
+  ev.magazzino = document.getElementById('ee-mag').value;
+  saveDB();
+  closeModal('modal-edit-evento');
+  renderEventi();
+  showToast('Evento aggiornato');
+}
+
 function aggiungiEvento() {
   const nome = document.getElementById('ev-nome').value.trim();
   if (!nome) { showToast('Il nome evento è obbligatorio', 'red'); return; }
