@@ -2620,62 +2620,69 @@ function ascoltaCiro() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     ciroRecognition = new SR();
     ciroRecognition.lang = 'it-IT';
-    ciroRecognition.continuous = true;   // keep session open
+    ciroRecognition.continuous = false;
     ciroRecognition.interimResults = false;
     ciroRecognition.maxAlternatives = 1;
 
     ciroRecognition.onresult = e => {
-      // Get last result only
-      const result = e.results[e.results.length - 1];
-      if (!result.isFinal) return;
-      const testo = result[0].transcript.toLowerCase().trim();
+      const testo = e.results[0][0].transcript.toLowerCase().trim();
 
       if (ciroInAttesaDomanda) {
         ciroInAttesaDomanda = false;
         if (testo.length > 1) {
           navigaStockSeNecessario();
           processaVoce(testo);
+          // Restart after speech ends
+          attendiEriavvia();
+        } else {
+          riavviaDopoDelay(800);
         }
         return;
       }
 
-      const hasWake = testo.includes(WAKE_WORD);
-      if (hasWake) {
-        const query = testo.slice(testo.indexOf(WAKE_WORD) + WAKE_WORD.length).replace(/^[,. ]+/, '').trim();
+      if (testo.includes(WAKE_WORD)) {
+        const idx = testo.indexOf(WAKE_WORD);
+        const query = testo.slice(idx + WAKE_WORD.length).replace(/^[,. ]+/, '').trim();
         if (query.length > 2) {
           navigaStockSeNecessario();
           processaVoce(query);
+          attendiEriavvia();
         } else {
           ciroInAttesaDomanda = true;
           parla('Dimmi pure!');
+          attendiEriavvia();
         }
+      } else {
+        riavviaDopoDelay(300);
       }
     };
 
     ciroRecognition.onerror = e => {
       if (!ciroActive) return;
       if (e.error === 'not-allowed') {
-        stopCiro();
-        showToast('Permesso microfono negato', 'red');
-      } else if (e.error !== 'aborted') {
-        // Restart on error after short delay
-        if (ciroRestartTimer) clearTimeout(ciroRestartTimer);
-        ciroRestartTimer = setTimeout(() => ascoltaCiro(), 1000);
+        stopCiro(); showToast('Permesso microfono negato', 'red');
+      } else if (e.error === 'aborted') {
+        riavviaDopoDelay(1000);
+      } else {
+        riavviaDopoDelay(800);
       }
     };
 
     ciroRecognition.onend = () => {
       if (!ciroActive) return;
-      // Session ended unexpectedly, restart
-      if (ciroRestartTimer) clearTimeout(ciroRestartTimer);
-      ciroRestartTimer = setTimeout(() => ascoltaCiro(), 500);
+      if (!ciroInAttesaDomanda) riavviaDopoDelay(400);
     };
 
     ciroRecognition.start();
   } catch(e) {
-    if (ciroRestartTimer) clearTimeout(ciroRestartTimer);
-    ciroRestartTimer = setTimeout(() => ascoltaCiro(), 1500);
+    riavviaDopoDelay(1500);
   }
+}
+
+function riavviaDopoDelay(ms) {
+  if (!ciroActive) return;
+  if (ciroRestartTimer) clearTimeout(ciroRestartTimer);
+  ciroRestartTimer = setTimeout(() => { ciroRestartTimer = null; ascoltaCiro(); }, ms || 500);
 }
 
 function navigaStockSeNecessario() {
@@ -2694,10 +2701,10 @@ function attendiEriavvia() {
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
       setTimeout(wait, 300);
     } else {
-      setTimeout(() => ascoltaCiro(), 800);
+      riavviaDopoDelay(600);
     }
   };
-  setTimeout(wait, 500);
+  setTimeout(wait, 400);
 }
 
 function stopCiro() {
