@@ -169,6 +169,19 @@
   .stock-logo-block { margin-bottom: 20px; }
   .stock-logo-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
   .stock-genere-title { font-size: 12px; font-weight: 500; color: var(--text2); margin: 8px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
+  .stock-inline-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 6px; }
+  .stock-cat-block { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .stock-cat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); margin-bottom: 2px; }
+  .stock-taglia-row { display: flex; gap: 3px; }
+  .stock-cell { min-width: 30px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 4px 3px; background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); }
+  .stock-cell.zero { color: var(--text3); }
+  .stock-cell.low { color: var(--amber); background: var(--amber-light); border-color: #F0D080; }
+  .stock-cell.ok { color: var(--green); }
+  .stock-cell.editable { cursor: pointer; }
+  .stock-cell.editable:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .stock-taglia-headers { display: flex; gap: 3px; margin-bottom: 2px; }
+  .stock-taglia-hdr { min-width: 30px; text-align: center; font-size: 9px; font-weight: 600; color: var(--text3); text-transform: uppercase; }
+  .stock-shopper-cell { display: flex; align-items: center; gap: 6px; margin-top: 18px; }
 
   /* ORDER ITEMS */
   .order-logo-row { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
@@ -723,11 +736,12 @@
 const TAGLIE = ['S','M','L','XL','XXL','3XL'];
 
 // Categorie prodotto con le loro proprietà
+const TAGLIE_DONNA = ['S','M','L','XL','XXL']; // no 3XL for donna
 const CATEGORIE = [
-  { id: 'tshirt_uomo',   label: 'T-shirt Uomo',    taglie: true,  prezzoProprio: false, gruppoPrezzo: 'tshirt' },
-  { id: 'tshirt_donna',  label: 'T-shirt Donna',   taglie: true,  prezzoProprio: false, gruppoPrezzo: 'tshirt' },
-  { id: 'canotte',       label: 'Canotte Unisex',  taglie: true,  prezzoProprio: true,  gruppoPrezzo: null },
-  { id: 'shoppers',      label: 'Shoppers',         taglie: false, prezzoProprio: true,  gruppoPrezzo: null },
+  { id: 'tshirt_uomo',   label: 'T-shirt U',   shortLabel: 'Uomo',   taglie: true,  taglieLista: TAGLIE, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
+  { id: 'tshirt_donna',  label: 'T-shirt D',   shortLabel: 'Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
+  { id: 'canotte',       label: 'Canotte',      shortLabel: 'Can.',   taglie: true,  taglieLista: TAGLIE, prezzoProprio: true,  gruppoPrezzo: null },
+  { id: 'shoppers',      label: 'Shoppers',     shortLabel: 'Shop.',  taglie: false, taglieLista: [],     prezzoProprio: true,  gruppoPrezzo: null },
 ];
 
 function getCat(id) { return CATEGORIE.find(c => c.id === id); }
@@ -843,7 +857,8 @@ function getTotaleStock(logoId, catId, mag) {
   const cat = getCat(catId);
   if (!cat) return 0;
   if (!cat.taglie) return getStock(logoId, catId, null, mag);
-  return TAGLIE.reduce((a, t) => a + getStock(logoId, catId, t, mag), 0);
+  const tl = cat.taglieLista || TAGLIE;
+  return tl.reduce((a, t) => a + getStock(logoId, catId, t, mag), 0);
 }
 
 function getTotaleLogoStock(logoId, mag) {
@@ -1427,65 +1442,107 @@ function renderStock() {
   document.getElementById('stock-content').innerHTML = list.map(l => {
     const f = getForn(l.fornId);
     const tot = getTotaleLogoStock(l.id, mag);
-    const catBlocks = CATEGORIE.map(cat => {
-      const catTot = getTotaleStock(l.id, cat.id, mag);
+
+    // Build compact inline row: all categories side by side
+    const buildCatBlock = (cat, magFilter) => {
+      const catTl = cat.taglieLista || TAGLIE;
+      const catTot = getTotaleStock(l.id, cat.id, magFilter);
       if (cat.taglie) {
+        const cells = catTl.map(t => {
+          const s = getStock(l.id, cat.id, t, magFilter);
+          const cls = getStockClass(s, l.minimo||3);
+          if (isTotale) return `<div class="stock-cell ${cls}">${s}</div>`;
+          return `<div class="stock-cell editable ${cls}" title="Clicca per modificare"
+            onclick="apriEditStock(this,${l.id},'${cat.id}','${t}','${magFilter}')">${s}</div>`;
+        }).join('');
+        const hdrs = catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('');
+        return `<div class="stock-cat-block">
+          <div class="stock-cat-label">${cat.label} <span style="font-weight:400;opacity:.6">${catTot}pz</span></div>
+          <div class="stock-taglia-headers">${hdrs}</div>
+          <div class="stock-taglia-row">${cells}</div>
+        </div>`;
+      } else {
+        const s = getStock(l.id, cat.id, null, magFilter);
+        const cls = getStockClass(s, l.minimo||3);
         if (isTotale) {
-          return `<div class="stock-genere-title">${cat.label} — ${catTot} pz</div>
-            <div class="taglia-grid-header"><div></div>${TAGLIE.map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
-            ${MAGAZZINI.map(m => `<div class="taglia-grid" style="margin-bottom:3px">
-              <div class="taglia-label"><span class="mag-badge mag-${m}">${m.charAt(0).toUpperCase()+m.slice(1)}</span></div>
-              ${TAGLIE.map(t => {
-                const s = getStock(l.id, cat.id, t, m);
-                return `<div class="taglia-stock ${getStockClass(s, l.minimo||3)}">${s}</div>`;
+          return `<div class="stock-cat-block">
+            <div class="stock-cat-label">${cat.label}</div>
+            <div class="stock-shopper-cell" style="margin-top:22px">
+              ${MAGAZZINI.map(m => {
+                const sm = getStock(l.id, cat.id, null, m);
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                  <span class="mag-badge mag-${m}" style="font-size:9px">${m.slice(0,3).toUpperCase()}</span>
+                  <div class="stock-cell ${getStockClass(sm,l.minimo||3)}">${sm}</div>
+                </div>`;
               }).join('')}
-            </div>`).join('')}<div style="margin-bottom:10px"></div>`;
-        } else {
-          return `<div class="stock-genere-title">${cat.label} — ${catTot} pz</div>
-            <div class="taglia-grid-header"><div></div>${TAGLIE.map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
-            <div class="taglia-grid" style="margin-bottom:10px">
-              <div class="taglia-label">Stock</div>
-              ${TAGLIE.map(t => {
-                const s = getStock(l.id, cat.id, t, mag);
-                return `<div class="taglia-stock editable ${getStockClass(s, l.minimo||3)}"
-                  title="Clicca per modificare"
-                  onclick="apriEditStock(this, ${l.id}, '${cat.id}', '${t}', '${mag}')">${s}</div>`;
+            </div>
+          </div>`;
+        }
+        return `<div class="stock-cat-block">
+          <div class="stock-cat-label">${cat.label}</div>
+          <div class="stock-shopper-cell" style="margin-top:22px">
+            <div class="stock-cell editable ${cls}" title="Clicca per modificare"
+              onclick="apriEditStock(this,${l.id},'${cat.id}',null,'${magFilter}')">${s}</div>
+          </div>
+        </div>`;
+      }
+    };
+
+    let rowHtml;
+    if (isTotale) {
+      // For totale: show avigliana + napoli stacked per category
+      rowHtml = `<div class="stock-inline-row">` +
+        CATEGORIE.map(cat => {
+          const catTl = cat.taglieLista || TAGLIE;
+          if (cat.taglie) {
+            const hdrs = catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('');
+            return `<div class="stock-cat-block">
+              <div class="stock-cat-label">${cat.label}</div>
+              <div class="stock-taglia-headers">${hdrs}</div>
+              ${MAGAZZINI.map(m => {
+                const cells = catTl.map(t => {
+                  const s = getStock(l.id, cat.id, t, m);
+                  return `<div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>`;
+                }).join('');
+                return `<div style="display:flex;gap:3px;align-items:center;margin-bottom:2px">
+                  <span class="mag-badge mag-${m}" style="font-size:9px;min-width:28px">${m.slice(0,3).toUpperCase()}</span>
+                  ${cells}
+                </div>`;
               }).join('')}
             </div>`;
-        }
-      } else {
-        if (isTotale) {
-          return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-            <div class="stock-genere-title" style="margin:0;min-width:120px">${cat.label}</div>
-            ${MAGAZZINI.map(m => {
-              const s = getStock(l.id, cat.id, null, m);
-              return `<div style="display:flex;align-items:center;gap:6px"><span class="mag-badge mag-${m}">${m.charAt(0).toUpperCase()+m.slice(1)}</span>
-                <div class="taglia-stock ${getStockClass(s, l.minimo||3)}" style="min-width:50px">${s} pz</div></div>`;
-            }).join('')}
-          </div>`;
-        } else {
-          const s = getStock(l.id, cat.id, null, mag);
-          return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <div class="stock-genere-title" style="margin:0;min-width:140px">${cat.label}</div>
-            <div class="taglia-stock editable ${getStockClass(s, l.minimo||3)}" style="min-width:60px;cursor:pointer"
-              title="Clicca per modificare"
-              onclick="apriEditStock(this, ${l.id}, '${cat.id}', null, '${mag}')">${s} pz</div>
-          </div>`;
-        }
-      }
-    }).join('');
+          } else {
+            return `<div class="stock-cat-block">
+              <div class="stock-cat-label">${cat.label}</div>
+              <div style="display:flex;flex-direction:column;gap:4px;margin-top:22px">
+                ${MAGAZZINI.map(m => {
+                  const s = getStock(l.id, cat.id, null, m);
+                  return `<div style="display:flex;align-items:center;gap:4px">
+                    <span class="mag-badge mag-${m}" style="font-size:9px;min-width:28px">${m.slice(0,3).toUpperCase()}</span>
+                    <div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>`;
+          }
+        }).join('') + `</div>`;
+    } else {
+      rowHtml = `<div class="stock-inline-row">` +
+        CATEGORIE.map(cat => buildCatBlock(cat, mag)).join('') +
+        `</div>`;
+    }
+
     const logoImg = l.immagine
-      ? `<img src="${l.immagine}" style="width:40px;height:40px;object-fit:contain;border-radius:4px;background:var(--surface2);flex-shrink:0">`
+      ? `<img src="${l.immagine}" style="width:36px;height:36px;object-fit:contain;border-radius:4px;background:var(--surface2);flex-shrink:0">`
       : '';
-    return `<div class="card stock-logo-block">
-      <div class="stock-logo-title">
+    return `<div class="card stock-logo-block" style="padding:12px 16px;margin-bottom:8px">
+      <div class="stock-logo-title" style="margin-bottom:8px">
         ${logoImg}
-        <span style="font-weight:600">${l.nome}</span>
-        ${f ? `<span class="badge badge-gray" style="font-size:11px">${f.nome}</span>` : ''}
-        <span class="mag-badge mag-${isTotale?'totale':mag}" style="font-size:11px">${isTotale?'Totale':mag.charAt(0).toUpperCase()+mag.slice(1)}</span>
-        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2)">Tot. ${tot} pz</span>
+        <span style="font-weight:600;font-size:14px">${l.nome}</span>
+        ${f ? `<span class="badge badge-gray" style="font-size:10px">${f.nome}</span>` : ''}
+        <span class="mag-badge mag-${isTotale?'totale':mag}" style="font-size:10px">${isTotale?'Totale':mag.charAt(0).toUpperCase()+mag.slice(1)}</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text2)">${tot} pz tot.</span>
       </div>
-      ${catBlocks}
+      ${rowHtml}
     </div>`;
   }).join('');
 }
@@ -1987,7 +2044,8 @@ function cassaSelCat(catId) {
 
   // Show taglia grid
   document.getElementById('popup-sep').style.display = 'block';
-  document.getElementById('popup-taglia-grid').innerHTML = TAGLIE.map(t => {
+  const taglieLista = cat.taglieLista || TAGLIE;
+  document.getElementById('popup-taglia-grid').innerHTML = taglieLista.map(t => {
     const s = getStock(cassaLogoId, catId, t, mag);
     return `<button class="popup-taglia-btn ${s===0?'esaurito':''}" onclick="cassaSelTaglia('${t}')" ${s===0?'disabled':''}>
       ${t}
