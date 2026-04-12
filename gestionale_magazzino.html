@@ -2339,20 +2339,34 @@ function populateEventiFilter() {
   if (el) el.innerHTML = opts;
 }
 
+function fmtArts(items) {
+  return (items||[]).map(it => {
+    if (it.isAccessorio) {
+      const acc = ACC_CATS.find(c => c.id === it.accCatId);
+      const qtyStr = it.qty && it.qty > 1 ? ` ×${it.qty}` : '';
+      return (acc ? acc.label : it.accCatId || '?') + qtyStr;
+    }
+    const l = db.loghi.find(x => x.id === it.logoId);
+    const c = getCat(it.catId);
+    return `${l ? l.nome : '?'} ${c ? c.label : ''} ${it.taglia || ''}`.trim();
+  }).join(', ');
+}
+
 function renderVendite() {
   populateEventiFilter();
-  const evId = parseInt((document.getElementById('filter-vend-evento')||{}).value)||0;
-  const datFilt = (document.getElementById('filter-vend-data')||{}).value||'';
+  const evIdRaw = (document.getElementById('filter-vend-evento')||{}).value || '';
+  const evId = evIdRaw ? parseInt(evIdRaw) : 0;
+  const datFilt = (document.getElementById('filter-vend-data')||{}).value || '';
   let list = [...(db.vendite||[])].filter(v =>
     (!evId || v.eventoId === evId) &&
     (!datFilt || v.dataOra.startsWith(datFilt))
   ).sort((a,b) => b.dataOra.localeCompare(a.dataOra));
 
   // Metrics
-  const totIncasso = list.reduce((a,v) => a+v.totale, 0);
+  const totIncasso = list.reduce((a,v) => a + v.totale, 0);
   const nClienti = list.length;
-  const nArticoli = list.reduce((a,v) => a+v.items.length, 0);
-  const mediaSco = nClienti > 0 ? totIncasso/nClienti : 0;
+  const nArticoli = list.reduce((a,v) => a + (v.items||[]).length, 0);
+  const mediaSco = nClienti > 0 ? totIncasso / nClienti : 0;
   document.getElementById('vendite-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${nClienti}</div></div>
     <div class="metric"><div class="metric-label">Articoli venduti</div><div class="metric-value">${nArticoli}</div></div>
@@ -2365,10 +2379,10 @@ function renderVendite() {
       const ev = getEvento(v.eventoId);
       const d = new Date(v.dataOra);
       const dataOraFmt = `${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}`;
-      const arts = v.items.map(it => { const l=db.loghi.find(x=>x.id===it.logoId); const c=getCat(it.catId); return `${l?l.nome:'?'} ${c?c.label:''} ${it.taglia||''}`.trim(); }).join(', ');
+      const arts = fmtArts(v.items);
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
-        <td style="font-weight:500">${ev?ev.nome:'-'}</td>
+        <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
         <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
         <td class="mono" style="font-weight:500">${fmt(v.totale)}</td>
         <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button></td>
