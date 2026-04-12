@@ -2071,18 +2071,78 @@ function cassaSelAccessorio(catId, btnEl) {
   const prezzi = getAccPrezzi();
   const p = prezzi[catId] || { prezzo: 0 };
   const cat = ACC_CATS.find(c => c.id === catId);
+
+  // Build popup for quantity
+  const icons = { toppe:'◈', badge:'◉', adesivi:'★' };
+  document.getElementById('popup-logo-nome').textContent = cat ? cat.label : catId;
+  document.getElementById('popup-logo-img').style.display = 'none';
+  document.getElementById('popup-sep').style.display = 'block';
+  document.getElementById('popup-cat-grid').innerHTML = `
+    <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:13px;color:var(--text2)">Quantità da aggiungere:</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="cambiaQtyAcc(-1)" class="btn" style="font-size:20px;padding:6px 14px;font-weight:700">−</button>
+        <input id="acc-popup-qty" type="number" min="1" max="${s}" value="1"
+          style="width:80px;text-align:center;font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;padding:8px">
+        <button onclick="cambiaQtyAcc(1)" class="btn" style="font-size:20px;padding:6px 14px;font-weight:700">+</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Disponibili: ${s} pz · Prezzo unit.: ${fmt(p.prezzo)}</div>
+      <button class="btn-cassa btn-cassa-ok" style="padding:12px;font-size:15px;border-radius:var(--radius-lg)"
+        onclick="aggiungiAccessorio('${catId}')">✓ Aggiungi allo scontrino</button>
+    </div>`;
+  document.getElementById('popup-taglia-grid').innerHTML = '';
+
+  // Position popup near button
+  const rect = btnEl.getBoundingClientRect();
+  const popup = document.getElementById('logo-popup');
+  popup.style.display = 'block';
+  const popW = 360;
+  let left = rect.left;
+  let top = rect.bottom + 8;
+  if (left + popW > window.innerWidth - 12) left = window.innerWidth - popW - 12;
+  if (top + 260 > window.innerHeight - 12) top = rect.top - 260 - 8;
+  if (top < 8) top = 8;
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+  document.getElementById('logo-popup-overlay').classList.add('open');
+
+  // store catId for confirm
+  popup._accCatId = catId;
+}
+
+function cambiaQtyAcc(delta) {
+  const input = document.getElementById('acc-popup-qty');
+  if (!input) return;
+  const val = parseInt(input.value) || 1;
+  input.value = Math.max(1, val + delta);
+}
+
+function aggiungiAccessorio(catId) {
+  const qty = parseInt(document.getElementById('acc-popup-qty').value) || 1;
+  const ev = getEvento(cassaEventoId);
+  const mag = ev ? ev.magazzino : null;
+  const s = getAccStock(catId, mag);
+  if (qty > s) { showToast(`Solo ${s} pz disponibili`, 'red'); return; }
+  const prezzi = getAccPrezzi();
+  const p = prezzi[catId] || { prezzo: 0 };
+  const cat = ACC_CATS.find(c => c.id === catId);
+  // Add one scontrino line per qty (so each shows in receipt and scarica 1 per volta)
+  // Actually add as single line with qty field
   scontrino.push({
     id: Date.now(),
     logoId: null, catId: null,
     accCatId: catId,
     taglia: null,
-    prezzo: p.prezzo,
+    qty,
+    prezzo: p.prezzo * qty,
+    prezzoUnit: p.prezzo,
     nome: cat ? cat.label : catId,
-    sub: 'Accessorio',
+    sub: `Accessorio × ${qty}`,
     isAccessorio: true,
   });
+  chiudiPopup();
   renderScontrino();
-  showToast(`${cat ? cat.label : catId} aggiunto`);
+  showToast(`${cat ? cat.label : catId} ×${qty} aggiunto`);
 }
 
 function cassaSelLogo(logoId, btnEl) {
@@ -2258,7 +2318,7 @@ async function concludiVendita() {
     if (it.isAccessorio) {
       if (!db.movimentiAcc) db.movimentiAcc = [];
       if (!db.nextMovAccId) db.nextMovAccId = 1;
-      db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.accCatId, mag: ev.magazzino, magazzino: ev.magazzino, qty: 1, tipo: 'scarico', data: now.toISOString().split('T')[0], note: 'Vendita' });
+      db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.accCatId, mag: ev.magazzino, magazzino: ev.magazzino, qty: it.qty||1, tipo: 'scarico', data: now.toISOString().split('T')[0], note: 'Vendita' });
     } else {
       db.movimenti.push({ id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: 1, tipo: 'scarico', magazzino: ev.magazzino, vendita: true, data: now.toISOString().split('T')[0] });
     }
