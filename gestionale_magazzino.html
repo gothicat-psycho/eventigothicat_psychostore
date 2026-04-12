@@ -2595,16 +2595,35 @@ function renderVendite() {
     (!datFilt || v.dataOra.startsWith(datFilt))
   ).sort((a,b) => b.dataOra.localeCompare(a.dataOra));
 
-  // Metrics
-  const totIncasso = list.reduce((a,v) => a + v.totale, 0);
+  // Metrics — separate EUR and CZK
+  const listEur = list.filter(v => v.valuta !== 'CZK');
+  const listCzk = list.filter(v => v.valuta === 'CZK');
+  const totEur = listEur.reduce((a,v) => a + v.totale, 0);
+  const totCzk = listCzk.reduce((a,v) => a + v.totale, 0);
   const nClienti = list.length;
   const nArticoli = list.reduce((a,v) => a + (v.items||[]).length, 0);
-  const mediaSco = nClienti > 0 ? totIncasso / nClienti : 0;
+  const mediaEur = listEur.length > 0 ? totEur / listEur.length : 0;
+  const mediaCzk = listCzk.length > 0 ? totCzk / listCzk.length : 0;
+  const hasCzk = listCzk.length > 0;
+  const hasEur = listEur.length > 0;
+
+  document.getElementById('vendite-metrics').className = hasCzk && hasEur ? 'grid4' : 'grid4';
   document.getElementById('vendite-metrics').innerHTML = `
-    <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${nClienti}</div></div>
-    <div class="metric"><div class="metric-label">Articoli venduti</div><div class="metric-value">${nArticoli}</div></div>
-    <div class="metric"><div class="metric-label">Incasso totale</div><div class="metric-value green">${fmt(totIncasso)}</div></div>
-    <div class="metric"><div class="metric-label">Scontrino medio</div><div class="metric-value">${fmt(mediaSco)}</div></div>
+    <div class="metric"><div class="metric-label">Scontrini totali</div><div class="metric-value">${nClienti}</div><div class="metric-sub">${nArticoli} articoli venduti</div></div>
+    ${hasEur ? `<div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div><div class="metric-sub">media ${fmt(mediaEur)} / scontrino</div></div>` : ''}
+    ${hasCzk ? `<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div><div class="metric-sub">media ${Math.round(mediaCzk).toLocaleString('it')} CZK / scontrino</div></div>` : ''}
+    ${!hasEur && !hasCzk ? `<div class="metric"><div class="metric-label">Incasso totale</div><div class="metric-value green">${fmt(0)}</div></div>` : ''}
+    ${hasEur && hasCzk ? (() => {
+      // Show conversion hint if event has CZK rate
+      const evId = parseInt((document.getElementById('filter-vend-evento')||{}).value)||0;
+      const ev = evId ? getEvento(evId) : null;
+      const rate = ev && ev.czkRate ? ev.czkRate : null;
+      if (rate) {
+        const totConv = totEur + (totCzk / rate);
+        return '<div class="metric"><div class="metric-label">Totale convertito in €</div><div class="metric-value green">' + fmt(totConv) + '</div><div class="metric-sub">al tasso ' + rate + ' CZK/€</div></div>';
+      }
+      return '<div class="metric"><div class="metric-label">Scontrini € / CZK</div><div class="metric-value">' + listEur.length + ' / ' + listCzk.length + '</div></div>';
+    })() : ''}
   `;
 
   document.getElementById('tab-vendite').innerHTML = list.length ?
