@@ -225,7 +225,7 @@
   /* CASSA */
   .cassa-layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
   .cassa-main { display: flex; flex-direction: column; gap: 12px; }
-  .cassa-sidebar { display: flex; flex-direction: column; gap: 12px; }
+  .cassa-sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; max-height: calc(100vh - 100px); }
   .cassa-step { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); margin-bottom: 10px; }
   .logo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .logo-btn { padding: 12px 10px 10px; border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; font-size: 14px; font-weight: 600; background: var(--surface); color: var(--text); text-align: center; transition: all .15s; line-height: 1.3; position: relative; }
