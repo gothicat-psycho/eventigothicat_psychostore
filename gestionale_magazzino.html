@@ -2641,7 +2641,7 @@ function ascoltaCiro() {
 
       const hasWake = testo.includes(WAKE_WORD);
       if (hasWake) {
-        const query = testo.replace(new RegExp('.*' + WAKE_WORD + '[,.]?\\s*', 'i'), '').trim();
+        const query = testo.slice(testo.indexOf(WAKE_WORD) + WAKE_WORD.length).replace(/^[,. ]+/, '').trim();
         if (query.length > 2) {
           navigaStockSeNecessario();
           processaVoce(query);
