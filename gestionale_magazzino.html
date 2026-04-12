@@ -494,6 +494,25 @@
         </div>
       </div>
       <div id="stock-content"></div>
+      <div class="card" style="margin-top:8px;border-style:dashed;border-color:var(--border2)">
+        <div class="card-title" style="color:var(--amber)">⚙ Strumenti magazzino</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Imposta stock di massa:</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:12px;color:var(--text2);margin:0">Quantità per variante</label>
+            <input type="number" id="massa-qty" value="300" min="0" style="width:80px">
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:12px;color:var(--text2);margin:0">Magazzino</label>
+            <select id="massa-mag" style="width:130px">
+              <option value="avigliana">Avigliana</option>
+              <option value="napoli">Napoli</option>
+            </select>
+          </div>
+          <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="impostaStockMassa()">Imposta stock</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Porta ogni variante di ogni logo alla quantità indicata tramite rettifica manuale. Utile per caricare dati storici.</div>
+      </div>
     </div>
 
     <!-- TRASFERIMENTI -->
@@ -2222,6 +2241,58 @@ function renderVendite() {
         <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button></td>
       </tr>`;
     }).join('') : '<tr><td colspan="5" class="empty">Nessuna vendita trovata</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// STRUMENTI MAGAZZINO
+// ─────────────────────────────────────────────
+async function impostaStockMassa() {
+  const qty = parseInt(document.getElementById('massa-qty').value) || 0;
+  const mag = document.getElementById('massa-mag').value;
+  if (!confirm(`Portare ogni variante a ${qty} pz nel magazzino ${mag}? Verranno create rettifiche manuali per tutti i loghi.`)) return;
+
+  let count = 0;
+  db.loghi.forEach(l => {
+    CATEGORIE.forEach(cat => {
+      if (cat.taglie) {
+        cat.taglieLista.forEach(t => {
+          const attuale = getStock(l.id, cat.id, t, mag);
+          const delta = qty - attuale;
+          if (delta !== 0) {
+            db.movimenti.push({
+              id: db.nextMovId++,
+              logoId: l.id, catId: cat.id, taglia: t,
+              magazzino: mag,
+              qty: Math.abs(delta),
+              tipo: delta > 0 ? 'carico' : 'scarico',
+              data: today(),
+              note: `Stock massa ${qty}pz`,
+            });
+            count++;
+          }
+        });
+      } else {
+        const attuale = getStock(l.id, cat.id, null, mag);
+        const delta = qty - attuale;
+        if (delta !== 0) {
+          db.movimenti.push({
+            id: db.nextMovId++,
+            logoId: l.id, catId: cat.id, taglia: null,
+            magazzino: mag,
+            qty: Math.abs(delta),
+            tipo: delta > 0 ? 'carico' : 'scarico',
+            data: today(),
+            note: `Stock massa ${qty}pz`,
+          });
+          count++;
+        }
+      }
+    });
+  });
+
+  await saveDB();
+  renderStock();
+  showToast(`Stock aggiornato: ${count} varianti impostate a ${qty} pz`);
 }
 
 // ─────────────────────────────────────────────
