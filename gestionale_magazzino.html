@@ -2653,7 +2653,7 @@ function ascoltaCiro() {
           attendiEriavvia();
         }
       } else {
-        riavviaDopoDelay(300);
+        riavviaDopoDelay(200);
       }
     };
 
@@ -2697,14 +2697,17 @@ function navigaStockSeNecessario() {
 }
 
 function attendiEriavvia() {
-  const wait = () => {
-    if (window.speechSynthesis && window.speechSynthesis.speaking) {
-      setTimeout(wait, 300);
-    } else {
-      riavviaDopoDelay(600);
-    }
-  };
-  setTimeout(wait, 400);
+  // Give speech synthesis time to start, then wait for it to finish
+  setTimeout(() => {
+    const wait = () => {
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        setTimeout(wait, 300);
+      } else {
+        riavviaDopoDelay(500);
+      }
+    };
+    wait();
+  }, 800);
 }
 
 function stopCiro() {
