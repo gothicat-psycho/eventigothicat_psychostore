@@ -534,6 +534,12 @@
           <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="pulisciImmaginiBase64()">Rimuovi immagini base64 dal database</button>
           <span style="font-size:11px;color:var(--text3)">Rimuove le immagini pesanti salvate nel DB — usa gli URL GitHub invece</span>
         </div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Migrazione taglie:</div>
+          <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="migraXXLto2XL()">Rinomina XXL → 2XL nel database</button>
+          <span style="font-size:11px;color:var(--text3)">Converte tutti i movimenti e le vendite con taglia "XXL" in "2XL"</span>
+        </div>
         <div style="font-size:11px;color:var(--text3);margin-top:8px">Porta ogni variante di ogni logo alla quantità indicata tramite rettifica manuale. Utile per caricare dati storici.</div>
       </div>
     </div>
@@ -844,10 +850,10 @@
 // ─────────────────────────────────────────────
 // COSTANTI
 // ─────────────────────────────────────────────
-const TAGLIE = ['S','M','L','XL','XXL','3XL'];
+const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 
 // Categorie prodotto con le loro proprietà
-const TAGLIE_DONNA = ['S','M','L','XL','XXL']; // no 3XL for donna
+const TAGLIE_DONNA = ['S','M','L','XL']; // donna: S to XL only
 const CATEGORIE = [
   { id: 'tshirt_uomo',   label: 'T-Shirt Uomo',   taglie: true,  taglieLista: TAGLIE,       prezzoProprio: false, gruppoPrezzo: 'tshirt' },
   { id: 'tshirt_donna',  label: 'T-Shirt Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
@@ -2599,18 +2605,21 @@ function processaVoce(testo) {
   else if (testoLow.includes('shopper') || testoLow.includes('borsa') || testoLow.includes('bag')) catFound = 'shoppers';
 
   // ─ Find taglia ─
+  let testoNorm = testoLow
+    .replace(/tre\s*x\s*l|3\s*x\s*l|triple/gi, '3xl')
+    .replace(/due\s*x\s*l|2\s*x\s*l/gi, '2xl')
+    .replace(/x\s+l/gi, 'xl')
+    .replace(/\besse\b/gi, 's')
+    .replace(/\bemme\b/gi, 'm')
+    .replace(/\belle\b/gi, 'l');
+
   let tagliaFound = null;
-  const tagliePat = [
-    { pat: /3xl|triple xl|trexxl/i, t: '3XL' },
-    { pat: /2xl|xxl|double xl|due xl/i, t: 'XXL' },
-    { pat: /xl/i, t: 'XL' },
-    { pat: /large|largh|grande/i, t: 'L' },
-    { pat: /medium|media|emme|m/i, t: 'M' },
-    { pat: /small|piccol|esse/i, t: 'S' },
-  ];
-  for (const { pat, t } of tagliePat) {
-    if (pat.test(testoLow)) { tagliaFound = t; break; }
-  }
+  if (/3xl/.test(testoNorm)) tagliaFound = '3XL';
+  else if (/2xl/.test(testoNorm)) tagliaFound = '2XL';
+  else if (/\bxl\b/.test(testoNorm)) tagliaFound = 'XL';
+  else if (/\bl\b/.test(testoNorm)) tagliaFound = 'L';
+  else if (/\bm\b/.test(testoNorm)) tagliaFound = 'M';
+  else if (/\bs\b/.test(testoNorm)) tagliaFound = 'S';
 
   // ─ Build response ─
   const voiceResult = document.getElementById('voice-result');
@@ -2675,6 +2684,38 @@ if (window.speechSynthesis) {
 // ─────────────────────────────────────────────
 // STRUMENTI MAGAZZINO
 // ─────────────────────────────────────────────
+async function migraXXLto2XL() {
+  let count = 0;
+  // Migrate movimenti
+  (db.movimenti||[]).forEach(m => {
+    if (m.taglia === 'XXL') { m.taglia = '2XL'; count++; }
+  });
+  // Migrate vendite items
+  (db.vendite||[]).forEach(v => {
+    (v.items||[]).forEach(it => {
+      if (it.taglia === 'XXL') { it.taglia = '2XL'; count++; }
+    });
+  });
+  // Migrate ordini
+  (db.ordini||[]).forEach(o => {
+    (o.items||[]).forEach(it => {
+      ['avigliana','napoli'].forEach(mag => {
+        const q = (it.quantita||{})[mag] || {};
+        if (q['XXL'] !== undefined) {
+          q['2XL'] = (q['2XL']||0) + q['XXL'];
+          delete q['XXL'];
+          count++;
+        }
+      });
+    });
+  });
+  if (count === 0) { showToast('Nessuna taglia XXL trovata nel database', 'green'); return; }
+  if (!confirm(`Trovati ${count} elementi con taglia "XXL". Verranno rinominati in "2XL". Continuare?`)) return;
+  await saveDB();
+  renderStock();
+  showToast(`Migrazione completata: ${count} elementi aggiornati`, 'green');
+}
+
 async function pulisciImmaginiBase64() {
   const base64Loghi = db.loghi.filter(l => l.immagine && l.immagine.startsWith('data:'));
   if (base64Loghi.length === 0) { showToast('Nessuna immagine base64 trovata', 'green'); return; }
