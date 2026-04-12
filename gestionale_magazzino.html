@@ -377,11 +377,12 @@
           <div class="form-group"><label>Nome logo *</label><input id="l-nome" placeholder="es. Meow Division"></div>
           <div class="form-group"><label>Fornitore principale</label><select id="l-fornitore"><option value="">-- seleziona --</option></select></div>
           <div class="form-group"><label>Scorta minima per variante</label><input id="l-minimo" type="number" min="0" placeholder="3"></div>
-          <div class="form-group"><label>Immagine logo</label>
-            <div class="logo-img-upload">
-              <input type="file" id="l-immagine" accept="image/*" onchange="previewLogoImg('l-immagine','l-img-preview')" style="flex:1;font-size:12px">
+          <div class="form-group"><label>URL immagine</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="url" id="l-immagine-url" placeholder="https://raw.githubusercontent.com/..." style="flex:1" oninput="previewUrl('l-immagine-url','l-img-preview')">
               <img id="l-img-preview" class="logo-img-preview" style="display:none">
             </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link diretto da GitHub (raw.githubusercontent.com)</div>
           </div>
         </div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px">
@@ -510,6 +511,12 @@
             </select>
           </div>
           <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="impostaStockMassa()">Imposta stock</button>
+        </div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Pulizia database:</div>
+          <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="pulisciImmaginiBase64()">Rimuovi immagini base64 dal database</button>
+          <span style="font-size:11px;color:var(--text3)">Rimuove le immagini pesanti salvate nel DB — usa gli URL GitHub invece</span>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:8px">Porta ogni variante di ogni logo alla quantità indicata tramite rettifica manuale. Utile per caricare dati storici.</div>
       </div>
@@ -717,11 +724,12 @@
       <div class="form-group"><label>Scorta minima</label><input id="el-minimo" type="number" min="0" placeholder="3"></div>
     </div>
     <div class="form-group" style="margin-bottom:12px">
-      <label>Immagine logo</label>
-      <div class="logo-img-upload">
-        <input type="file" id="el-immagine" accept="image/*" onchange="previewLogoImg('el-immagine','el-img-preview')" style="flex:1;font-size:12px">
+      <label>URL immagine</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="url" id="el-immagine-url" placeholder="https://raw.githubusercontent.com/..." style="flex:1" oninput="previewUrl('el-immagine-url','el-img-preview')">
         <img id="el-img-preview" class="logo-img-preview" style="display:none">
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link diretto da GitHub</div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:8px">Prezzi per categoria</div>
@@ -1057,69 +1065,41 @@ function renderFornitori() {
 // ─────────────────────────────────────────────
 // LOGHI
 // ─────────────────────────────────────────────
-function resizeImage(file, maxSize, callback) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let w = img.width, h = img.height;
-      if (w > maxSize || h > maxSize) {
-        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-        else { w = Math.round(w * maxSize / h); h = maxSize; }
-      }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      callback(canvas.toDataURL('image/jpeg', 0.85));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function previewLogoImg(inputId, previewId) {
-  const file = document.getElementById(inputId).files[0];
+function previewUrl(inputId, previewId) {
+  const url = document.getElementById(inputId).value.trim();
   const preview = document.getElementById(previewId);
-  if (!file) { preview.style.display='none'; return; }
-  resizeImage(file, 300, data => {
-    preview.src = data;
-    preview.style.display = 'block';
-  });
+  if (!url) { preview.style.display = 'none'; return; }
+  preview.src = url;
+  preview.style.display = 'block';
+  preview.onerror = () => { preview.style.display = 'none'; };
 }
 
-async function aggiungiLogo() {
+function aggiungiLogo() {
   const nome = document.getElementById('l-nome').value.trim();
   if (!nome) { showToast('Il nome logo è obbligatorio', 'red'); return; }
-  const fileInput = document.getElementById('l-immagine');
-  const file = fileInput.files[0];
-
-  const salva = (immagine) => {
-    db.loghi.push({
-      id: db.nextLogoId++, nome,
-      fornId: parseInt(document.getElementById('l-fornitore').value) || null,
-      immagine: immagine || null,
-      prezzi: {
-        tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-        tshirt_donna: { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-        canotte:      { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
-        shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
-      },
-      minimo: parseInt(document.getElementById('l-minimo').value) || 3,
-      note: document.getElementById('l-note').value.trim(),
-      stato: document.getElementById('l-stato').value,
-    });
-    saveDB();
-    ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-prezzo-tshirt',
-     'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers','l-minimo','l-note']
-      .forEach(id => document.getElementById(id).value = '');
-    fileInput.value = '';
-    document.getElementById('l-img-preview').style.display = 'none';
-    renderLoghi();
-    showToast('Logo aggiunto');
-  };
-
-  if (file) { resizeImage(file, 300, salva); }
-  else { salva(null); }
+  const url = document.getElementById('l-immagine-url').value.trim() || null;
+  const prev = document.getElementById('l-img-preview');
+  db.loghi.push({
+    id: db.nextLogoId++, nome,
+    fornId: parseInt(document.getElementById('l-fornitore').value) || null,
+    immagine: url,
+    prezzi: {
+      tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+      tshirt_donna: { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+      canotte:      { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
+      shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
+    },
+    minimo: parseInt(document.getElementById('l-minimo').value) || 3,
+    note: document.getElementById('l-note').value.trim(),
+    stato: document.getElementById('l-stato').value,
+  });
+  saveDB();
+  ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-prezzo-tshirt',
+   'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers','l-minimo','l-note','l-immagine-url']
+    .forEach(id => document.getElementById(id).value = '');
+  prev.style.display = 'none';
+  renderLoghi();
+  showToast('Logo aggiunto');
 }
 
 function getPrezzi(l) {
@@ -1796,10 +1776,10 @@ function apriEditLogo(id) {
   document.getElementById('el-prezzo-canotte').value = p.canotte.prezzo || '';
   document.getElementById('el-costo-shoppers').value = p.shoppers.costo || '';
   document.getElementById('el-prezzo-shoppers').value = p.shoppers.prezzo || '';
-  // show current image
+  // show current image URL
   const prev = document.getElementById('el-img-preview');
-  const fileInput = document.getElementById('el-immagine');
-  fileInput.value = '';
+  const urlInput = document.getElementById('el-immagine-url');
+  urlInput.value = l.immagine || '';
   if (l.immagine) { prev.src = l.immagine; prev.style.display = 'block'; }
   else { prev.style.display = 'none'; }
   document.getElementById('modal-edit-logo').classList.add('open');
@@ -1811,30 +1791,25 @@ function salvaLogo() {
   const nome = document.getElementById('el-nome').value.trim();
   if (!nome) { showToast('Il nome logo è obbligatorio', 'red'); return; }
 
-  const doSalva = (immagine) => {
-    const prezzoTshirt = parseFloat(document.getElementById('el-prezzo-tshirt').value) || 0;
-    l.nome = nome;
-    l.fornId = parseInt(document.getElementById('el-fornitore').value) || null;
-    l.minimo = parseInt(document.getElementById('el-minimo').value) || 3;
-    l.stato = document.getElementById('el-stato').value;
-    l.note = document.getElementById('el-note').value.trim();
-    if (immagine) l.immagine = immagine;
-    l.prezzi = {
-      tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
-      tshirt_donna: { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
-      canotte:      { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
-      shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
-    };
-    delete l.costo; delete l.prezzo;
-    saveDB();
-    closeModal('modal-edit-logo');
-    renderLoghi();
-    showToast('Logo aggiornato');
+  const prezzoTshirt = parseFloat(document.getElementById('el-prezzo-tshirt').value) || 0;
+  const urlImmagine = document.getElementById('el-immagine-url').value.trim() || null;
+  l.nome = nome;
+  l.fornId = parseInt(document.getElementById('el-fornitore').value) || null;
+  l.minimo = parseInt(document.getElementById('el-minimo').value) || 3;
+  l.stato = document.getElementById('el-stato').value;
+  l.note = document.getElementById('el-note').value.trim();
+  l.immagine = urlImmagine;
+  l.prezzi = {
+    tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
+    tshirt_donna: { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
+    canotte:      { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
+    shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
   };
-
-  const file = document.getElementById('el-immagine').files[0];
-  if (file) { resizeImage(file, 300, doSalva); }
-  else { doSalva(null); }
+  delete l.costo; delete l.prezzo;
+  saveDB();
+  closeModal('modal-edit-logo');
+  renderLoghi();
+  showToast('Logo aggiornato');
 }
 
 // ─────────────────────────────────────────────
@@ -2246,6 +2221,16 @@ function renderVendite() {
 // ─────────────────────────────────────────────
 // STRUMENTI MAGAZZINO
 // ─────────────────────────────────────────────
+async function pulisciImmaginiBase64() {
+  const base64Loghi = db.loghi.filter(l => l.immagine && l.immagine.startsWith('data:'));
+  if (base64Loghi.length === 0) { showToast('Nessuna immagine base64 trovata', 'green'); return; }
+  if (!confirm(`Trovate ${base64Loghi.length} immagini base64. Verranno rimosse dal database (puoi poi aggiungere gli URL GitHub). Continuare?`)) return;
+  base64Loghi.forEach(l => { l.immagine = null; });
+  await saveDB();
+  renderLoghi();
+  showToast(`${base64Loghi.length} immagini rimosse — ora puoi aggiungere gli URL GitHub`, 'green');
+}
+
 async function impostaStockMassa() {
   const qty = parseInt(document.getElementById('massa-qty').value) || 0;
   const mag = document.getElementById('massa-mag').value;
