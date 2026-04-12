@@ -2760,6 +2760,13 @@ function processaVoce(testo) {
   voiceAnswer.textContent = risposta;
   voiceResult.classList.add('show');
   parla(risposta);
+
+  // After 4 seconds, clear search and show full stock
+  setTimeout(() => {
+    const searchEl = document.getElementById('search-stock');
+    if (searchEl) { searchEl.value = ''; renderStock(); }
+    voiceResult.classList.remove('show');
+  }, 4000);
 }
 
 function parla(testo) {
