@@ -313,14 +313,14 @@
       <span class="nav-icon">⇄</span> Trasferimenti
     </div>
     <div class="nav-section">Vendite</div>
-    <div class="nav-item" onclick="showSection('eventi',this)">
-      <span class="nav-icon">★</span> Eventi
+    <div class="nav-item" onclick="apriEventiConPwd(this)">
+      <span class="nav-icon">★</span> Eventi 🔒
     </div>
     <div class="nav-item" onclick="showSection('cassa',this)">
       <span class="nav-icon">⊕</span> Cassa
     </div>
-    <div class="nav-item" onclick="showSection('vendite',this)">
-      <span class="nav-icon">◱</span> Storico vendite
+    <div class="nav-item" onclick="apriVenditeConPwd(this)">
+      <span class="nav-icon">◱</span> Storico vendite 🔒
     </div>
   </nav>
   <div class="sidebar-footer" id="storage-info">Caricamento...</div>
@@ -763,6 +763,23 @@
   </div>
 </div>
 
+<!-- MODAL password vendite -->
+<div class="modal-backdrop" id="modal-pwd">
+  <div class="modal" style="width:360px">
+    <div class="modal-title">🔒 Area riservata</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Inserisci la password per accedere allo storico vendite.</p>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')verificaPwd()">
+    </div>
+    <div id="pwd-error" style="color:var(--red);font-size:12px;margin-top:6px;display:none">Password errata. Riprova.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-pwd')">Annulla</button>
+      <button class="btn btn-primary" onclick="verificaPwd()">Accedi</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL conferma elimina -->
 <div class="modal-backdrop" id="modal-del">
   <div class="modal">
@@ -1007,9 +1024,9 @@ function showSection(s, el) {
   if (s === 'stock') { renderStock(); populateFornSelects(); renderStockMetrics(); }
   if (s === 'stock-accessori') { renderAccessori(); renderAccMetrics(); }
   if (s === 'trasferimenti') { renderTrasferimenti(); populateFornSelects(); document.getElementById('tr-data').value = today(); if (trItems.length === 0) addTrItem(); }
-  if (s === 'eventi') { renderEventi(); }
+  // eventi is password-protected, handled by apriEventiConPwd()
   if (s === 'cassa') { initCassa(); }
-  if (s === 'vendite') { renderVendite(); populateEventiFilter(); }
+  // vendite is password-protected, handled by apriVenditeConPwd()
 }
 
 // ─────────────────────────────────────────────
@@ -1939,6 +1956,13 @@ function closeModal(id) {
   if (id === 'modal-edit-logo') editLogoId = null;
 }
 
+// Lock vendite when navigating to another section
+const _origShowSection = showSection;
+function showSection(s, el) {
+  if (s !== 'vendite' && s !== 'eventi') venditeUnlocked = false;
+  _origShowSection(s, el);
+}
+
 document.querySelectorAll('.modal-backdrop').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
 });
@@ -2710,6 +2734,72 @@ function parla(testo) {
 // Load voices async (needed for Chrome)
 if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+// ─────────────────────────────────────────────
+// PASSWORD STORICO VENDITE
+// ─────────────────────────────────────────────
+const VENDITE_PWD = 'juvemerda666'; // cambia questa per aggiornare la password
+let venditeUnlocked = false;
+
+function apriEventiConPwd(navEl) {
+  if (venditeUnlocked) { doShowEventi(navEl); return; }
+  document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-error').style.display = 'none';
+  document.getElementById('modal-pwd').classList.add('open');
+  document.getElementById('modal-pwd')._navEl = navEl;
+  document.getElementById('modal-pwd')._target = 'eventi';
+  setTimeout(() => document.getElementById('pwd-input').focus(), 100);
+}
+
+function doShowEventi(navEl) {
+  document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('sec-eventi').classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('page-title').textContent = 'Eventi';
+  renderEventi();
+}
+
+function apriVenditeConPwd(navEl) {
+  if (venditeUnlocked) {
+    // Already unlocked this session, open directly
+    doShowVendite(navEl);
+    return;
+  }
+  // Show password modal, store nav element for later
+  document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-error').style.display = 'none';
+  document.getElementById('modal-pwd').classList.add('open');
+  document.getElementById('modal-pwd')._navEl = navEl;
+  document.getElementById('modal-pwd')._target = 'vendite';
+  setTimeout(() => document.getElementById('pwd-input').focus(), 100);
+}
+
+function verificaPwd() {
+  const val = document.getElementById('pwd-input').value;
+  if (val === VENDITE_PWD) {
+    venditeUnlocked = true;
+    closeModal('modal-pwd');
+    const navEl = document.getElementById('modal-pwd')._navEl;
+    const target = document.getElementById('modal-pwd')._target || 'vendite';
+    if (target === 'eventi') doShowEventi(navEl);
+    else doShowVendite(navEl);
+  } else {
+    document.getElementById('pwd-error').style.display = 'block';
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-input').focus();
+  }
+}
+
+function doShowVendite(navEl) {
+  document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('sec-vendite').classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('page-title').textContent = 'Storico vendite';
+  renderVendite();
+  populateEventiFilter();
 }
 
 // ─────────────────────────────────────────────
