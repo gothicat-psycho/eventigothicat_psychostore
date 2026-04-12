@@ -2332,11 +2332,14 @@ async function concludiVendita() {
 // STORICO VENDITE
 // ─────────────────────────────────────────────
 function populateEventiFilter() {
+  const el = document.getElementById('filter-vend-evento');
+  if (!el) return;
+  const cur = el.value; // preserve current selection
   const opts = '<option value="">Tutti gli eventi</option>' +
     [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||'')).map(ev =>
       `<option value="${ev.id}">${ev.nome}</option>`).join('');
-  const el = document.getElementById('filter-vend-evento');
-  if (el) el.innerHTML = opts;
+  el.innerHTML = opts;
+  if (cur) el.value = cur; // restore selection
 }
 
 function fmtArts(items) {
@@ -2353,7 +2356,6 @@ function fmtArts(items) {
 }
 
 function renderVendite() {
-  populateEventiFilter();
   const evIdRaw = (document.getElementById('filter-vend-evento')||{}).value || '';
   const evId = evIdRaw ? parseInt(evIdRaw) : 0;
   const datFilt = (document.getElementById('filter-vend-data')||{}).value || '';
