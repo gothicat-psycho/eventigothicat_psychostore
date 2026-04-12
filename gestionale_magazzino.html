@@ -267,6 +267,14 @@
   .evento-attivo-nome { font-weight: 600; flex: 1; }
   .prezzo-input { font-family: 'IBM Plex Mono', monospace; font-size: 13px; width: 70px; text-align: right; padding: 3px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
   @media (max-width: 900px) { .cassa-layout { grid-template-columns: 1fr; } }
+  .mic-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border2); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all .2s; flex-shrink: 0; }
+  .mic-btn:hover { background: var(--surface2); }
+  .mic-btn.listening { background: var(--red-light); border-color: var(--red); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(176,32,32,.3); } 50% { box-shadow: 0 0 0 8px rgba(176,32,32,0); } }
+  .voice-result { background: var(--accent-light); border: 1px solid #C5D3F5; border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 12px; font-size: 14px; display: none; }
+  .voice-result.show { display: block; }
+  .voice-result-query { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
+  .voice-result-answer { font-weight: 500; color: var(--text); }
 </style>
 </head>
 <body>
@@ -483,9 +491,14 @@
         <button class="tab-btn" id="tab-napoli" onclick="switchStockTab('napoli')">📦 Napoli</button>
         <button class="tab-btn" id="tab-totale" onclick="switchStockTab('totale')">∑ Totale</button>
       </div>
+      <div id="voice-result" class="voice-result">
+        <div class="voice-result-query" id="voice-query"></div>
+        <div class="voice-result-answer" id="voice-answer"></div>
+      </div>
       <div class="card">
         <div class="flex-row" style="gap:8px">
           <input id="search-stock" placeholder="Cerca logo..." oninput="renderStock()" style="max-width:260px">
+          <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Ricerca vocale">🎤</button>
           <select id="filter-stock-forn" onchange="renderStock()" style="max-width:200px">
             <option value="">Tutti i fornitori</option>
           </select>
@@ -2522,6 +2535,141 @@ function renderMovAccessori() {
       <td><span class="mag-badge mag-${m.magazzino}">${m.magazzino.charAt(0).toUpperCase()+m.magazzino.slice(1)}</span></td>
       <td style="color:var(--text3)">${m.note||'-'}</td>
     </tr>`).join('') : '<tr><td colspan="6" class="empty">Nessun movimento</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// RICERCA VOCALE
+// ─────────────────────────────────────────────
+let recognition = null;
+let isListening = false;
+
+function initVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  const r = new SpeechRecognition();
+  r.lang = 'it-IT';
+  r.continuous = false;
+  r.interimResults = false;
+  r.onresult = e => {
+    const testo = e.results[0][0].transcript;
+    processaVoce(testo);
+    stopVoice();
+  };
+  r.onerror = e => { stopVoice(); showToast('Errore microfono: ' + e.error, 'red'); };
+  r.onend = () => stopVoice();
+  return r;
+}
+
+function toggleVoice() {
+  if (isListening) { stopVoice(); return; }
+  if (!recognition) recognition = initVoice();
+  if (!recognition) { showToast('Ricerca vocale non supportata da questo browser', 'red'); return; }
+  isListening = true;
+  document.getElementById('mic-btn').classList.add('listening');
+  document.getElementById('mic-btn').textContent = '⏹';
+  recognition.start();
+  showToast('In ascolto... parla ora');
+}
+
+function stopVoice() {
+  isListening = false;
+  const btn = document.getElementById('mic-btn');
+  if (btn) { btn.classList.remove('listening'); btn.textContent = '🎤'; }
+  try { if (recognition) recognition.stop(); } catch(e) {}
+}
+
+function processaVoce(testo) {
+  const testoLow = testo.toLowerCase().trim();
+  document.getElementById('voice-query').textContent = '🎤 "' + testo + '"';
+
+  // ─ Find logo by matching words in utterance ─
+  let logoFound = null;
+  let maxMatch = 0;
+  db.loghi.forEach(l => {
+    const nomeWords = l.nome.toLowerCase().split(/\s+/);
+    const matches = nomeWords.filter(w => w.length > 2 && testoLow.includes(w)).length;
+    if (matches > maxMatch) { maxMatch = matches; logoFound = l; }
+  });
+
+  // ─ Find category ─
+  let catFound = null;
+  if (testoLow.includes('donna') || testoLow.includes('female') || testoLow.includes('woman')) catFound = 'tshirt_donna';
+  else if (testoLow.includes('uomo') || testoLow.includes('uomini') || testoLow.includes('male') || testoLow.includes('man')) catFound = 'tshirt_uomo';
+  else if (testoLow.includes('canott') || testoLow.includes('tank')) catFound = 'canotte';
+  else if (testoLow.includes('shopper') || testoLow.includes('borsa') || testoLow.includes('bag')) catFound = 'shoppers';
+
+  // ─ Find taglia ─
+  let tagliaFound = null;
+  const tagliePat = [
+    { pat: /3xl|triple xl|trexxl/i, t: '3XL' },
+    { pat: /2xl|xxl|double xl|due xl/i, t: 'XXL' },
+    { pat: /xl/i, t: 'XL' },
+    { pat: /large|largh|grande/i, t: 'L' },
+    { pat: /medium|media|emme|m/i, t: 'M' },
+    { pat: /small|piccol|esse/i, t: 'S' },
+  ];
+  for (const { pat, t } of tagliePat) {
+    if (pat.test(testoLow)) { tagliaFound = t; break; }
+  }
+
+  // ─ Build response ─
+  const voiceResult = document.getElementById('voice-result');
+  const voiceAnswer = document.getElementById('voice-answer');
+
+  if (!logoFound) {
+    const msg = 'Logo non trovato. Prova a dire il nome del logo più chiaramente.';
+    voiceAnswer.textContent = msg;
+    voiceResult.classList.add('show');
+    parla(msg);
+    return;
+  }
+
+  // Filter stock display
+  document.getElementById('search-stock').value = logoFound.nome;
+  renderStock();
+
+  let risposta = '';
+  if (catFound && tagliaFound) {
+    const cat = getCat(catFound);
+    const sAvg = getStock(logoFound.id, catFound, tagliaFound, 'avigliana');
+    const sNap = getStock(logoFound.id, catFound, tagliaFound, 'napoli');
+    const tot = sAvg + sNap;
+    risposta = `${logoFound.nome}, ${cat ? cat.label : catFound}, taglia ${tagliaFound}: `;
+    if (tot === 0) risposta += 'esaurito.';
+    else risposta += `${tot} pezzi totali. ${sAvg} ad Avigliana, ${sNap} a Napoli.`;
+  } else if (catFound) {
+    const cat = getCat(catFound);
+    const tot = getTotaleStock(logoFound.id, catFound, null);
+    risposta = `${logoFound.nome}, ${cat ? cat.label : catFound}: ${tot} pezzi totali.`;
+    if (!tagliaFound) risposta += ' Specifica la taglia per maggiori dettagli.';
+  } else {
+    const tot = getTotaleLogoStock(logoFound.id, null);
+    risposta = `${logoFound.nome}: ${tot} pezzi totali in magazzino.`;
+    if (!catFound) risposta += ' Specifica categoria e taglia per maggiori dettagli.';
+  }
+
+  voiceAnswer.textContent = risposta;
+  voiceResult.classList.add('show');
+  parla(risposta);
+}
+
+function parla(testo) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(testo);
+  utt.lang = 'it-IT';
+  utt.rate = 1.0;
+  utt.pitch = 1.0;
+  // Try to find an Italian voice
+  const voci = window.speechSynthesis.getVoices();
+  const voceIt = voci.find(v => v.lang.startsWith('it')) || voci[0];
+  if (voceIt) utt.voice = voceIt;
+  window.speechSynthesis.speak(utt);
+}
+
+// Load voices async (needed for Chrome)
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
 // ─────────────────────────────────────────────
