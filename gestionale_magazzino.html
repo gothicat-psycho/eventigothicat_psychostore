@@ -2311,7 +2311,7 @@ async function concludiVendita() {
     eventoId: cassaEventoId,
     dataOra,
     totale: parseFloat(totale.toFixed(2)),
-    items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo })),
+    items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
   });
   // Scarica magazzino
   scontrino.forEach(it => {
