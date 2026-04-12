@@ -2609,6 +2609,8 @@ function startCiro() {
   ascoltaCiro();
 }
 
+let ciroInAttesaDomanda = false;
+
 function ascoltaCiro() {
   if (!ciroActive) return;
   try {
@@ -2619,40 +2621,52 @@ function ascoltaCiro() {
 
     ciroRecognition.onresult = e => {
       const testo = e.results[0][0].transcript.toLowerCase().trim();
-      if (testo.startsWith(WAKE_WORD) || testo.includes(WAKE_WORD + ' ')) {
+
+      if (ciroInAttesaDomanda) {
+        // Fase 2: siamo in attesa della domanda dopo "Dimmi pure"
+        ciroInAttesaDomanda = false;
+        if (testo.length > 1) {
+          navigaStockSeNecessario();
+          processaVoce(testo);
+          attendiEriavvia();
+        } else {
+          setTimeout(() => ascoltaCiro(), 400);
+        }
+        return;
+      }
+
+      // Fase 1: ascolto wake word
+      const hasWake = testo.startsWith(WAKE_WORD) || testo.includes(WAKE_WORD);
+      if (hasWake) {
         const query = testo.replace(new RegExp(WAKE_WORD + '[,.]?\s*', 'i'), '').trim();
-        if (query.length > 1) {
-          // Navigate to stock if not already there
-          const stockSec = document.getElementById('sec-stock');
-          if (!stockSec.classList.contains('active')) {
-            document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
-            stockSec.classList.add('active');
-            document.getElementById('page-title').textContent = 'Stock Tessile';
-            renderStock(); populateFornSelects(); renderStockMetrics();
-          }
-          // Wait for speech synthesis to finish, then restart
+        if (query.length > 2) {
+          // Wake word + domanda nella stessa frase
+          navigaStockSeNecessario();
           processaVoce(query);
-          const waitAndRestart = () => {
+          attendiEriavvia();
+        } else {
+          // Solo wake word — aspetta la domanda
+          ciroInAttesaDomanda = true;
+          parla('Dimmi pure!');
+          // Dopo che finisce di parlare, ascolta la domanda
+          const waitForSpeech = () => {
             if (window.speechSynthesis && window.speechSynthesis.speaking) {
-              setTimeout(waitAndRestart, 300);
+              setTimeout(waitForSpeech, 200);
             } else {
-              setTimeout(() => ascoltaCiro(), 800);
+              setTimeout(() => ascoltaCiro(), 300);
             }
           };
-          setTimeout(waitAndRestart, 500);
-        } else {
-          parla('Dimmi pure!');
-          setTimeout(() => ascoltaCiro(), 1500);
+          setTimeout(waitForSpeech, 400);
         }
       } else {
-        // No wake word, just restart
+        // Nessuna wake word, riprende ascolto
         setTimeout(() => ascoltaCiro(), 300);
       }
     };
 
     ciroRecognition.onerror = e => {
       if (!ciroActive) return;
+      ciroInAttesaDomanda = false;
       if (e.error === 'no-speech' || e.error === 'aborted' || e.error === 'network') {
         setTimeout(() => ascoltaCiro(), 600);
       } else if (e.error === 'not-allowed') {
@@ -2664,8 +2678,7 @@ function ascoltaCiro() {
     };
 
     ciroRecognition.onend = () => {
-      // Only restart if not already handling a result
-      if (ciroActive && !window.speechSynthesis.speaking) {
+      if (ciroActive && !ciroInAttesaDomanda && !window.speechSynthesis.speaking) {
         setTimeout(() => ascoltaCiro(), 400);
       }
     };
@@ -2674,6 +2687,28 @@ function ascoltaCiro() {
   } catch(e) {
     if (ciroActive) setTimeout(() => ascoltaCiro(), 1000);
   }
+}
+
+function navigaStockSeNecessario() {
+  const stockSec = document.getElementById('sec-stock');
+  if (!stockSec.classList.contains('active')) {
+    document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+    stockSec.classList.add('active');
+    document.getElementById('page-title').textContent = 'Stock Tessile';
+    renderStock(); populateFornSelects(); renderStockMetrics();
+  }
+}
+
+function attendiEriavvia() {
+  const wait = () => {
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+      setTimeout(wait, 300);
+    } else {
+      setTimeout(() => ascoltaCiro(), 800);
+    }
+  };
+  setTimeout(wait, 500);
 }
 
 function stopCiro() {
