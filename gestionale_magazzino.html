@@ -548,7 +548,7 @@
 
     <!-- STOCK ACCESSORI -->
     <div class="section" id="sec-stock-accessori">
-      <div class="grid4" style="margin-bottom:16px" id="acc-metrics"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px" id="acc-metrics"></div>
       <div class="card">
         <div class="card-title">Prezzi e stock accessori</div>
         <div style="overflow-x:auto">
@@ -578,6 +578,9 @@
               <option value="toppe">Toppe</option>
               <option value="badge">Badge</option>
               <option value="adesivi">Adesivi</option>
+              <option value="cappelli">Cappelli</option>
+              <option value="telimare">Teli Mare</option>
+              <option value="ventagli">Ventagli</option>
             </select>
           </div>
           <div class="form-group"><label>Magazzino</label>
@@ -696,9 +699,24 @@
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-badge" type="number" min="0" step="1" placeholder="es. 100"></div>
           <div></div><div></div>
         </div>
-        <div class="form-row cols4">
+        <div class="form-row cols4" style="margin-bottom:6px">
           <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Adesivi</div>
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-adesivi" type="number" min="0" step="1" placeholder="es. 50"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Cappelli</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-cappelli" type="number" min="0" step="1" placeholder="es. 400"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Teli Mare</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-telimare" type="number" min="0" step="1" placeholder="es. 600"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Ventagli</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-ventagli" type="number" min="0" step="1" placeholder="es. 200"></div>
           <div></div><div></div>
         </div>
         <button class="btn btn-primary" onclick="salvaPrezzicCzk()">Salva prezzi CZK</button>
@@ -2123,6 +2141,9 @@ function salvaPrezzicCzk() {
     toppe: parseFloat(document.getElementById('czk-toppe').value) || 0,
     badge: parseFloat(document.getElementById('czk-badge').value) || 0,
     adesivi: parseFloat(document.getElementById('czk-adesivi').value) || 0,
+    cappelli: parseFloat(document.getElementById('czk-cappelli').value) || 0,
+    telimare: parseFloat(document.getElementById('czk-telimare').value) || 0,
+    ventagli: parseFloat(document.getElementById('czk-ventagli').value) || 0,
   };
   saveDB();
   showToast('Prezzi CZK salvati');
@@ -2130,7 +2151,7 @@ function salvaPrezzicCzk() {
 
 function loadPrezzicCzk() {
   const p = db.prezziCzk || {};
-  ['tshirt','canotte','shoppers','toppe','badge','adesivi'].forEach(k => {
+  ['tshirt','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli'].forEach(k => {
     const el = document.getElementById('czk-' + k);
     if (el) el.value = p[k] || '';
   });
@@ -2661,9 +2682,12 @@ function renderVendite() {
 // ACCESSORI
 // ─────────────────────────────────────────────
 const ACC_CATS = [
-  { id: 'toppe',   label: 'Toppe' },
-  { id: 'badge',   label: 'Badge' },
-  { id: 'adesivi', label: 'Adesivi' },
+  { id: 'toppe',     label: 'Toppe' },
+  { id: 'badge',     label: 'Badge' },
+  { id: 'adesivi',   label: 'Adesivi' },
+  { id: 'cappelli',  label: 'Cappelli' },
+  { id: 'telimare',  label: 'Teli Mare' },
+  { id: 'ventagli',  label: 'Ventagli' },
 ];
 
 function getAccPrezzi() {
@@ -2689,9 +2713,12 @@ function renderAccMetrics() {
     return a + getAccStock(c.id, null) * (p.costo || 0);
   }, 0);
   document.getElementById('acc-metrics').innerHTML = `
-    <div class="metric"><div class="metric-label">Toppe</div><div class="metric-value">${getAccStock('toppe',null)}</div><div class="metric-sub">pz totali</div></div>
-    <div class="metric"><div class="metric-label">Badge</div><div class="metric-value">${getAccStock('badge',null)}</div><div class="metric-sub">pz totali</div></div>
-    <div class="metric"><div class="metric-label">Adesivi</div><div class="metric-value">${getAccStock('adesivi',null)}</div><div class="metric-sub">pz totali</div></div>
+    <div class="metric"><div class="metric-label">Toppe</div><div class="metric-value">${getAccStock('toppe',null)}</div></div>
+    <div class="metric"><div class="metric-label">Badge</div><div class="metric-value">${getAccStock('badge',null)}</div></div>
+    <div class="metric"><div class="metric-label">Adesivi</div><div class="metric-value">${getAccStock('adesivi',null)}</div></div>
+    <div class="metric"><div class="metric-label">Cappelli</div><div class="metric-value">${getAccStock('cappelli',null)}</div></div>
+    <div class="metric"><div class="metric-label">Teli Mare</div><div class="metric-value">${getAccStock('telimare',null)}</div></div>
+    <div class="metric"><div class="metric-label">Ventagli</div><div class="metric-value">${getAccStock('ventagli',null)}</div></div>
     <div class="metric"><div class="metric-label">Valore magazzino</div><div class="metric-value green">${fmt(valMag)}</div><div class="metric-sub">a prezzo acquisto</div></div>
   `;
 }
