@@ -1008,7 +1008,13 @@ const CATEGORIE = [
 ];
 
 function getCatPerLogo(logoNome) {
-  return CATEGORIE.filter(c => !c.logoFilter || (logoNome||'').toUpperCase().includes(c.logoFilter.toUpperCase()));
+  return CATEGORIE.filter(c => {
+    if (!c.logoFilter) return true;
+    // Strip spaces and check — "MGT1" matches "MGT 1", "MGT1", "MGT-1" etc.
+    const nomeClean = (logoNome||'').toUpperCase().replace(/[\s\-_]/g, '');
+    const filterClean = c.logoFilter.toUpperCase().replace(/[\s\-_]/g, '');
+    return nomeClean.includes(filterClean);
+  });
 }
 
 function getCat(id) { return CATEGORIE.find(c => c.id === id); }
@@ -1303,7 +1309,7 @@ function renderFornitori() {
 function toggleFelpeRow(inputId, rowId) {
   const val = (document.getElementById(inputId)||{}).value || '';
   const row = document.getElementById(rowId);
-  if (row) row.style.display = val.toUpperCase().includes('MGT') ? 'grid' : 'none';
+  if (row) row.style.display = val.toUpperCase().replace(/[\s\-_]/g,'').includes('MGT') ? 'grid' : 'none';
 }
 
 function previewUrl(inputId, previewId) {
@@ -2038,7 +2044,7 @@ function apriEditLogo(id) {
   document.getElementById('el-prezzo-shoppers').value = p.shoppers.prezzo || '';
   const felpeRow = document.getElementById('el-felpe-row');
   if (felpeRow) {
-    const showFelpe = (l.nome||'').toUpperCase().includes('MGT');
+    const showFelpe = (l.nome||'').toUpperCase().replace(/[\s\-_]/g,'').includes('MGT');
     felpeRow.style.display = showFelpe ? 'grid' : 'none';
     if (showFelpe) {
       document.getElementById('el-costo-felpe').value = (p.felpe||{costo:0}).costo || '';
