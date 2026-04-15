@@ -723,7 +723,13 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Elenco eventi</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">Elenco eventi</div>
+          <select id="filter-eventi-anno" onchange="renderEventi()" style="max-width:140px">
+            <option value="">Tutti gli anni</option>
+          </select>
+        </div>
+        <div id="eventi-totali" style="display:none;margin-bottom:12px"></div>
         <div class="table-wrap">
           <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale in €</th><th></th></tr></thead>
           <tbody id="tab-eventi"></tbody>
@@ -2173,7 +2179,48 @@ function renderEventi() {
   const hasCzEv = (db.eventi||[]).some(isCzEvent);
   const czkCard = document.getElementById('czk-prezzi-card');
   if (czkCard) { czkCard.style.display = hasCzEv ? 'block' : 'none'; loadPrezzicCzk(); }
-  const eventi = [...(db.eventi||[])].sort((a,b) => (b.inizio||'').localeCompare(a.inizio||''));
+
+  // Populate year filter
+  const anni = [...new Set((db.eventi||[]).map(e => (e.inizio||'').substring(0,4)).filter(Boolean))].sort((a,b) => b-a);
+  const sel = document.getElementById('filter-eventi-anno');
+  const annoSel = sel ? sel.value : '';
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Tutti gli anni</option>' + anni.map(a => `<option value="${a}" ${a===cur?'selected':''}>${a}</option>`).join('');
+    if (cur) sel.value = cur;
+  }
+
+  // Filter by year
+  let eventi = [...(db.eventi||[])].sort((a,b) => (b.inizio||'').localeCompare(a.inizio||''));
+  if (annoSel) eventi = eventi.filter(e => (e.inizio||'').startsWith(annoSel));
+
+  // Compute totals
+  let totEurAll = 0, totCzkAll = 0, totConvAll = 0, totVendite = 0;
+  eventi.forEach(ev => {
+    const vend = (db.vendite||[]).filter(v => v.eventoId === ev.id);
+    totVendite += vend.length;
+    const eur = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+    const czk = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+    totEurAll += eur;
+    totCzkAll += czk;
+    totConvAll += eur + (ev.czkRate && czk ? czk / ev.czkRate : 0);
+  });
+
+  // Show totals box
+  const totBox = document.getElementById('eventi-totali');
+  if (totBox && eventi.length > 0) {
+    totBox.style.display = 'grid';
+    totBox.style.gridTemplateColumns = 'repeat(auto-fill,minmax(160px,1fr))';
+    totBox.style.gap = '10px';
+    totBox.style.marginBottom = '12px';
+    totBox.innerHTML = `
+      <div class="metric"><div class="metric-label">${annoSel ? annoSel : 'Totale'} — eventi</div><div class="metric-value">${eventi.length}</div><div class="metric-sub">${totVendite} scontrini</div></div>
+      <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEurAll)}</div></div>
+      ${totCzkAll > 0 ? `<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzkAll).toLocaleString('it')} CZK</div></div>` : ''}
+      ${totCzkAll > 0 ? `<div class="metric"><div class="metric-label">Totale in €</div><div class="metric-value green">${fmt(totConvAll)}</div><div class="metric-sub">CZK convertiti</div></div>` : ''}
+    `;
+  } else if (totBox) { totBox.style.display = 'none'; }
+
   document.getElementById('tab-eventi').innerHTML = eventi.length ?
     eventi.map(ev => {
       const vend = (db.vendite||[]).filter(v => v.eventoId === ev.id);
@@ -2194,8 +2241,7 @@ function renderEventi() {
         <td class="mono" style="font-weight:500">${incassoCzk > 0 ? incassoCzk.toFixed(0) + ' CZK' : '-'}</td>
         <td class="mono" style="font-weight:600;color:var(--green)">${(() => {
           if (ev.czkRate && incassoCzk > 0) {
-            const tot = incassoEur + (incassoCzk / ev.czkRate);
-            return fmt(tot);
+            return fmt(incassoEur + (incassoCzk / ev.czkRate));
           } else if (incassoCzk > 0 && !ev.czkRate) {
             return '<span style="color:var(--amber);font-size:11px">Inserire tasso CZK</span>';
           } else {
@@ -2208,7 +2254,7 @@ function renderEventi() {
           <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>
         </td>
       </tr>`;
-    }).join('') : '<tr><td colspan="9" class="empty">Nessun evento inserito</td></tr>';
+    }).join('') : `<tr><td colspan="13" class="empty">Nessun evento${annoSel ? ' nel ' + annoSel : ' inserito'}</td></tr>`;
 }
 
 // ─────────────────────────────────────────────
