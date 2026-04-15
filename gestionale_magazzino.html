@@ -1398,14 +1398,24 @@ function renderLoghi() {
 // ─────────────────────────────────────────────
 let loghiOrdine = [];
 
-function emptyQta() {
+function emptyQta(logoNome) {
   const q = {};
-  CATEGORIE.forEach(cat => {
+  getCatPerLogo(logoNome||'').forEach(cat => {
     q[cat.id] = { avigliana: {}, napoli: {} };
+    const tl = cat.taglieLista || TAGLIE;
     if (cat.taglie) {
-      TAGLIE.forEach(t => { q[cat.id].avigliana[t] = 0; q[cat.id].napoli[t] = 0; });
+      tl.forEach(t => { q[cat.id].avigliana[t] = 0; q[cat.id].napoli[t] = 0; });
     } else {
       q[cat.id].avigliana._ = 0; q[cat.id].napoli._ = 0;
+    }
+  });
+  // Always include all cats in emptyQta for compatibility
+  CATEGORIE.forEach(cat => {
+    if (!q[cat.id]) {
+      q[cat.id] = { avigliana: {}, napoli: {} };
+      const tl = cat.taglieLista || TAGLIE;
+      if (cat.taglie) tl.forEach(t => { q[cat.id].avigliana[t] = 0; q[cat.id].napoli[t] = 0; });
+      else { q[cat.id].avigliana._ = 0; q[cat.id].napoli._ = 0; }
     }
   });
   return q;
@@ -1554,7 +1564,8 @@ function apriOrdine(id, autoRicevi) {
   let html = `<div style="margin-bottom:12px;font-size:13px;color:var(--text2)">Data: ${fmtDate(o.data)} · Stato: ${o.stato}</div>`;
   o.items.forEach(item => {
     const l = getLogo(item.logoId);
-    let catHtml = CATEGORIE.map(cat => {
+    const logoOrdineObj = getLogo(item.logoId);
+    let catHtml = getCatPerLogo(logoOrdineObj ? logoOrdineObj.nome : '').map(cat => {
       const q = item.quantita[cat.id] || {};
       if (cat.taglie) {
         const totAvg = TAGLIE.reduce((a,t)=>a+((q.avigliana||{})[t]||0),0);
@@ -1598,7 +1609,8 @@ function apriOrdine(id, autoRicevi) {
 function riceviOrdine() {
   if (!ordineAperto || ordineAperto.stato === 'ricevuto') return;
   ordineAperto.items.forEach(item => {
-    CATEGORIE.forEach(cat => {
+    const logoRiceviObj = getLogo(item.logoId);
+    getCatPerLogo(logoRiceviObj ? logoRiceviObj.nome : '').forEach(cat => {
       const q = item.quantita[cat.id] || {};
       MAGAZZINI.forEach(mag => {
         const qMag = q[mag] || {};
@@ -1643,9 +1655,9 @@ function renderStockMetrics() {
     }, 0);
   }, 0);
   let nBasso = 0, nEsaurito = 0;
-  db.loghi.forEach(l => CATEGORIE.forEach(cat => {
+  db.loghi.forEach(l => getCatPerLogo(l.nome).forEach(cat => {
     if (cat.taglie) {
-      TAGLIE.forEach(t => {
+      (cat.taglieLista||TAGLIE).forEach(t => {
         const s = getStock(l.id, cat.id, t, mag);
         if (s === 0) nEsaurito++;
         else if (s <= (l.minimo||3)) nBasso++;
@@ -1699,7 +1711,8 @@ function renderStock() {
     const tot = getTotaleLogoStock(l.id, mag);
 
     // Build compact inline row: all categories side by side
-    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', canotte:'cat-can', shoppers:'cat-shop' };
+    const logoCategorie = getCatPerLogo(l.nome);
+    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
 
     const buildCatBlock = (cat, magFilter) => {
       const catTl = cat.taglieLista || TAGLIE;
@@ -1751,7 +1764,7 @@ function renderStock() {
     if (isTotale) {
       // For totale: show avigliana + napoli stacked per category
       rowHtml = `<div class="stock-inline-row">` +
-        CATEGORIE.map(cat => {
+        logoCategorie.map(cat => {
           const catTl = cat.taglieLista || TAGLIE;
           const lblCls = catLabelClass[cat.id] || 'cat-shop';
           if (cat.taglie) {
@@ -1788,7 +1801,7 @@ function renderStock() {
         }).join('') + `</div>`;
     } else {
       rowHtml = `<div class="stock-inline-row">` +
-        CATEGORIE.map(cat => buildCatBlock(cat, mag)).join('') +
+        logoCategorie.map(cat => buildCatBlock(cat, mag)).join('') +
         `</div>`;
     }
 
