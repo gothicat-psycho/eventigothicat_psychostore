@@ -386,7 +386,7 @@
       <div class="card">
         <div class="card-title">Aggiungi logo</div>
         <div class="form-row cols4">
-          <div class="form-group"><label>Nome logo *</label><input id="l-nome" placeholder="es. Meow Division"></div>
+          <div class="form-group"><label>Nome logo *</label><input id="l-nome" placeholder="es. Meow Division" oninput="toggleFelpeRow('l-nome','l-felpe-row')"></div>
           <div class="form-group"><label>Fornitore principale</label><select id="l-fornitore"><option value="">-- seleziona --</option></select></div>
           <div class="form-group"><label>Scorta minima per variante</label><input id="l-minimo" type="number" min="0" placeholder="3"></div>
           <div class="form-group"><label>URL immagine</label>
@@ -415,6 +415,12 @@
             <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:28px">Shoppers</div>
             <div class="form-group"><label>P. acquisto (€)</label><input id="l-costo-shoppers" type="number" min="0" step="0.01" placeholder="0.00"></div>
             <div class="form-group"><label>P. vendita (€)</label><input id="l-prezzo-shoppers" type="number" min="0" step="0.01" placeholder="0.00"></div>
+            <div></div>
+          </div>
+          <div class="form-row cols4" id="l-felpe-row" style="display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--accent);padding-top:28px">Felpe Unisex <span style="font-size:10px;font-weight:400">(solo MGT1)</span></div>
+            <div class="form-group"><label>P. acquisto (€)</label><input id="l-costo-felpe" type="number" min="0" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label>P. vendita (€)</label><input id="l-prezzo-felpe" type="number" min="0" step="0.01" placeholder="0.00"></div>
             <div></div>
           </div>
         </div>
@@ -581,6 +587,9 @@
               <option value="cappelli">Cappelli</option>
               <option value="telimare">Teli Mare</option>
               <option value="ventagli">Ventagli</option>
+              <option value="ombrelli">Ombrelli</option>
+              <option value="tappeti">Tappeti</option>
+              <option value="mousepad">Mouse Pad</option>
             </select>
           </div>
           <div class="form-group"><label>Magazzino</label>
@@ -714,9 +723,24 @@
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-telimare" type="number" min="0" step="1" placeholder="es. 600"></div>
           <div></div><div></div>
         </div>
-        <div class="form-row cols4">
+        <div class="form-row cols4" style="margin-bottom:6px">
           <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Ventagli</div>
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-ventagli" type="number" min="0" step="1" placeholder="es. 200"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Ombrelli</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-ombrelli" type="number" min="0" step="1" placeholder="es. 500"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Tappeti</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-tappeti" type="number" min="0" step="1" placeholder="es. 700"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Mouse Pad</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-mousepad" type="number" min="0" step="1" placeholder="es. 300"></div>
           <div></div><div></div>
         </div>
         <button class="btn btn-primary" onclick="salvaPrezzicCzk()">Salva prezzi CZK</button>
@@ -946,6 +970,12 @@
         <div class="form-group"><label>Vendita (€)</label><input id="el-prezzo-shoppers" type="number" min="0" step="0.01"></div>
         <div></div>
       </div>
+      <div class="form-row cols4" id="el-felpe-row" style="display:none">
+        <div style="font-size:11px;font-weight:600;color:var(--accent);padding-top:24px">Felpe <span style="font-weight:400;font-size:10px">(MGT1)</span></div>
+        <div class="form-group"><label>Acquisto (€)</label><input id="el-costo-felpe" type="number" min="0" step="0.01"></div>
+        <div class="form-group"><label>Vendita (€)</label><input id="el-prezzo-felpe" type="number" min="0" step="0.01"></div>
+        <div></div>
+      </div>
     </div>
     <div class="form-row cols2">
       <div class="form-group"><label>Stato</label><select id="el-stato"><option value="attivo">Attivo</option><option value="storico">Storico</option><option value="archiviato">Archiviato</option></select></div>
@@ -968,12 +998,18 @@ const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL']; // donna: S to XL only
+const TAGLIE_FELPE = ['S','M','L','XL','2XL']; // Felpe MGT1 only
 const CATEGORIE = [
-  { id: 'tshirt_uomo',   label: 'T-Shirt Uomo',   taglie: true,  taglieLista: TAGLIE,       prezzoProprio: false, gruppoPrezzo: 'tshirt' },
-  { id: 'tshirt_donna',  label: 'T-Shirt Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt' },
-  { id: 'canotte',       label: 'Canotte Unisex', taglie: true,  taglieLista: TAGLIE,       prezzoProprio: true,  gruppoPrezzo: null },
-  { id: 'shoppers',      label: 'Shoppers',        taglie: false, taglieLista: [],           prezzoProprio: true,  gruppoPrezzo: null },
+  { id: 'tshirt_uomo',   label: 'T-Shirt Uomo',   taglie: true,  taglieLista: TAGLIE,       prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
+  { id: 'tshirt_donna',  label: 'T-Shirt Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
+  { id: 'canotte',       label: 'Canotte Unisex', taglie: true,  taglieLista: TAGLIE,       prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
+  { id: 'shoppers',      label: 'Shoppers',        taglie: false, taglieLista: [],           prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
+  { id: 'felpe',         label: 'Felpe Unisex',   taglie: true,  taglieLista: TAGLIE_FELPE, prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: 'MGT1' },
 ];
+
+function getCatPerLogo(logoNome) {
+  return CATEGORIE.filter(c => !c.logoFilter || (logoNome||'').toUpperCase().includes(c.logoFilter.toUpperCase()));
+}
 
 function getCat(id) { return CATEGORIE.find(c => c.id === id); }
 const MAGAZZINI = ['avigliana', 'napoli'];
@@ -1093,7 +1129,9 @@ function getTotaleStock(logoId, catId, mag) {
 }
 
 function getTotaleLogoStock(logoId, mag) {
-  return CATEGORIE.reduce((a, cat) => a + getTotaleStock(logoId, cat.id, mag), 0);
+  const logo = db.loghi.find(l => l.id === logoId);
+  const cats = getCatPerLogo(logo ? logo.nome : '');
+  return cats.reduce((a, cat) => a + getTotaleStock(logoId, cat.id, mag), 0);
 }
 
 function getStockClass(s, minimo) {
@@ -1262,6 +1300,12 @@ function renderFornitori() {
 // ─────────────────────────────────────────────
 // LOGHI
 // ─────────────────────────────────────────────
+function toggleFelpeRow(inputId, rowId) {
+  const val = (document.getElementById(inputId)||{}).value || '';
+  const row = document.getElementById(rowId);
+  if (row) row.style.display = val.toUpperCase().includes('MGT') ? 'grid' : 'none';
+}
+
 function previewUrl(inputId, previewId) {
   const url = document.getElementById(inputId).value.trim();
   const preview = document.getElementById(previewId);
@@ -1285,6 +1329,7 @@ function aggiungiLogo() {
       tshirt_donna: { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
       canotte:      { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
       shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
+      felpe:        { costo: parseFloat(document.getElementById('l-costo-felpe').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-felpe').value)||0 },
     },
     minimo: parseInt(document.getElementById('l-minimo').value) || 3,
     note: document.getElementById('l-note').value.trim(),
@@ -1292,8 +1337,11 @@ function aggiungiLogo() {
   });
   saveDB();
   ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-prezzo-tshirt',
-   'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers','l-minimo','l-note','l-immagine-url']
-    .forEach(id => document.getElementById(id).value = '');
+   'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers',
+   'l-costo-felpe','l-prezzo-felpe','l-minimo','l-note','l-immagine-url']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const felpeRow = document.getElementById('l-felpe-row');
+  if (felpeRow) felpeRow.style.display = 'none';
   prev.style.display = 'none';
   renderLoghi();
   showToast('Logo aggiunto');
@@ -1307,6 +1355,7 @@ function getPrezzi(l) {
     tshirt_donna: { costo: l.costo||0, prezzo: l.prezzo||0 },
     canotte:      { costo: 0, prezzo: 0 },
     shoppers:     { costo: 0, prezzo: 0 },
+    felpe:        { costo: 0, prezzo: 0 },
   };
 }
 
@@ -1627,11 +1676,12 @@ function renderStock() {
     if (q && !l.nome.toLowerCase().includes(q)) return false;
     if (fornId && l.fornId !== fornId) return false;
     if (statoFilt) {
-      const hasLow = CATEGORIE.some(cat => cat.taglie
-        ? TAGLIE.some(t => { const s=getStock(l.id,cat.id,t,mag); return s>0&&s<=(l.minimo||3); })
+      const logoCategorieFilt = getCatPerLogo(l.nome);
+      const hasLow = logoCategorieFilt.some(cat => cat.taglie
+        ? (cat.taglieLista||TAGLIE).some(t => { const s=getStock(l.id,cat.id,t,mag); return s>0&&s<=(l.minimo||3); })
         : (() => { const s=getStock(l.id,cat.id,null,mag); return s>0&&s<=(l.minimo||3); })());
-      const hasOut = CATEGORIE.some(cat => cat.taglie
-        ? TAGLIE.some(t => getStock(l.id,cat.id,t,mag)===0)
+      const hasOut = logoCategorieFilt.some(cat => cat.taglie
+        ? (cat.taglieLista||TAGLIE).some(t => getStock(l.id,cat.id,t,mag)===0)
         : getStock(l.id,cat.id,null,mag)===0);
       if (statoFilt==='ok' && (hasLow||hasOut)) return false;
       if (statoFilt==='low' && !hasLow) return false;
@@ -1973,6 +2023,15 @@ function apriEditLogo(id) {
   document.getElementById('el-prezzo-canotte').value = p.canotte.prezzo || '';
   document.getElementById('el-costo-shoppers').value = p.shoppers.costo || '';
   document.getElementById('el-prezzo-shoppers').value = p.shoppers.prezzo || '';
+  const felpeRow = document.getElementById('el-felpe-row');
+  if (felpeRow) {
+    const showFelpe = (l.nome||'').toUpperCase().includes('MGT');
+    felpeRow.style.display = showFelpe ? 'grid' : 'none';
+    if (showFelpe) {
+      document.getElementById('el-costo-felpe').value = (p.felpe||{costo:0}).costo || '';
+      document.getElementById('el-prezzo-felpe').value = (p.felpe||{prezzo:0}).prezzo || '';
+    }
+  }
   // show current image URL
   const prev = document.getElementById('el-img-preview');
   const urlInput = document.getElementById('el-immagine-url');
@@ -2001,6 +2060,7 @@ function salvaLogo() {
     tshirt_donna: { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
     canotte:      { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
     shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
+    felpe:        { costo: parseFloat((document.getElementById('el-costo-felpe')||{}).value)||0, prezzo: parseFloat((document.getElementById('el-prezzo-felpe')||{}).value)||0 },
   };
   delete l.costo; delete l.prezzo;
   saveDB();
@@ -2150,6 +2210,9 @@ function salvaPrezzicCzk() {
     cappelli: parseFloat(document.getElementById('czk-cappelli').value) || 0,
     telimare: parseFloat(document.getElementById('czk-telimare').value) || 0,
     ventagli: parseFloat(document.getElementById('czk-ventagli').value) || 0,
+    ombrelli: parseFloat(document.getElementById('czk-ombrelli').value) || 0,
+    tappeti: parseFloat(document.getElementById('czk-tappeti').value) || 0,
+    mousepad: parseFloat(document.getElementById('czk-mousepad').value) || 0,
   };
   saveDB();
   showToast('Prezzi CZK salvati');
@@ -2157,7 +2220,7 @@ function salvaPrezzicCzk() {
 
 function loadPrezzicCzk() {
   const p = db.prezziCzk || {};
-  ['tshirt','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli'].forEach(k => {
+  ['tshirt','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli','ombrelli','tappeti','mousepad'].forEach(k => {
     const el = document.getElementById('czk-' + k);
     if (el) el.value = p[k] || '';
   });
@@ -2756,6 +2819,9 @@ const ACC_CATS = [
   { id: 'cappelli',  label: 'Cappelli' },
   { id: 'telimare',  label: 'Teli Mare' },
   { id: 'ventagli',  label: 'Ventagli' },
+  { id: 'ombrelli',  label: 'Ombrelli' },
+  { id: 'tappeti',   label: 'Tappeti' },
+  { id: 'mousepad',  label: 'Mouse Pad' },
 ];
 
 function getAccPrezzi() {
