@@ -2546,6 +2546,8 @@ function aggiungiAlScontrino(taglia) {
     logoId: cassaLogoId,
     catId: cassaCatId,
     taglia,
+    qty: 1,
+    prezzoUnit: prezzo,
     prezzo,
     valuta: cassaValuta,
     nome: logo ? logo.nome : '?',
@@ -2569,27 +2571,47 @@ function renderScontrino() {
     document.getElementById('btn-concludi').disabled = true;
     return;
   }
-  el.innerHTML = scontrino.map(item => `
-    <div class="scontrino-item">
+  el.innerHTML = scontrino.map(item => {
+    const qty = item.qty || 1;
+    const prezzoUnit = item.prezzoUnit || item.prezzo;
+    const subLabel = qty > 1 ? `${item.sub} ×${qty}` : item.sub;
+    return `<div class="scontrino-item">
       <div class="scontrino-item-info">
         <div class="scontrino-item-nome">${item.nome}</div>
-        <div class="scontrino-item-sub">${item.sub}</div>
+        <div class="scontrino-item-sub">${subLabel}</div>
       </div>
-      <input class="prezzo-input" type="number" min="0" step="0.01" value="${item.prezzo.toFixed(2)}"
-        onchange="aggiornaPrezzo(${item.id}, this.value)">
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <button onclick="cambiaQtyScontrino(${item.id},-1)" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;width:22px;height:22px;font-size:14px;line-height:1;color:var(--text2);display:flex;align-items:center;justify-content:center">−</button>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;min-width:18px;text-align:center">${qty}</span>
+        <button onclick="cambiaQtyScontrino(${item.id},1)" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;width:22px;height:22px;font-size:14px;line-height:1;color:var(--text2);display:flex;align-items:center;justify-content:center">+</button>
+      </div>
+      <input class="prezzo-input" type="number" min="0" step="0.01" value="${(prezzoUnit).toFixed(2)}"
+        onchange="aggiornaPrezzo(${item.id}, this.value)" title="Prezzo unitario">
       <button onclick="rimuoviDaScontrino(${item.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:4px">✕</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   const tot = scontrino.reduce((a,i) => a + i.prezzo, 0);
   document.getElementById('scontrino-totale').textContent = fmtValuta(tot);
   document.getElementById('btn-concludi').disabled = false;
 }
 
+function cambiaQtyScontrino(id, delta) {
+  const item = scontrino.find(x => x.id === id);
+  if (!item) return;
+  const nuovaQty = Math.max(1, (item.qty || 1) + delta);
+  item.qty = nuovaQty;
+  item.prezzo = (item.prezzoUnit || item.prezzo) * nuovaQty;
+  renderScontrino();
+}
+
 function aggiornaPrezzo(id, val) {
   const item = scontrino.find(x => x.id === id);
-  if (item) item.prezzo = parseFloat(val) || 0;
+  if (!item) return;
+  const nuovoPrezzoUnit = parseFloat(val) || 0;
+  item.prezzoUnit = nuovoPrezzoUnit;
+  item.prezzo = nuovoPrezzoUnit * (item.qty || 1);
   const tot = scontrino.reduce((a,i) => a + i.prezzo, 0);
-  document.getElementById('scontrino-totale').textContent = fmt(tot);
+  document.getElementById('scontrino-totale').textContent = fmtValuta(tot);
 }
 
 function rimuoviDaScontrino(id) {
@@ -2619,7 +2641,7 @@ async function concludiVendita() {
     dataOra,
     valuta: cassaValuta,
     totale: parseFloat(totale.toFixed(2)),
-    items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
+    items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, prezzoUnit: it.prezzoUnit||it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
   });
   // Scarica magazzino
   scontrino.forEach(it => {
@@ -2628,7 +2650,7 @@ async function concludiVendita() {
       if (!db.nextMovAccId) db.nextMovAccId = 1;
       db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.accCatId, mag: ev.magazzino, magazzino: ev.magazzino, qty: it.qty||1, tipo: 'scarico', data: now.toISOString().split('T')[0], note: 'Vendita' });
     } else {
-      db.movimenti.push({ id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: 1, tipo: 'scarico', magazzino: ev.magazzino, vendita: true, data: now.toISOString().split('T')[0] });
+      db.movimenti.push({ id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty||1, tipo: 'scarico', magazzino: ev.magazzino, vendita: true, data: now.toISOString().split('T')[0] });
     }
   });
   await saveDB();
