@@ -302,9 +302,8 @@
     <div class="app-sub" style="margin-top:2px">Gestionale Magazzino</div>
   </div>
   <nav class="sidebar-nav">
-    <div id="ruolo-badge" style="padding:6px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:4px">
-      <span id="ruolo-label" style="font-size:11px;font-weight:600;color:var(--text3)">—</span>
-      <button id="btn-switch-ruolo" onclick="mostraLoginModal()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:11px;color:var(--text2);padding:3px 8px;display:none">🔑 Admin</button>
+    <div onclick="mostraLoginModal()" id="ruolo-badge" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);margin-bottom:4px;cursor:pointer;background:var(--accent-light);border-radius:var(--radius)">
+      <span id="ruolo-label" style="font-size:12px;font-weight:600;color:var(--accent)">👤 Tocca per accedere</span>
     </div>
     <div class="nav-section">Panoramica</div>
     <div class="nav-item active" onclick="showSection('dashboard',this)">
@@ -3208,8 +3207,11 @@ function accessoCollaboratore() {
   isAdmin = false;
   venditeUnlocked = false;
   document.getElementById('modal-login').classList.remove('open');
-  document.getElementById('ruolo-label').textContent = '👤 Collaboratore';
-  document.getElementById('btn-switch-ruolo').style.display = 'block';
+  const badge = document.getElementById('ruolo-badge');
+  badge.style.background = 'var(--surface2)';
+  badge.style.borderRadius = 'var(--radius)';
+  document.getElementById('ruolo-label').textContent = '👤 Collaboratore — tocca per Admin';
+  document.getElementById('ruolo-label').style.color = 'var(--text3)';
   document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
   // If currently on an admin section, go to dashboard
   const cur = document.querySelector('.section.active');
