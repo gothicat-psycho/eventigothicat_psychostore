@@ -2181,7 +2181,9 @@ function closeModal(id) {
 
 
 document.querySelectorAll('.modal-backdrop').forEach(el => {
-  el.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+  el.addEventListener('click', function(e) {
+    if (e.target === this && this.id !== 'modal-login') closeModal(this.id);
+  });
 });
 
 
