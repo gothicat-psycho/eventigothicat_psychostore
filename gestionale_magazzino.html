@@ -3412,22 +3412,29 @@ function renderReportEvento() {
   const mediaEur = vendEur.length ? totEur/vendEur.length : 0;
   const totConv = ev.czkRate && totCzk ? totEur + totCzk/ev.czkRate : totEur;
 
-  // Top loghi
-  const loghiCount = {};
+  // Top 10 loghi con breakdown per categoria
+  const loghiData = {}; // { logoId: { tot, cats: { catId: qty } } }
   vend.forEach(v => (v.items||[]).forEach(it => {
     if (!it.isAccessorio && it.logoId) {
-      loghiCount[it.logoId] = (loghiCount[it.logoId]||0) + (it.qty||1);
+      if (!loghiData[it.logoId]) loghiData[it.logoId] = { tot: 0, cats: {} };
+      loghiData[it.logoId].tot += (it.qty||1);
+      loghiData[it.logoId].cats[it.catId] = (loghiData[it.logoId].cats[it.catId]||0) + (it.qty||1);
     }
   }));
-  const topLoghi = Object.entries(loghiCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topLoghi = Object.entries(loghiData).sort((a,b)=>b[1].tot-a[1].tot).slice(0,10);
+  const maxTop = topLoghi.length ? topLoghi[0][1].tot : 1;
 
-  // Categorie
+  // Categorie globali
   const catCount = {};
   vend.forEach(v => (v.items||[]).forEach(it => {
     const k = it.isAccessorio ? (it.accCatId||'acc') : (it.catId||'?');
     catCount[k] = (catCount[k]||0) + (it.qty||1);
   }));
   const maxCat = Math.max(...Object.values(catCount), 1);
+
+  // All cats present in top loghi
+  const allCatsInTop = [...new Set(topLoghi.flatMap(([,d])=>Object.keys(d.cats)))];
+  const catLabel = (k) => { const c = getCat(k) || ACC_CATS.find(x=>x.id===k); return c ? c.label : k; };
 
   el.innerHTML = `
     <div class="report-grid">
@@ -3439,19 +3446,31 @@ function renderReportEvento() {
       <div class="metric"><div class="metric-label">Scontrino medio €</div><div class="metric-value">${fmt(mediaEur)}</div></div>
     </div>
     <div class="report-card">
-      <div class="report-card-title">Top loghi venduti</div>
+      <div class="report-card-title">Top 10 loghi — dettaglio per categoria</div>
+      <div style="overflow-x:auto">
       <table class="report-table">
-        <thead><tr><th>Logo</th><th>Pezzi</th><th></th></tr></thead>
-        <tbody>${topLoghi.map(([lid,qty])=>{
-          const l=db.loghi.find(x=>x.id===parseInt(lid));
-          const max=topLoghi[0][1];
-          return `<tr><td style="font-weight:500">${l?l.nome:'?'}</td><td class="mono">${qty}</td>
-            <td style="width:40%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(qty/max*100)}%"></div></div></td></tr>`;
+        <thead><tr>
+          <th style="min-width:30px">#</th>
+          <th style="min-width:180px">Logo</th>
+          <th class="mono" style="text-align:center">Tot.</th>
+          ${allCatsInTop.map(k=>`<th style="text-align:center;font-size:10px">${catLabel(k)}</th>`).join('')}
+          <th style="width:25%"></th>
+        </tr></thead>
+        <tbody>${topLoghi.map(([lid,d],i)=>{
+          const l = db.loghi.find(x=>x.id===parseInt(lid));
+          return `<tr>
+            <td class="mono" style="color:var(--text3);font-weight:${i<3?'700':'400'}">${i+1}</td>
+            <td style="font-weight:${i<3?'700':'500'}">${l?l.nome:'?'}</td>
+            <td class="mono" style="text-align:center;font-weight:600;color:var(--green)">${d.tot}</td>
+            ${allCatsInTop.map(k=>`<td class="mono" style="text-align:center;color:${d.cats[k]?'var(--text)':'var(--text3)'}">${d.cats[k]||'—'}</td>`).join('')}
+            <td><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(d.tot/maxTop*100)}%"></div></div></td>
+          </tr>`;
         }).join('')}</tbody>
       </table>
+      </div>
     </div>
     <div class="report-card">
-      <div class="report-card-title">Vendite per categoria</div>
+      <div class="report-card-title">Vendite per categoria (totale evento)</div>
       <table class="report-table">
         <thead><tr><th>Categoria</th><th>Pezzi</th><th></th></tr></thead>
         <tbody>${Object.entries(catCount).sort((a,b)=>b[1]-a[1]).map(([k,qty])=>{
