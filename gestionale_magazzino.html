@@ -3203,6 +3203,7 @@ function accessoCollaboratore() {
   venditeUnlocked = false;
   document.getElementById('modal-login').classList.remove('open');
   document.getElementById('ruolo-label').textContent = '👤 Collaboratore';
+  document.getElementById('btn-switch-ruolo').style.display = 'block';
   document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
   // If currently on an admin section, go to dashboard
   const cur = document.querySelector('.section.active');
