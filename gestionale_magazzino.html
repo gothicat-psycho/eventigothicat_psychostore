@@ -267,6 +267,20 @@
   .evento-attivo-nome { font-weight: 600; flex: 1; }
   .prezzo-input { font-family: 'IBM Plex Mono', monospace; font-size: 13px; width: 70px; text-align: right; padding: 3px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
   @media (max-width: 900px) { .cassa-layout { grid-template-columns: 1fr; } }
+  .report-tab { }
+  .report-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; margin-bottom:12px; }
+  .report-card-title { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); margin-bottom:14px; }
+  .report-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+  .report-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .report-table th { padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:var(--text3); border-bottom:1px solid var(--border); }
+  .report-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  .report-table tr:last-child td { border-bottom:none; }
+  .report-table tr:hover td { background:var(--surface2); }
+  .report-bar-wrap { background:var(--surface2); border-radius:20px; height:8px; overflow:hidden; flex:1; }
+  .report-bar { height:8px; border-radius:20px; background:var(--accent); }
+  .report-fascia { border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; margin-bottom:8px; }
+  .report-fascia-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:8px; }
+  .nav-admin-only { display:none; }
   .mic-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border2); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all .2s; flex-shrink: 0; }
   .mic-btn:hover { background: var(--surface2); }
   .mic-btn.listening { background: var(--red-light); border-color: var(--red); animation: pulse 1s infinite; }
@@ -313,14 +327,17 @@
       <span class="nav-icon">⇄</span> Trasferimenti
     </div>
     <div class="nav-section">Vendite</div>
-    <div class="nav-item" onclick="apriEventiConPwd(this)">
-      <span class="nav-icon">★</span> Eventi 🔒
+    <div class="nav-item nav-admin-only" id="nav-eventi" onclick="doShowEventi(this)">
+      <span class="nav-icon">★</span> Eventi
     </div>
     <div class="nav-item" onclick="showSection('cassa',this)">
       <span class="nav-icon">⊕</span> Cassa
     </div>
-    <div class="nav-item" onclick="apriVenditeConPwd(this)">
-      <span class="nav-icon">◱</span> Storico vendite 🔒
+    <div class="nav-item nav-admin-only" id="nav-vendite" onclick="doShowVendite(this)">
+      <span class="nav-icon">◱</span> Storico vendite
+    </div>
+    <div class="nav-item nav-admin-only" id="nav-report" onclick="doShowReport(this)">
+      <span class="nav-icon">▲</span> Report
     </div>
   </nav>
   <div class="sidebar-footer" id="storage-info">Caricamento...</div>
@@ -882,6 +899,31 @@
   </div>
 </div>
 
+<!-- MODAL login -->
+<div class="modal-backdrop" id="modal-login" style="z-index:9999;background:rgba(0,0,0,.7)">
+  <div class="modal" style="width:400px;text-align:center">
+    <div style="font-size:48px;margin-bottom:8px">🐱</div>
+    <div class="modal-title" style="font-size:20px;margin-bottom:4px">Gothicat Store</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Gestionale Magazzino</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary" style="padding:16px;font-size:15px" onclick="accessoCollaboratore()">
+        👤 Accedi come Collaboratore
+      </button>
+      <button class="btn" style="padding:16px;font-size:15px;border-color:var(--accent);color:var(--accent)" onclick="mostraLoginAdmin()">
+        🔑 Accedi come Amministratore
+      </button>
+    </div>
+    <div id="login-admin-form" style="display:none;margin-top:16px">
+      <div class="form-group" style="text-align:left">
+        <label>Password amministratore</label>
+        <input type="password" id="login-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')verificaLoginAdmin()">
+      </div>
+      <div id="login-pwd-error" style="color:var(--red);font-size:12px;margin-top:4px;display:none">Password errata. Riprova.</div>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px;padding:12px" onclick="verificaLoginAdmin()">Entra</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL password vendite -->
 <div class="modal-backdrop" id="modal-pwd">
   <div class="modal" style="width:360px">
@@ -1150,12 +1192,12 @@ function getStockClass(s, minimo) {
 // NAVIGATION
 // ─────────────────────────────────────────────
 function showSection(s, el) {
-  if (s !== 'vendite' && s !== 'eventi') venditeUnlocked = false;
+
   document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('sec-' + s).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock Tessile', 'stock-accessori':'Stock Accessori', trasferimenti:'Trasferimenti', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite' };
+  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock Tessile', 'stock-accessori':'Stock Accessori', trasferimenti:'Trasferimenti', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite', report:'Report' };
   document.getElementById('page-title').textContent = titles[s] || s;
   if (s === 'dashboard') renderDashboard();
   if (s === 'fornitori') renderFornitori();
@@ -3139,18 +3181,63 @@ if (window.speechSynthesis) {
 // ─────────────────────────────────────────────
 // PASSWORD STORICO VENDITE
 // ─────────────────────────────────────────────
-const VENDITE_PWD = 'juvemerda666'; // cambia questa per aggiornare la password
+const ADMIN_PWD = 'juvemerda666'; // cambia questa per aggiornare la password
+const VENDITE_PWD = ADMIN_PWD; // backward compat
 let venditeUnlocked = false;
+let isAdmin = false;
 
-function apriEventiConPwd(navEl) {
-  if (venditeUnlocked) { doShowEventi(navEl); return; }
-  document.getElementById('pwd-input').value = '';
-  document.getElementById('pwd-error').style.display = 'none';
-  document.getElementById('modal-pwd').classList.add('open');
-  document.getElementById('modal-pwd')._navEl = navEl;
-  document.getElementById('modal-pwd')._target = 'eventi';
-  setTimeout(() => document.getElementById('pwd-input').focus(), 100);
+function mostraLoginModal() {
+  document.getElementById('login-admin-form').style.display = 'none';
+  document.getElementById('login-pwd').value = '';
+  document.getElementById('login-pwd-error').style.display = 'none';
+  document.getElementById('modal-login').classList.add('open');
 }
+
+function mostraLoginAdmin() {
+  document.getElementById('login-admin-form').style.display = 'block';
+  setTimeout(() => document.getElementById('login-pwd').focus(), 100);
+}
+
+function accessoCollaboratore() {
+  isAdmin = false;
+  venditeUnlocked = false;
+  document.getElementById('modal-login').classList.remove('open');
+  document.getElementById('ruolo-label').textContent = '👤 Collaboratore';
+  document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
+  // If currently on an admin section, go to dashboard
+  const cur = document.querySelector('.section.active');
+  if (cur && ['sec-eventi','sec-vendite','sec-report'].includes(cur.id)) {
+    showSection('dashboard', document.querySelector('.nav-item'));
+  }
+}
+
+function verificaLoginAdmin() {
+  const pwd = document.getElementById('login-pwd').value;
+  if (pwd === ADMIN_PWD) {
+    isAdmin = true;
+    venditeUnlocked = true;
+    document.getElementById('modal-login').classList.remove('open');
+    document.getElementById('ruolo-label').textContent = '🔑 Amministratore';
+    document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'block');
+  } else {
+    document.getElementById('login-pwd-error').style.display = 'block';
+    document.getElementById('login-pwd').value = '';
+    document.getElementById('login-pwd').focus();
+  }
+}
+
+function apriReportConPwd(navEl) { doShowReport(navEl); }
+
+function doShowReport(navEl) {
+  document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('sec-report').classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('page-title').textContent = 'Report';
+  initReport();
+}
+
+function apriEventiConPwd(navEl) { doShowEventi(navEl); }
 
 function doShowEventi(navEl) {
   document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
@@ -3161,36 +3248,9 @@ function doShowEventi(navEl) {
   renderEventi();
 }
 
-function apriVenditeConPwd(navEl) {
-  if (venditeUnlocked) {
-    // Already unlocked this session, open directly
-    doShowVendite(navEl);
-    return;
-  }
-  // Show password modal, store nav element for later
-  document.getElementById('pwd-input').value = '';
-  document.getElementById('pwd-error').style.display = 'none';
-  document.getElementById('modal-pwd').classList.add('open');
-  document.getElementById('modal-pwd')._navEl = navEl;
-  document.getElementById('modal-pwd')._target = 'vendite';
-  setTimeout(() => document.getElementById('pwd-input').focus(), 100);
-}
+function apriVenditeConPwd(navEl) { doShowVendite(navEl); }
 
-function verificaPwd() {
-  const val = document.getElementById('pwd-input').value;
-  if (val === VENDITE_PWD) {
-    venditeUnlocked = true;
-    closeModal('modal-pwd');
-    const navEl = document.getElementById('modal-pwd')._navEl;
-    const target = document.getElementById('modal-pwd')._target || 'vendite';
-    if (target === 'eventi') doShowEventi(navEl);
-    else doShowVendite(navEl);
-  } else {
-    document.getElementById('pwd-error').style.display = 'block';
-    document.getElementById('pwd-input').value = '';
-    document.getElementById('pwd-input').focus();
-  }
-}
+function verificaPwd() {} // legacy, handled by login system
 
 function doShowVendite(navEl) {
   document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
@@ -3200,6 +3260,346 @@ function doShowVendite(navEl) {
   document.getElementById('page-title').textContent = 'Storico vendite';
   renderVendite();
   populateEventiFilter();
+}
+
+
+// ─────────────────────────────────────────────
+// REPORT
+// ─────────────────────────────────────────────
+let reportTab = 'evento';
+
+function switchReportTab(tab) {
+  reportTab = tab;
+  document.querySelectorAll('.tab-btn[id^="rtab-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('rtab-' + tab).classList.add('active');
+  document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
+  document.getElementById('report-' + tab).style.display = 'block';
+  const fns = { evento: renderReportEvento, anno: renderReportAnno, loghi: renderReportLoghi, geo: renderReportGeo, stagionale: renderReportStagionale, giornaliero: renderReportGiornaliero, orario: renderReportOrario };
+  if (fns[tab]) fns[tab]();
+}
+
+function initReport() {
+  // Populate all selects
+  const anni = [...new Set((db.eventi||[]).map(e=>(e.inizio||'').substring(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  const eventiSorted = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''));
+  const evOpts = eventiSorted.map(e=>`<option value="${e.id}">${e.nome} (${(e.inizio||'').substring(0,4)})</option>`).join('');
+  const annoOpts = '<option value="">Tutti gli anni</option>' + anni.map(a=>`<option value="${a}">${a}</option>`).join('');
+  ['r-sel-evento','r-sel-evento-g','r-sel-evento-o'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<option value="">Seleziona un evento...</option>' + evOpts;
+  });
+  ['r-sel-anno','r-loghi-anno','r-stag-anno'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = annoOpts;
+  });
+  const loghiEvOpts = '<option value="">Tutti gli eventi</option>' + evOpts;
+  const rle = document.getElementById('r-loghi-evento');
+  if (rle) rle.innerHTML = loghiEvOpts;
+  switchReportTab('evento');
+}
+
+function getVenditeFiltered(eventoId, anno) {
+  return (db.vendite||[]).filter(v => {
+    if (eventoId && v.eventoId !== parseInt(eventoId)) return false;
+    if (anno) { const ev = getEvento(v.eventoId); if (!ev || !(ev.inizio||'').startsWith(anno)) return false; }
+    return true;
+  });
+}
+
+function fmtTot(eur, czk, rate) {
+  let s = fmt(eur);
+  if (czk > 0) { s += ` + ${Math.round(czk).toLocaleString('it')} CZK`; if (rate) s += ` (≈ ${fmt(eur + czk/rate)} tot)`; }
+  return s;
+}
+
+// ── REPORT EVENTO ──
+function renderReportEvento() {
+  const evId = document.getElementById('r-sel-evento').value;
+  const el = document.getElementById('r-evento-content');
+  if (!evId) { el.innerHTML = '<div class="report-card"><p style="color:var(--text3)">Seleziona un evento per vedere il report.</p></div>'; return; }
+  const ev = getEvento(parseInt(evId));
+  const vend = (db.vendite||[]).filter(v => v.eventoId === parseInt(evId));
+  const vendEur = vend.filter(v=>v.valuta!=='CZK');
+  const vendCzk = vend.filter(v=>v.valuta==='CZK');
+  const totEur = vendEur.reduce((a,v)=>a+v.totale,0);
+  const totCzk = vendCzk.reduce((a,v)=>a+v.totale,0);
+  const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
+  const mediaEur = vendEur.length ? totEur/vendEur.length : 0;
+  const totConv = ev.czkRate && totCzk ? totEur + totCzk/ev.czkRate : totEur;
+
+  // Top loghi
+  const loghiCount = {};
+  vend.forEach(v => (v.items||[]).forEach(it => {
+    if (!it.isAccessorio && it.logoId) {
+      loghiCount[it.logoId] = (loghiCount[it.logoId]||0) + (it.qty||1);
+    }
+  }));
+  const topLoghi = Object.entries(loghiCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Categorie
+  const catCount = {};
+  vend.forEach(v => (v.items||[]).forEach(it => {
+    const k = it.isAccessorio ? (it.accCatId||'acc') : (it.catId||'?');
+    catCount[k] = (catCount[k]||0) + (it.qty||1);
+  }));
+  const maxCat = Math.max(...Object.values(catCount), 1);
+
+  el.innerHTML = `
+    <div class="report-grid">
+      <div class="metric"><div class="metric-label">Scontrini totali</div><div class="metric-value">${vend.length}</div></div>
+      <div class="metric"><div class="metric-label">Articoli venduti</div><div class="metric-value">${nArt}</div></div>
+      <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div></div>
+      ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
+      ${totCzk>0&&ev.czkRate?`<div class="metric"><div class="metric-label">Totale in €</div><div class="metric-value green">${fmt(totConv)}</div></div>`:''}
+      <div class="metric"><div class="metric-label">Scontrino medio €</div><div class="metric-value">${fmt(mediaEur)}</div></div>
+    </div>
+    <div class="report-card">
+      <div class="report-card-title">Top loghi venduti</div>
+      <table class="report-table">
+        <thead><tr><th>Logo</th><th>Pezzi</th><th></th></tr></thead>
+        <tbody>${topLoghi.map(([lid,qty])=>{
+          const l=db.loghi.find(x=>x.id===parseInt(lid));
+          const max=topLoghi[0][1];
+          return `<tr><td style="font-weight:500">${l?l.nome:'?'}</td><td class="mono">${qty}</td>
+            <td style="width:40%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(qty/max*100)}%"></div></div></td></tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+    <div class="report-card">
+      <div class="report-card-title">Vendite per categoria</div>
+      <table class="report-table">
+        <thead><tr><th>Categoria</th><th>Pezzi</th><th></th></tr></thead>
+        <tbody>${Object.entries(catCount).sort((a,b)=>b[1]-a[1]).map(([k,qty])=>{
+          const cat = getCat(k) || ACC_CATS.find(c=>c.id===k);
+          return `<tr><td style="font-weight:500">${cat?cat.label:k}</td><td class="mono">${qty}</td>
+            <td style="width:40%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(qty/maxCat*100)}%"></div></div></td></tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── REPORT ANNO ──
+function renderReportAnno() {
+  const anno = document.getElementById('r-sel-anno').value;
+  const el = document.getElementById('r-anno-content');
+  const eventiAnno = (db.eventi||[]).filter(e => !anno || (e.inizio||'').startsWith(anno));
+  if (!eventiAnno.length) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Nessun evento trovato.</p></div>'; return; }
+  const vend = (db.vendite||[]).filter(v => eventiAnno.some(e=>e.id===v.eventoId));
+  const totEur = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  const totCzk = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
+
+  // Evento migliore
+  const evIncasso = eventiAnno.map(ev => {
+    const ve = vend.filter(v=>v.eventoId===ev.id);
+    const eur = ve.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+    const czk = ve.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+    const tot = eur + (ev.czkRate&&czk?czk/ev.czkRate:0);
+    return { ev, tot, eur, czk, n: ve.length };
+  }).sort((a,b)=>b.tot-a.tot);
+
+  el.innerHTML = `
+    <div class="report-grid">
+      <div class="metric"><div class="metric-label">Eventi</div><div class="metric-value">${eventiAnno.length}</div></div>
+      <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${vend.length}</div></div>
+      <div class="metric"><div class="metric-label">Articoli venduti</div><div class="metric-value">${nArt}</div></div>
+      <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div></div>
+      ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
+    </div>
+    <div class="report-card">
+      <div class="report-card-title">Classifica eventi per incasso</div>
+      <table class="report-table">
+        <thead><tr><th>#</th><th>Evento</th><th>Scontrini</th><th>Incasso €</th>${totCzk>0?'<th>CZK</th>':''}</tr></thead>
+        <tbody>${evIncasso.map((x,i)=>`<tr>
+          <td class="mono" style="color:var(--text3)">${i+1}</td>
+          <td style="font-weight:${i===0?'700':'400'}">${x.ev.nome}</td>
+          <td class="mono">${x.n}</td>
+          <td class="mono" style="font-weight:500;color:var(--green)">${fmt(x.eur)}</td>
+          ${totCzk>0?`<td class="mono">${x.czk>0?Math.round(x.czk).toLocaleString('it')+' CZK':'-'}</td>`:''}
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── REPORT LOGHI ──
+function renderReportLoghi() {
+  const anno = document.getElementById('r-loghi-anno').value;
+  const evId = document.getElementById('r-loghi-evento').value;
+  const el = document.getElementById('r-loghi-content');
+  let vend = db.vendite||[];
+  if (evId) vend = vend.filter(v=>v.eventoId===parseInt(evId));
+  else if (anno) {
+    const evAnno = (db.eventi||[]).filter(e=>(e.inizio||'').startsWith(anno));
+    vend = vend.filter(v=>evAnno.some(e=>e.id===v.eventoId));
+  }
+  const loghiMap = {};
+  vend.forEach(v => (v.items||[]).forEach(it => {
+    if (!it.isAccessorio && it.logoId) {
+      if (!loghiMap[it.logoId]) loghiMap[it.logoId] = { pezzi:0, fatturato:0 };
+      loghiMap[it.logoId].pezzi += it.qty||1;
+      loghiMap[it.logoId].fatturato += it.prezzo||0;
+    }
+  }));
+  const ranked = Object.entries(loghiMap).sort((a,b)=>b[1].pezzi-a[1].pezzi);
+  const maxPz = ranked.length ? ranked[0][1].pezzi : 1;
+  el.innerHTML = ranked.length ? `
+    <div class="report-card">
+      <div class="report-card-title">Ranking loghi per pezzi venduti</div>
+      <table class="report-table">
+        <thead><tr><th>#</th><th>Logo</th><th>Pezzi</th><th>Fatturato</th><th></th></tr></thead>
+        <tbody>${ranked.map(([lid,d],i)=>{
+          const l=db.loghi.find(x=>x.id===parseInt(lid));
+          return `<tr>
+            <td class="mono" style="color:var(--text3)">${i+1}</td>
+            <td style="font-weight:500">${l?l.nome:'?'}</td>
+            <td class="mono">${d.pezzi}</td>
+            <td class="mono">${fmt(d.fatturato)}</td>
+            <td style="width:30%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(d.pezzi/maxPz*100)}%"></div></div></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>` : '<div class="report-card"><p style="color:var(--text3)">Nessun dato disponibile.</p></div>';
+}
+
+// ── REPORT GEO ──
+function renderReportGeo() {
+  const el = document.getElementById('r-geo-content');
+  const nazioniMap = {};
+  (db.eventi||[]).forEach(ev => {
+    const naz = ev.nazione || 'Non specificata';
+    if (!nazioniMap[naz]) nazioniMap[naz] = { eventi:0, scontrini:0, eur:0, czk:0 };
+    nazioniMap[naz].eventi++;
+    const vend = (db.vendite||[]).filter(v=>v.eventoId===ev.id);
+    nazioniMap[naz].scontrini += vend.length;
+    nazioniMap[naz].eur += vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+    nazioniMap[naz].czk += vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  });
+  const ranked = Object.entries(nazioniMap).sort((a,b)=>b[1].eur-a[1].eur);
+  el.innerHTML = `<div class="report-card">
+    <div class="report-card-title">Incassi per nazione</div>
+    <table class="report-table">
+      <thead><tr><th>Nazione</th><th>Eventi</th><th>Scontrini</th><th>Incasso €</th><th>Incasso CZK</th></tr></thead>
+      <tbody>${ranked.map(([naz,d])=>`<tr>
+        <td style="font-weight:500">${naz}</td>
+        <td class="mono">${d.eventi}</td>
+        <td class="mono">${d.scontrini}</td>
+        <td class="mono" style="color:var(--green);font-weight:500">${fmt(d.eur)}</td>
+        <td class="mono">${d.czk>0?Math.round(d.czk).toLocaleString('it')+' CZK':'-'}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+// ── REPORT STAGIONALE ──
+function renderReportStagionale() {
+  const anno = document.getElementById('r-stag-anno').value;
+  const el = document.getElementById('r-stag-content');
+  const mesiLabel = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const mesiData = Array(12).fill(null).map((_,i)=>({ mese:i+1, eventi:0, scontrini:0, eur:0 }));
+  (db.eventi||[]).forEach(ev => {
+    if (anno && !(ev.inizio||'').startsWith(anno)) return;
+    const m = parseInt((ev.inizio||'').substring(5,7));
+    if (!m) return;
+    mesiData[m-1].eventi++;
+    const vend = (db.vendite||[]).filter(v=>v.eventoId===ev.id);
+    mesiData[m-1].scontrini += vend.length;
+    mesiData[m-1].eur += vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  });
+  const maxEur = Math.max(...mesiData.map(m=>m.eur), 1);
+  const attivi = mesiData.filter(m=>m.eventi>0);
+  el.innerHTML = attivi.length ? `<div class="report-card">
+    <div class="report-card-title">Andamento mensile</div>
+    <table class="report-table">
+      <thead><tr><th>Mese</th><th>Eventi</th><th>Scontrini</th><th>Incasso €</th><th></th></tr></thead>
+      <tbody>${mesiData.filter(m=>m.eventi>0).map(m=>`<tr>
+        <td style="font-weight:500">${mesiLabel[m.mese-1]}</td>
+        <td class="mono">${m.eventi}</td>
+        <td class="mono">${m.scontrini}</td>
+        <td class="mono" style="color:var(--green);font-weight:500">${fmt(m.eur)}</td>
+        <td style="width:30%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(m.eur/maxEur*100)}%"></div></div></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>` : '<div class="report-card"><p style="color:var(--text3)">Nessun dato disponibile.</p></div>';
+}
+
+// ── REPORT GIORNALIERO ──
+function renderReportGiornaliero() {
+  const evId = document.getElementById('r-sel-evento-g').value;
+  const el = document.getElementById('r-giorn-content');
+  if (!evId) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Seleziona un evento.</p></div>'; return; }
+  const vend = (db.vendite||[]).filter(v=>v.eventoId===parseInt(evId));
+  const giorniMap = {};
+  vend.forEach(v => {
+    const giorno = v.dataOra.substring(0,10);
+    if (!giorniMap[giorno]) giorniMap[giorno] = { scontrini:0, eur:0, czk:0, articoli:0 };
+    giorniMap[giorno].scontrini++;
+    giorniMap[giorno].articoli += (v.items||[]).length;
+    if (v.valuta==='CZK') giorniMap[giorno].czk += v.totale;
+    else giorniMap[giorno].eur += v.totale;
+  });
+  const giorni = Object.entries(giorniMap).sort((a,b)=>a[0].localeCompare(b[0]));
+  const hasCzk = giorni.some(([,d])=>d.czk>0);
+  el.innerHTML = giorni.length ? `<div class="report-card">
+    <div class="report-card-title">Vendite per giorno</div>
+    <table class="report-table">
+      <thead><tr><th>Data</th><th>Scontrini</th><th>Articoli</th><th>Incasso €</th>${hasCzk?'<th>CZK</th>':''}</tr></thead>
+      <tbody>${giorni.map(([data,d])=>`<tr>
+        <td style="font-weight:500">${fmtDate(data)}</td>
+        <td class="mono">${d.scontrini}</td>
+        <td class="mono">${d.articoli}</td>
+        <td class="mono" style="color:var(--green);font-weight:500">${fmt(d.eur)}</td>
+        ${hasCzk?`<td class="mono">${d.czk>0?Math.round(d.czk).toLocaleString('it')+' CZK':'-'}</td>`:''}
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>` : '<div class="report-card"><p style="color:var(--text3)">Nessuna vendita trovata.</p></div>';
+}
+
+// ── REPORT ORARIO ──
+function renderReportOrario() {
+  const evId = document.getElementById('r-sel-evento-o').value;
+  const giorno = document.getElementById('r-sel-giorno-o').value;
+  const el = document.getElementById('r-orario-content');
+  if (!evId) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Seleziona un evento.</p></div>'; return; }
+
+  // Populate giorno select
+  const vend = (db.vendite||[]).filter(v=>v.eventoId===parseInt(evId));
+  const giorni = [...new Set(vend.map(v=>v.dataOra.substring(0,10)))].sort();
+  const selG = document.getElementById('r-sel-giorno-o');
+  const curG = selG.value;
+  selG.innerHTML = '<option value="">Tutti i giorni</option>' + giorni.map(g=>`<option value="${g}" ${g===curG?'selected':''}>${fmtDate(g)}</option>`).join('');
+
+  const vendFilt = giorno ? vend.filter(v=>v.dataOra.startsWith(giorno)) : vend;
+  const fasce = [
+    { label:'09:00 – 11:59', from:9, to:12 },
+    { label:'12:00 – 14:59', from:12, to:15 },
+    { label:'15:00 – 17:59', from:15, to:18 },
+    { label:'18:00 – 20:59', from:18, to:21 },
+    { label:'21:00 – 23:59', from:21, to:24 },
+  ];
+  const fasciaData = fasce.map(f => {
+    const fv = vendFilt.filter(v => {
+      const h = new Date(v.dataOra).getHours();
+      return h >= f.from && h < f.to;
+    });
+    return { ...f, scontrini:fv.length, eur:fv.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0), czk:fv.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0), articoli:fv.reduce((a,v)=>a+(v.items||[]).length,0) };
+  });
+  const maxSco = Math.max(...fasciaData.map(f=>f.scontrini), 1);
+  const hasCzk = fasciaData.some(f=>f.czk>0);
+  el.innerHTML = `<div class="report-card">
+    <div class="report-card-title">Distribuzione oraria vendite</div>
+    ${fasciaData.map(f=>`<div class="report-fascia">
+      <div class="report-fascia-label">${f.label}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <div class="report-bar-wrap" style="flex:1"><div class="report-bar" style="width:${Math.round(f.scontrini/maxSco*100)}%;background:${f.scontrini===Math.max(...fasciaData.map(x=>x.scontrini))?'var(--green)':'var(--accent)'}"></div></div>
+        <span class="mono" style="font-size:13px;min-width:60px">${f.scontrini} scont.</span>
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--text2)">
+        <span>Articoli: <strong>${f.articoli}</strong></span>
+        <span>Incasso €: <strong style="color:var(--green)">${fmt(f.eur)}</strong></span>
+        ${hasCzk&&f.czk>0?`<span>CZK: <strong style="color:var(--accent)">${Math.round(f.czk).toLocaleString('it')}</strong></span>`:''}
+      </div>
+    </div>`).join('')}
+  </div>`;
 }
 
 // ─────────────────────────────────────────────
