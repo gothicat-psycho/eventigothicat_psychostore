@@ -903,7 +903,7 @@
 </div>
 
 <!-- MODAL login -->
-<div class="modal-backdrop" id="modal-login" style="z-index:9999;background:rgba(0,0,0,.7)">
+<div class="modal-backdrop open" id="modal-login" style="z-index:9999;background:rgba(0,0,0,.7)">
   <div class="modal" style="width:400px;text-align:center">
     <div style="font-size:48px;margin-bottom:8px">🐱</div>
     <div class="modal-title" style="font-size:20px;margin-bottom:4px">Gothicat Store</div>
@@ -3207,6 +3207,7 @@ function accessoCollaboratore() {
   isAdmin = false;
   venditeUnlocked = false;
   document.getElementById('modal-login').classList.remove('open');
+  document.getElementById('app').style.display = 'flex';
   const badge = document.getElementById('ruolo-badge');
   badge.style.background = 'var(--surface2)';
   badge.style.borderRadius = 'var(--radius)';
