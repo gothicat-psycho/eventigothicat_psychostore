@@ -169,7 +169,7 @@
   .stock-logo-block { margin-bottom: 20px; }
   .stock-logo-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
   .stock-genere-title { font-size: 12px; font-weight: 500; color: var(--text2); margin: 8px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
-  .stock-inline-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: start; margin-bottom: 4px; }
+  .stock-inline-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: start; margin-bottom: 4px; }
   .stock-cat-block { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .stock-cat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; padding: 2px 6px; border-radius: 20px; display: inline-block; }
   .stock-cat-label.cat-uomo  { background: #DBEAFE; color: #1E40AF; }
@@ -465,7 +465,7 @@
           </select>
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th></th><th>Nome logo</th><th>Fornitore</th><th>T-shirt U/D acq.</th><th>T-shirt vend.</th><th>Canotte acq./vend.</th><th>Shoppers acq./vend.</th><th>Scorta min.</th><th>Stock tot.</th><th>Stato</th><th></th></tr></thead>
+          <table><thead><tr><th></th><th>Nome logo</th><th>Fornitore</th><th>T-shirt U/D/B acq.</th><th>T-shirt vend.</th><th>Canotte acq./vend.</th><th>Shoppers acq./vend.</th><th>Scorta min.</th><th>Stock tot.</th><th>Stato</th><th></th></tr></thead>
           <tbody id="tab-loghi"></tbody></table>
         </div>
       </div>
@@ -711,6 +711,11 @@
         <div class="form-row cols4" style="margin-bottom:6px">
           <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Canotte Unisex</div>
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-canotte" type="number" min="0" step="1" placeholder="es. 650"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">T-shirt Bambino</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-tshirt-bambino" type="number" min="0" step="1" placeholder="es. 450"></div>
           <div></div><div></div>
         </div>
         <div class="form-row cols4" style="margin-bottom:6px">
@@ -1119,12 +1124,14 @@ const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL']; // donna: S to XL only
 const TAGLIE_FELPE = ['S','M','L','XL','2XL']; // Felpe MGT1 only
+const TAGLIE_BAMBINO = ['2A','3-4A','5-6A','7-8A']; // T-shirt bambino
 const CATEGORIE = [
-  { id: 'tshirt_uomo',   label: 'T-Shirt Uomo',   taglie: true,  taglieLista: TAGLIE,       prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
-  { id: 'tshirt_donna',  label: 'T-Shirt Donna',  taglie: true,  taglieLista: TAGLIE_DONNA, prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
-  { id: 'canotte',       label: 'Canotte Unisex', taglie: true,  taglieLista: TAGLIE,       prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
-  { id: 'shoppers',      label: 'Shoppers',        taglie: false, taglieLista: [],           prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
-  { id: 'felpe',         label: 'Felpe Unisex',   taglie: true,  taglieLista: TAGLIE_FELPE, prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: 'MGT1' },
+  { id: 'tshirt_uomo',    label: 'T-Shirt Uomo',    taglie: true,  taglieLista: TAGLIE,         prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
+  { id: 'tshirt_donna',   label: 'T-Shirt Donna',   taglie: true,  taglieLista: TAGLIE_DONNA,   prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
+  { id: 'tshirt_bambino', label: 'T-Shirt Bambino', taglie: true,  taglieLista: TAGLIE_BAMBINO, prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
+  { id: 'canotte',        label: 'Canotte Unisex',  taglie: true,  taglieLista: TAGLIE,         prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
+  { id: 'shoppers',       label: 'Shoppers',         taglie: false, taglieLista: [],             prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
+  { id: 'felpe',          label: 'Felpe Unisex',    taglie: true,  taglieLista: TAGLIE_FELPE,   prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: 'MGT1' },
 ];
 
 function getCatPerLogo(logoNome) {
@@ -1452,8 +1459,9 @@ function aggiungiLogo() {
     immagine: url,
     prezzi: {
       tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-      tshirt_donna: { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-      canotte:      { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
+      tshirt_donna:   { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+      tshirt_bambino: { costo: parseFloat(document.getElementById('l-costo-tshirt-bambino').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+      canotte:        { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
       shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
       felpe:        { costo: parseFloat(document.getElementById('l-costo-felpe').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-felpe').value)||0 },
     },
@@ -1462,7 +1470,7 @@ function aggiungiLogo() {
     stato: document.getElementById('l-stato').value,
   });
   saveDB();
-  ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-prezzo-tshirt',
+  ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-costo-tshirt-bambino','l-prezzo-tshirt',
    'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers',
    'l-costo-felpe','l-prezzo-felpe','l-minimo','l-note','l-immagine-url']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -1477,11 +1485,12 @@ function getPrezzi(l) {
   // backward compat: old logos had flat costo/prezzo
   if (l.prezzi) return l.prezzi;
   return {
-    tshirt_uomo:  { costo: l.costo||0, prezzo: l.prezzo||0 },
-    tshirt_donna: { costo: l.costo||0, prezzo: l.prezzo||0 },
-    canotte:      { costo: 0, prezzo: 0 },
-    shoppers:     { costo: 0, prezzo: 0 },
-    felpe:        { costo: 0, prezzo: 0 },
+    tshirt_uomo:    { costo: l.costo||0, prezzo: l.prezzo||0 },
+    tshirt_donna:   { costo: l.costo||0, prezzo: l.prezzo||0 },
+    tshirt_bambino: { costo: 0, prezzo: l.prezzo||0 },
+    canotte:        { costo: 0, prezzo: 0 },
+    shoppers:       { costo: 0, prezzo: 0 },
+    felpe:          { costo: 0, prezzo: 0 },
   };
 }
 
@@ -1838,7 +1847,7 @@ function renderStock() {
 
     // Build compact inline row: all categories side by side
     const logoCategorie = getCatPerLogo(l.nome);
-    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-donna', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
 
     const buildCatBlock = (cat, magFilter) => {
       const catTl = cat.taglieLista || TAGLIE;
@@ -2196,8 +2205,9 @@ function salvaLogo() {
   l.immagine = urlImmagine;
   l.prezzi = {
     tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
-    tshirt_donna: { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
-    canotte:      { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
+    tshirt_donna:   { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
+    tshirt_bambino: { costo: parseFloat((document.getElementById('el-costo-tshirt-bambino')||{}).value)||0, prezzo: prezzoTshirt },
+    canotte:        { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
     shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
     felpe:        { costo: parseFloat((document.getElementById('el-costo-felpe')||{}).value)||0, prezzo: parseFloat((document.getElementById('el-prezzo-felpe')||{}).value)||0 },
   };
@@ -2343,6 +2353,7 @@ function salvaPrezzicCzk() {
   if (!db.prezziCzk) db.prezziCzk = {};
   db.prezziCzk = {
     tshirt: parseFloat(document.getElementById('czk-tshirt').value) || 0,
+    tshirt_bambino: parseFloat(document.getElementById('czk-tshirt-bambino').value) || 0,
     canotte: parseFloat(document.getElementById('czk-canotte').value) || 0,
     shoppers: parseFloat(document.getElementById('czk-shoppers').value) || 0,
     toppe: parseFloat(document.getElementById('czk-toppe').value) || 0,
@@ -2361,7 +2372,7 @@ function salvaPrezzicCzk() {
 
 function loadPrezzicCzk() {
   const p = db.prezziCzk || {};
-  ['tshirt','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli','ombrelli','tappeti','mousepad'].forEach(k => {
+  ['tshirt','tshirt-bambino','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli','ombrelli','tappeti','mousepad'].forEach(k => {
     const el = document.getElementById('czk-' + k);
     if (el) el.value = p[k] || '';
   });
@@ -2371,6 +2382,7 @@ function getPrezzoCzk(catId, accCatId) {
   const p = db.prezziCzk || {};
   if (accCatId) return p[accCatId] || 0;
   if (catId === 'tshirt_uomo' || catId === 'tshirt_donna') return p.tshirt || 0;
+  if (catId === 'tshirt_bambino') return p.tshirt_bambino || p.tshirt || 0;
   if (catId === 'canotte') return p.canotte || 0;
   if (catId === 'shoppers') return p.shoppers || 0;
   return 0;
