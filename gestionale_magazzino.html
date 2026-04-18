@@ -302,6 +302,10 @@
     <div class="app-sub" style="margin-top:2px">Gestionale Magazzino</div>
   </div>
   <nav class="sidebar-nav">
+    <div id="ruolo-badge" style="padding:6px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:4px">
+      <span id="ruolo-label" style="font-size:11px;font-weight:600;color:var(--text3)">—</span>
+      <button id="btn-switch-ruolo" onclick="mostraLoginModal()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:11px;color:var(--text2);padding:3px 8px;display:none">🔑 Admin</button>
+    </div>
     <div class="nav-section">Panoramica</div>
     <div class="nav-item active" onclick="showSection('dashboard',this)">
       <span class="nav-icon">◈</span> Dashboard
