@@ -859,6 +859,82 @@
       </div>
     </div>
 
+    <!-- REPORT -->
+    <div class="section" id="sec-report">
+      <div class="tab-bar" style="margin-bottom:16px">
+        <button class="tab-btn active" id="rtab-evento" onclick="switchReportTab('evento')">📋 Per evento</button>
+        <button class="tab-btn" id="rtab-anno" onclick="switchReportTab('anno')">📅 Per anno</button>
+        <button class="tab-btn" id="rtab-loghi" onclick="switchReportTab('loghi')">🏷 Loghi</button>
+        <button class="tab-btn" id="rtab-geo" onclick="switchReportTab('geo')">🌍 Geografico</button>
+        <button class="tab-btn" id="rtab-stagionale" onclick="switchReportTab('stagionale')">📈 Stagionale</button>
+        <button class="tab-btn" id="rtab-giornaliero" onclick="switchReportTab('giornaliero')">📆 Giornaliero</button>
+        <button class="tab-btn" id="rtab-orario" onclick="switchReportTab('orario')">🕐 Orario</button>
+      </div>
+      <div id="report-evento" class="report-tab">
+        <div class="card">
+          <div class="flex-row" style="gap:8px;margin-bottom:0">
+            <select id="r-sel-evento" onchange="renderReportEvento()" style="max-width:320px">
+              <option value="">Seleziona un evento...</option>
+            </select>
+          </div>
+        </div>
+        <div id="r-evento-content"></div>
+      </div>
+      <div id="report-anno" class="report-tab" style="display:none">
+        <div class="card">
+          <select id="r-sel-anno" onchange="renderReportAnno()" style="max-width:160px">
+            <option value="">Tutti gli anni</option>
+          </select>
+        </div>
+        <div id="r-anno-content"></div>
+      </div>
+      <div id="report-loghi" class="report-tab" style="display:none">
+        <div class="card">
+          <div class="flex-row" style="gap:8px">
+            <select id="r-loghi-anno" onchange="renderReportLoghi()" style="max-width:160px">
+              <option value="">Tutti gli anni</option>
+            </select>
+            <select id="r-loghi-evento" onchange="renderReportLoghi()" style="max-width:280px">
+              <option value="">Tutti gli eventi</option>
+            </select>
+          </div>
+        </div>
+        <div id="r-loghi-content"></div>
+      </div>
+      <div id="report-geo" class="report-tab" style="display:none">
+        <div id="r-geo-content"></div>
+      </div>
+      <div id="report-stagionale" class="report-tab" style="display:none">
+        <div class="card">
+          <select id="r-stag-anno" onchange="renderReportStagionale()" style="max-width:160px">
+            <option value="">Tutti gli anni</option>
+          </select>
+        </div>
+        <div id="r-stag-content"></div>
+      </div>
+      <div id="report-giornaliero" class="report-tab" style="display:none">
+        <div class="card">
+          <select id="r-sel-evento-g" onchange="renderReportGiornaliero()" style="max-width:320px">
+            <option value="">Seleziona un evento...</option>
+          </select>
+        </div>
+        <div id="r-giorn-content"></div>
+      </div>
+      <div id="report-orario" class="report-tab" style="display:none">
+        <div class="card">
+          <div class="flex-row" style="gap:8px">
+            <select id="r-sel-evento-o" onchange="renderReportOrario()" style="max-width:320px">
+              <option value="">Seleziona un evento...</option>
+            </select>
+            <select id="r-sel-giorno-o" onchange="renderReportOrario()" style="max-width:180px">
+              <option value="">Tutti i giorni</option>
+            </select>
+          </div>
+        </div>
+        <div id="r-orario-content"></div>
+      </div>
+    </div>
+
   </div>
 </main>
 </div>
