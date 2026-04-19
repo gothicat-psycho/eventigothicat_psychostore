@@ -418,7 +418,7 @@
                 <div style="overflow-x:auto">
                   <table id="tab-dil-articoli">
                     <thead><tr>
-                      <th>Articolo</th>
+                      <th>Articolo DIL</th>
                       <th>¥ unit</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
                       <th>Pz</th>
@@ -427,6 +427,7 @@
                       <th>Costo €</th>
                       <th>Vendita €</th>
                       <th>Ric%</th>
+                      <th colspan="7" style="text-align:center;background:var(--green-light);color:var(--green)">Barcode catalogo (XS→XXXL)</th>
                       <th></th>
                     </tr></thead>
                     <tbody id="tbody-dil"></tbody>
@@ -1483,6 +1484,7 @@ function renderOrdiniLista() {
       <td style="display:flex;gap:4px">
         <button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>
         <button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>
+        ${o.stato!=='ricevuto'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">📦 Carica stock</button>`:'<span class="badge badge-green">✓ In stock</span>'}
         <button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>
       </td>
     </tr>`;
@@ -1509,8 +1511,9 @@ function aggiungiRigaDIL(articolo) {
   const a = articolo || {};
   const tr = document.createElement('tr');
   tr.id = 'dil-row-'+id;
+  const TAGLIE_DIL = ['xs','s','m','l','xl','xxl','xxxl'];
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id})"></td>
+    <td><input class="input-rmb" style="width:80px" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id});suggerisciBarcodes(${id})"></td>
     <td><input class="input-rmb" id="dil-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDIL()"></td>
     <td><input class="input-qty" id="dil-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDIL()"></td>
     <td><input class="input-qty" id="dil-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaDIL()"></td>
@@ -1525,6 +1528,13 @@ function aggiungiRigaDIL(articolo) {
     <td class="costo-cell" id="dil-costo-${id}">—</td>
     <td><input class="input-rmb" id="dil-vend-${id}" type="number" step="0.01" value="${a.vendita||''}" placeholder="${a.vendita||'0.00'}" oninput="ricalcolaDIL()"></td>
     <td class="ricarico-cell" id="dil-ric-${id}">—</td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xs-${id}" value="${a.bcXs||''}" placeholder="barcode XS" list="dl-${id}-xs"><datalist id="dl-${id}-xs"></datalist></td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-s-${id}" value="${a.bcS||''}" placeholder="barcode S" list="dl-${id}-s"><datalist id="dl-${id}-s"></datalist></td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-m-${id}" value="${a.bcM||''}" placeholder="barcode M" list="dl-${id}-m"><datalist id="dl-${id}-m"></datalist></td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-l-${id}" value="${a.bcL||''}" placeholder="barcode L" list="dl-${id}-l"><datalist id="dl-${id}-l"></datalist></td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xl-${id}" value="${a.bcXl||''}" placeholder="barcode XL" list="dl-${id}-xl"><datalist id="dl-${id}-xl"></datalist></td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xxl-${id}" value="${a.bcXxl||''}" placeholder="barcode XXL" list="dl-${id}-xxl"><datalist id="dl-${id}-xxl"></datalist></td>
+    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xxxl-${id}" value="${a.bcXxxl||''}" placeholder="barcode XXXL" list="dl-${id}-xxxl"><datalist id="dl-${id}-xxxl"></datalist></td>
     <td><button onclick="rimuoviRigaDIL(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>`;
   document.getElementById('tbody-dil').appendChild(tr);
   // Auto-fill prezzo vendita da stock
@@ -1552,6 +1562,32 @@ function checkPrezzoVendita(id) {
 }
 window.checkPrezzoVendita = checkPrezzoVendita;
 
+function suggerisciBarcodes(id) {
+  const codice = document.getElementById('dil-art-'+id)?.value?.trim();
+  if(!codice || codice.length < 3) return;
+  const taglie = ['xs','s','m','l','xl','xxl','xxxl'];
+  const suffissi = {xs:'XS',s:'S',m:'M',l:'L',xl:'XL',xxl:'XXL',xxxl:'XXXL'};
+  taglie.forEach(t => {
+    const dl = document.getElementById('dl-'+id+'-'+t);
+    if(!dl) return;
+    // Cerca nel catalogo barcode che contengono il codice DIL
+    const matches = (db.prodotti||[])
+      .filter(p => p.barcode.toUpperCase().includes(codice.toUpperCase()))
+      .map(p => p.barcode);
+    dl.innerHTML = matches.map(b=>`<option value="${b}">`).join('');
+    // Auto-fill se c'è un solo match per questa taglia
+    const tagliaSuf = suffissi[t];
+    const exactMatch = matches.find(b => {
+      const upper = b.toUpperCase();
+      return upper.includes('F.'+tagliaSuf) || upper.includes('M.'+tagliaSuf) ||
+             upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf);
+    });
+    const inputEl = document.getElementById('dil-bc-'+t+'-'+id);
+    if(inputEl && !inputEl.value && exactMatch) inputEl.value = exactMatch;
+  });
+}
+window.suggerisciBarcodes = suggerisciBarcodes;
+
 function getRighe() {
   const righe = [];
   document.querySelectorAll('[id^="dil-row-"]').forEach(tr => {
@@ -1569,7 +1605,14 @@ function getRighe() {
     const pz = xs+s+m+l+xl+xxl+xxxl;
     const totRmb = prezzoRmb * pz;
     const vendita = parseFloat(document.getElementById('dil-vend-'+id)?.value)||0;
-    righe.push({id, articolo:art, prezzoRmb, xs, s, m, l, xl, xxl, xxxl, pz, totRmb, vendita});
+    const bcXs   = document.getElementById('dil-bc-xs-'+id)?.value?.trim()||'';
+    const bcS    = document.getElementById('dil-bc-s-'+id)?.value?.trim()||'';
+    const bcM    = document.getElementById('dil-bc-m-'+id)?.value?.trim()||'';
+    const bcL    = document.getElementById('dil-bc-l-'+id)?.value?.trim()||'';
+    const bcXl   = document.getElementById('dil-bc-xl-'+id)?.value?.trim()||'';
+    const bcXxl  = document.getElementById('dil-bc-xxl-'+id)?.value?.trim()||'';
+    const bcXxxl = document.getElementById('dil-bc-xxxl-'+id)?.value?.trim()||'';
+    righe.push({id, articolo:art, prezzoRmb, xs, s, m, l, xl, xxl, xxxl, pz, totRmb, vendita, bcXs, bcS, bcM, bcL, bcXl, bcXxl, bcXxxl});
   });
   return righe;
 }
@@ -1843,6 +1886,75 @@ async function cambiaStatoOrdine(id, stato) {
   if(o) { o.stato=stato; await saveDB(); showToast('Stato aggiornato'); }
 }
 window.cambiaStatoOrdine = cambiaStatoOrdine;
+
+async function caricaAMagazzino(ordineId) {
+  const o = (db.ordiniDIL||[]).find(x=>x.id===ordineId);
+  if(!o) return;
+  if(o.stato==='ricevuto') { showToast('Ordine già caricato in stock','amber'); return; }
+
+  const taglieCampi = [
+    {t:'xs', bc:'bcXs'}, {t:'s', bc:'bcS'}, {t:'m', bc:'bcM'}, {t:'l', bc:'bcL'},
+    {t:'xl', bc:'bcXl'}, {t:'xxl', bc:'bcXxl'}, {t:'xxxl', bc:'bcXxxl'}
+  ];
+
+  let caricati = 0;
+  let nonTrovati = [];
+
+  (o.articoli||[]).forEach(r => {
+    taglieCampi.forEach(({t, bc}) => {
+      const qty = r[t]||0;
+      if(!qty) return;
+      const barcode = r[bc];
+      if(!barcode) { nonTrovati.push(`${r.articolo} ${t.toUpperCase()}`); return; }
+      // Verifica che il barcode esista nel catalogo
+      const prod = getProdotto(barcode);
+      if(!prod) { nonTrovati.push(`${barcode} (non trovato in catalogo)`); return; }
+      // Carica stock
+      db.movimenti.push({
+        id: db.nextMovId++,
+        barcode,
+        qty,
+        tipo: 'carico',
+        data: new Date().toISOString().split('T')[0],
+        note: `Ordine ${o.riferimento} - DARK IN LOVE`
+      });
+      // Aggiorna costo prodotto
+      const costoRiga = calcolaCostoProdottoDIL(o, r);
+      if(costoRiga > 0) prod.costo = parseFloat(costoRiga.toFixed(2));
+      caricati++;
+    });
+  });
+
+  o.stato = 'ricevuto';
+  await saveDB();
+
+  let msg = `✓ ${caricati} varianti caricate in stock`;
+  if(nonTrovati.length) {
+    msg += `
+⚠ Non trovati: ${nonTrovati.join(', ')}`;
+    showToast(`${caricati} caricate, ${nonTrovati.length} non trovate`, 'amber');
+    alert(msg);
+  } else {
+    showToast(msg);
+  }
+  renderOrdiniLista();
+}
+window.caricaAMagazzino = caricaAMagazzino;
+
+function calcolaCostoProdottoDIL(o, r) {
+  const rmbUsd = o.rmbUsd||0;
+  const usdEur = o.usdEur||0;
+  if(!rmbUsd || !usdEur) return 0;
+  const totMerceRmb = (o.articoli||[]).reduce((a,x)=>a+x.totRmb, 0);
+  const trasportoEur = (o.trasportoRmb||0)*rmbUsd*usdEur;
+  const psychoEur = (o.psychoUsd||0)*usdEur;
+  const dazio = psychoEur*0.12;
+  const totCostiMerce = trasportoEur + dazio + (o.diritti||0) + (o.commissioni||0);
+  const pct = totMerceRmb>0 ? r.totRmb/totMerceRmb : 0;
+  const prezzoEur = r.prezzoRmb * rmbUsd * usdEur;
+  const costoAdd = r.pz>0 && totMerceRmb>0 ? (totCostiMerce*pct)/r.pz : 0;
+  return prezzoEur + costoAdd;
+}
 
 // ── INIT ──
 setLogo();
