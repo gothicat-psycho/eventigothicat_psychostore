@@ -128,6 +128,24 @@
   .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .prezzo-input { font-family:monospace; font-size:13px; width:80px; text-align:right; padding:3px 6px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); }
   @media (max-width:900px) { .cassa-layout { grid-template-columns:1fr; } }
+  .ordine-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .ordine-articoli table { font-size:12px; }
+  .ordine-articoli th, .ordine-articoli td { padding:5px 8px; }
+  .input-rmb { font-family:monospace; width:90px; padding:3px 6px; border:1px solid var(--border); border-radius:var(--radius); font-size:12px; text-align:right; background:var(--surface); }
+  .input-qty { font-family:monospace; width:44px; padding:3px 4px; border:1px solid var(--border); border-radius:var(--radius); font-size:12px; text-align:center; background:var(--surface); }
+  .costo-cell { font-family:monospace; font-size:12px; color:var(--green); font-weight:500; }
+  .ricarico-cell { font-family:monospace; font-size:12px; }
+  .ricarico-ok { color:var(--green); }
+  .ricarico-low { color:var(--red); }
+  .sezione-costi { background:var(--accent-light); border:1px solid #C5D3F5; border-radius:var(--radius-lg); padding:14px 16px; }
+  .costo-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:13px; border-bottom:1px solid rgba(0,0,0,.06); }
+  .costo-row:last-child { border-bottom:none; }
+  .costo-row.totale { font-weight:700; font-size:14px; color:var(--accent); margin-top:4px; padding-top:8px; border-top:2px solid var(--accent); border-bottom:none; }
+  .ordine-tab-bar { display:flex; gap:4px; margin-bottom:16px; }
+  .ordine-stato { display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .stato-bozza { background:var(--surface2); color:var(--text2); }
+  .stato-confermato { background:var(--amber-light); color:var(--amber); }
+  .stato-ricevuto { background:var(--green-light); color:var(--green); }
 </style>
 </head>
 <body>
@@ -194,6 +212,8 @@
       <div class="nav-section">Catalogo</div>
       <div class="nav-item" onclick="showSection('catalogo',this)"><span class="nav-icon">▦</span> Prodotti</div>
       <div class="nav-item" onclick="showSection('stock',this)"><span class="nav-icon">▨</span> Stock</div>
+      <div class="nav-section">Acquisti</div>
+      <div class="nav-item" onclick="showSection('ordini',this)"><span class="nav-icon">📦</span> Ordini</div>
       <div class="nav-section">Vendite</div>
       <div class="nav-item" onclick="showSection('eventi',this)"><span class="nav-icon">★</span> Eventi</div>
       <div class="nav-item" onclick="showSection('cassa',this)"><span class="nav-icon">⊕</span> Cassa</div>
@@ -284,6 +304,135 @@
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="applicaPrezziCzk()">Applica prezzi CZK automatici a tutti i prodotti</button>
           <span style="font-size:11px;color:var(--text3)">Imposta il prezzo CZK per ogni prodotto in base al suo prezzo EUR</span>
+        </div>
+      </div>
+
+      <!-- ORDINI -->
+      <div class="section" id="sec-ordini">
+        <div class="tab-bar ordine-tab-bar">
+          <button class="tab-btn active" id="otab-lista" onclick="switchOrdiniTab('lista')">📋 Lista ordini</button>
+          <button class="tab-btn" id="otab-nuovo" onclick="switchOrdiniTab('nuovo')">＋ Nuovo ordine DIL</button>
+        </div>
+
+        <!-- LISTA ORDINI -->
+        <div id="ordini-lista">
+          <div class="card">
+            <div class="card-title">Ordini Dark In Love</div>
+            <div class="table-wrap">
+              <table><thead><tr>
+                <th>Data</th><th>Riferimento</th><th>Articoli</th><th>Totale ¥</th><th>Totale USD</th><th>Totale €</th><th>Stato</th><th></th>
+              </tr></thead>
+              <tbody id="tab-ordini-dil"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- NUOVO ORDINE DIL -->
+        <div id="ordini-nuovo" style="display:none">
+          <div class="ordine-grid">
+            <!-- Colonna sinistra: parametri ordine -->
+            <div>
+              <div class="card">
+                <div class="card-title">Parametri ordine</div>
+                <div class="form-row">
+                  <div class="form-group"><label>Riferimento ordine</label><input id="dil-ref" placeholder="es. DIL-2025-01"></div>
+                  <div class="form-group"><label>Data ordine</label><input id="dil-data" type="date"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>Tasso RMB/USD <span style="font-size:10px;color:var(--text3)">(inserire al pagamento)</span></label><input id="dil-rmb-usd" type="number" step="0.0001" placeholder="es. 0.1380" oninput="ricalcolaDIL()"></div>
+                  <div class="form-group"><label>Tasso USD/EUR <span style="font-size:10px;color:var(--text3)">(inserire al pagamento)</span></label><input id="dil-usd-eur" type="number" step="0.0001" placeholder="es. 0.9200" oninput="ricalcolaDIL()"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>Trasporto (¥)</label><input id="dil-trasporto-rmb" type="number" step="1" placeholder="es. 900" oninput="ricalcolaDIL()"></div>
+                  <div class="form-group"><label>Diritti doganali (€)</label><input id="dil-diritti" type="number" step="0.01" placeholder="es. 15.00" oninput="ricalcolaDIL()"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>Commissioni Paypal (€)</label><input id="dil-commissioni" type="number" step="0.01" placeholder="es. 8.00" oninput="ricalcolaDIL()"></div>
+                  <div class="form-group"><label>Note</label><input id="dil-note" placeholder="Note libere"></div>
+                </div>
+              </div>
+
+              <!-- RIEPILOGO COSTI -->
+              <div class="card">
+                <div class="card-title">Riepilogo costi</div>
+                <div class="sezione-costi">
+                  <div class="costo-row"><span>Subtotale merce (¥)</span><span id="rc-tot-rmb" class="mono">—</span></div>
+                  <div class="costo-row"><span>Subtotale merce (USD)</span><span id="rc-tot-usd" class="mono">—</span></div>
+                  <div class="costo-row"><span>Subtotale merce (€)</span><span id="rc-tot-eur" class="mono">—</span></div>
+                  <div class="sep"></div>
+                  <div class="costo-row"><span>Trasporto (¥ → €)</span><span id="rc-trasporto-eur" class="mono">—</span></div>
+                  <div class="costo-row"><span>Fattura doganale (Psycho USD)</span><span id="rc-psycho-usd" class="mono">—</span></div>
+                  <div class="costo-row"><span>Fattura doganale (Psycho €)</span><span id="rc-psycho-eur" class="mono">—</span></div>
+                  <div class="costo-row"><span>Rimanente (Extra USD)</span><span id="rc-extra-usd" class="mono">—</span></div>
+                  <div class="sep"></div>
+                  <div class="costo-row"><span>Dazio (12% fattura doganale €)</span><span id="rc-dazio" class="mono">—</span></div>
+                  <div class="costo-row"><span>IVA (22% fattura doganale €)</span><span id="rc-iva" class="mono">—</span></div>
+                  <div class="costo-row"><span>Diritti doganali</span><span id="rc-diritti" class="mono">—</span></div>
+                  <div class="costo-row"><span>IVA su diritti (22%)</span><span id="rc-iva-diritti" class="mono">—</span></div>
+                  <div class="costo-row"><span>Commissioni Paypal</span><span id="rc-commissioni" class="mono">—</span></div>
+                  <div class="sep"></div>
+                  <div class="costo-row totale"><span>Totale costi aggiuntivi (€)</span><span id="rc-tot-extra" class="mono">—</span></div>
+                  <div class="costo-row totale" style="color:var(--green)"><span>Costo medio per pezzo (€)</span><span id="rc-costo-medio" class="mono">—</span></div>
+                </div>
+              </div>
+
+              <!-- PAGAMENTI -->
+              <div class="card">
+                <div class="card-title">Suddivisione pagamenti</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div style="background:var(--accent-light);border-radius:var(--radius-lg);padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px">PSYCHO (fattura doganale)</div>
+                    <div style="font-size:11px;color:var(--text2);margin-bottom:2px">USD: <strong id="pag-psycho-usd" class="mono">—</strong></div>
+                    <div style="font-size:11px;color:var(--text2)">EUR: <strong id="pag-psycho-eur" class="mono">—</strong></div>
+                  </div>
+                  <div style="background:var(--green-light);border-radius:var(--radius-lg);padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">EXTRA (rimanente)</div>
+                    <div style="font-size:11px;color:var(--text2);margin-bottom:2px">USD: <strong id="pag-extra-usd" class="mono">—</strong></div>
+                    <div style="font-size:11px;color:var(--text2)">EUR: <strong id="pag-extra-eur" class="mono">—</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Colonna destra: articoli -->
+            <div>
+              <div class="card ordine-articoli">
+                <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+                  <span>Articoli ordine</span>
+                  <button class="btn btn-sm btn-primary" onclick="aggiungiRigaDIL()">+ Aggiungi articolo</button>
+                </div>
+                <div style="overflow-x:auto">
+                  <table id="tab-dil-articoli">
+                    <thead><tr>
+                      <th>Articolo</th>
+                      <th>¥ unit</th>
+                      <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
+                      <th>Pz</th>
+                      <th>Tot ¥</th>
+                      <th>%</th>
+                      <th>Costo €</th>
+                      <th>Vendita €</th>
+                      <th>Ric%</th>
+                      <th></th>
+                    </tr></thead>
+                    <tbody id="tbody-dil"></tbody>
+                  </table>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-primary" onclick="salvaOrdineDIL()">💾 Salva ordine</button>
+                  <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETTAGLIO ORDINE -->
+        <div id="ordini-dettaglio" style="display:none">
+          <div style="margin-bottom:12px">
+            <button class="btn btn-sm" onclick="switchOrdiniTab('lista')">← Torna alla lista</button>
+          </div>
+          <div id="ordini-dettaglio-content"></div>
         </div>
       </div>
 
@@ -598,7 +747,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('sec-'+s).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report'};
+  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report'};
   document.getElementById('page-title').textContent = titles[s]||s;
   if(s==='dashboard') renderDashboard();
   if(s==='catalogo') { populateFornSelects(); renderCatalogo(); }
@@ -606,6 +755,7 @@ function showSection(s, el) {
   if(s==='eventi') renderEventi();
   if(s==='cassa') { initCassa(); setTimeout(()=>document.getElementById('barcode-input').focus(),200); }
   if(s==='storico') { populateStoricoFiltri(); renderStorico(); }
+  if(s==='ordini') initOrdini();
   if(s==='report') initReport();
 }
 window.showSection = showSection;
@@ -820,6 +970,7 @@ async function eseguiDel() {
   if(tipo==='prodotto') { db.prodotti = db.prodotti.filter(p=>p.barcode!==id); db.movimenti = db.movimenti.filter(m=>m.barcode!==id); }
   if(tipo==='evento') { db.eventi = db.eventi.filter(e=>e.id!==id); }
   if(tipo==='vendita') { db.vendite = db.vendite.filter(v=>v.id!==id); }
+  if(tipo==='ordineDIL') { db.ordiniDIL = (db.ordiniDIL||[]).filter(o=>o.id!==id); }
   await saveDB();
   closeModal('modal-del');
   pendingDel = null;
@@ -1276,6 +1427,375 @@ function renderROrario() {
   </div>`).join('')}</div>`;
 }
 window.renderROrario = renderROrario;
+
+// ── ORDINI DARK IN LOVE ──
+
+let dilRigheId = 0;
+
+function switchOrdiniTab(tab) {
+  document.getElementById('ordini-lista').style.display = tab==='lista' ? 'block' : 'none';
+  document.getElementById('ordini-nuovo').style.display = tab==='nuovo' ? 'block' : 'none';
+  document.getElementById('ordini-dettaglio').style.display = tab==='dettaglio' ? 'block' : 'none';
+  document.querySelectorAll('[id^="otab-"]').forEach(b=>b.classList.remove('active'));
+  const bt = document.getElementById('otab-'+tab);
+  if(bt) bt.classList.add('active');
+  if(tab==='lista') renderOrdiniLista();
+  if(tab==='nuovo') initNuovoOrdineDIL();
+}
+window.switchOrdiniTab = switchOrdiniTab;
+
+function initOrdini() {
+  switchOrdiniTab('lista');
+}
+
+function renderOrdiniLista() {
+  const ordini = [...(db.ordiniDIL||[])].sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const tbody = document.getElementById('tab-ordini-dil');
+  if(!tbody) return;
+  tbody.innerHTML = ordini.length ? ordini.map(o=>{
+    const nArt = (o.articoli||[]).length;
+    const totRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
+    const totUsd = totRmb * (o.rmbUsd||0);
+    const totEur = totUsd * (o.usdEur||0);
+    const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto'}[o.stato||'bozza'];
+    return `<tr>
+      <td class="mono" style="font-size:12px">${o.data||'-'}</td>
+      <td style="font-weight:600">${o.riferimento||'-'}</td>
+      <td class="mono">${nArt} articoli</td>
+      <td class="mono">${Math.round(totRmb).toLocaleString('it')} ¥</td>
+      <td class="mono">${o.rmbUsd ? '$ '+totUsd.toFixed(2) : '—'}</td>
+      <td class="mono">${o.usdEur ? fmt(totEur) : '—'}</td>
+      <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>
+        <button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine inserito</td></tr>';
+}
+
+function initNuovoOrdineDIL() {
+  dilRigheId = 0;
+  document.getElementById('dil-ref').value = '';
+  document.getElementById('dil-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('dil-rmb-usd').value = '';
+  document.getElementById('dil-usd-eur').value = '';
+  document.getElementById('dil-trasporto-rmb').value = '';
+  document.getElementById('dil-diritti').value = '';
+  document.getElementById('dil-commissioni').value = '';
+  document.getElementById('dil-note').value = '';
+  document.getElementById('tbody-dil').innerHTML = '';
+  aggiungiRigaDIL();
+  ricalcolaDIL();
+}
+
+function aggiungiRigaDIL(articolo) {
+  const id = ++dilRigheId;
+  const a = articolo || {};
+  const tr = document.createElement('tr');
+  tr.id = 'dil-row-'+id;
+  tr.innerHTML = `
+    <td><input class="input-rmb" style="width:80px" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id})"></td>
+    <td><input class="input-rmb" id="dil-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-m-${id}" type="number" min="0" value="${a.m||''}" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-l-${id}" type="number" min="0" value="${a.l||''}" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-xl-${id}" type="number" min="0" value="${a.xl||''}" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-xxl-${id}" type="number" min="0" value="${a.xxl||''}" oninput="ricalcolaDIL()"></td>
+    <td><input class="input-qty" id="dil-xxxl-${id}" type="number" min="0" value="${a.xxxl||''}" oninput="ricalcolaDIL()"></td>
+    <td class="mono" id="dil-pz-${id}" style="font-weight:600">0</td>
+    <td class="mono" id="dil-tot-${id}">0</td>
+    <td class="mono" id="dil-pct-${id}" style="color:var(--text3)">0%</td>
+    <td class="costo-cell" id="dil-costo-${id}">—</td>
+    <td><input class="input-rmb" id="dil-vend-${id}" type="number" step="0.01" value="${a.vendita||''}" placeholder="${a.vendita||'0.00'}" oninput="ricalcolaDIL()"></td>
+    <td class="ricarico-cell" id="dil-ric-${id}">—</td>
+    <td><button onclick="rimuoviRigaDIL(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>`;
+  document.getElementById('tbody-dil').appendChild(tr);
+  // Auto-fill prezzo vendita da stock
+  checkPrezzoVendita(id);
+}
+window.aggiungiRigaDIL = aggiungiRigaDIL;
+
+function rimuoviRigaDIL(id) {
+  const row = document.getElementById('dil-row-'+id);
+  if(row) row.remove();
+  ricalcolaDIL();
+}
+window.rimuoviRigaDIL = rimuoviRigaDIL;
+
+function checkPrezzoVendita(id) {
+  const codice = document.getElementById('dil-art-'+id)?.value?.trim();
+  if(!codice) return;
+  // Cerca in prodotti per barcode o descrizione parziale
+  const p = (db.prodotti||[]).find(x=>x.barcode===codice || x.barcode.startsWith(codice+'.'));
+  const vendEl = document.getElementById('dil-vend-'+id);
+  if(p && p.prezzo && vendEl && !vendEl.value) {
+    vendEl.value = p.prezzo.toFixed(2);
+    vendEl.placeholder = p.prezzo.toFixed(2);
+  }
+}
+window.checkPrezzoVendita = checkPrezzoVendita;
+
+function getRighe() {
+  const righe = [];
+  document.querySelectorAll('[id^="dil-row-"]').forEach(tr => {
+    const id = tr.id.replace('dil-row-','');
+    const art = document.getElementById('dil-art-'+id)?.value?.trim();
+    if(!art) return;
+    const prezzoRmb = parseFloat(document.getElementById('dil-rmb-'+id)?.value)||0;
+    const xs = parseInt(document.getElementById('dil-xs-'+id)?.value)||0;
+    const s  = parseInt(document.getElementById('dil-s-'+id)?.value)||0;
+    const m  = parseInt(document.getElementById('dil-m-'+id)?.value)||0;
+    const l  = parseInt(document.getElementById('dil-l-'+id)?.value)||0;
+    const xl = parseInt(document.getElementById('dil-xl-'+id)?.value)||0;
+    const xxl= parseInt(document.getElementById('dil-xxl-'+id)?.value)||0;
+    const xxxl=parseInt(document.getElementById('dil-xxxl-'+id)?.value)||0;
+    const pz = xs+s+m+l+xl+xxl+xxxl;
+    const totRmb = prezzoRmb * pz;
+    const vendita = parseFloat(document.getElementById('dil-vend-'+id)?.value)||0;
+    righe.push({id, articolo:art, prezzoRmb, xs, s, m, l, xl, xxl, xxxl, pz, totRmb, vendita});
+  });
+  return righe;
+}
+
+function ricalcolaDIL() {
+  const righe = getRighe();
+  const rmbUsd = parseFloat(document.getElementById('dil-rmb-usd')?.value)||0;
+  const usdEur = parseFloat(document.getElementById('dil-usd-eur')?.value)||0;
+  const trasportoRmb = parseFloat(document.getElementById('dil-trasporto-rmb')?.value)||0;
+  const diritti = parseFloat(document.getElementById('dil-diritti')?.value)||0;
+  const commissioni = parseFloat(document.getElementById('dil-commissioni')?.value)||0;
+
+  const totRmb = righe.reduce((a,r)=>a+r.totRmb, 0);
+  const totUsd = totRmb * rmbUsd;
+  const totEur = totUsd * usdEur;
+  const trasportoUsd = trasportoRmb * rmbUsd;
+  const trasportoEur = trasportoUsd * usdEur;
+
+  // Fattura doganale = subtotale merce USD (importo dichiarato in dogana)
+  // Psycho = importo fattura doganale (quello che va in dichiarazione doganale)
+  // Il fornitore fa una customs invoice separata (Foglio2) con prezzi più bassi
+  // Qui usiamo il totale USD reale come base
+  const psychoUsd = totUsd; // importo fattura doganale
+  const psychoEur = psychoUsd * usdEur;
+  const extraUsd = 0; // calcolato dal fornitore come differenza
+  const extraEur = extraUsd * usdEur;
+
+  // Costi importazione (calcolati su psychoEur = fattura doganale)
+  const dazio = psychoEur * 0.12;
+  const iva = psychoEur * 0.22;
+  const ivaDiritti = diritti * 0.22;
+  const totCostiExtra = trasportoEur + dazio + iva + diritti + ivaDiritti + commissioni;
+  const totPezzi = righe.reduce((a,r)=>a+r.pz, 0);
+
+  // Aggiorna display riepilogo
+  const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  set('rc-tot-rmb', totRmb ? Math.round(totRmb).toLocaleString('it')+' ¥' : '—');
+  set('rc-tot-usd', totUsd && rmbUsd ? '$ '+totUsd.toFixed(2) : '—');
+  set('rc-tot-eur', totEur && usdEur ? fmt(totEur) : '—');
+  set('rc-trasporto-eur', trasportoEur && usdEur ? fmt(trasportoEur) : '—');
+  set('rc-psycho-usd', psychoUsd && rmbUsd ? '$ '+psychoUsd.toFixed(2) : '—');
+  set('rc-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
+  set('rc-extra-usd', '—');
+  set('rc-dazio', dazio && usdEur ? fmt(dazio) : '—');
+  set('rc-iva', iva && usdEur ? fmt(iva) : '—');
+  set('rc-diritti', diritti ? fmt(diritti) : '—');
+  set('rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
+  set('rc-commissioni', commissioni ? fmt(commissioni) : '—');
+  set('rc-tot-extra', totCostiExtra && usdEur ? fmt(totCostiExtra) : '—');
+  const costoMedio = totPezzi>0 && usdEur ? (totEur+totCostiExtra)/totPezzi : 0;
+  set('rc-costo-medio', costoMedio ? fmt(costoMedio) : '—');
+
+  // Pagamenti
+  set('pag-psycho-usd', psychoUsd && rmbUsd ? '$ '+psychoUsd.toFixed(2) : '—');
+  set('pag-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
+  set('pag-extra-usd', '—');
+  set('pag-extra-eur', '—');
+
+  // Aggiorna ogni riga
+  righe.forEach(r => {
+    const pct = totRmb > 0 ? r.totRmb/totRmb : 0;
+    // Costo per pezzo = (quota merce + quota costi extra) / pezzi
+    const quotaMerce = r.pz>0 && usdEur ? (r.totRmb*rmbUsd*usdEur) : 0;
+    const quotaCosti = r.pz>0 && totPezzi>0 ? totCostiExtra*(r.pz/totPezzi) : 0;
+    const costoRiga = r.pz>0 ? (quotaMerce+quotaCosti)/r.pz : 0;
+    const prezzoEur = r.totRmb>0 && rmbUsd && usdEur ? r.prezzoRmb*rmbUsd*usdEur : 0;
+    // Ricarico = (vendita - costo magazzino) / prezzo EUR fornitore
+    const ricarico = prezzoEur>0 && r.vendita>0 && costoRiga>0 ? ((r.vendita - costoRiga)/prezzoEur)*100 : null;
+
+    const setEl = (suf, val) => { const el=document.getElementById('dil-'+suf+'-'+r.id); if(el) el.textContent=val; };
+    setEl('pz', r.pz);
+    setEl('tot', Math.round(r.totRmb).toLocaleString('it')+' ¥');
+    setEl('pct', (pct*100).toFixed(1)+'%');
+    setEl('costo', costoRiga>0 ? fmt(costoRiga) : '—');
+    const ricEl = document.getElementById('dil-ric-'+r.id);
+    if(ricEl) {
+      ricEl.textContent = ricarico!==null ? Math.round(ricarico)+'%' : '—';
+      ricEl.className = 'ricarico-cell ' + (ricarico!==null ? (ricarico>=100?'ricarico-ok':'ricarico-low') : '');
+    }
+  });
+}
+window.ricalcolaDIL = ricalcolaDIL;
+
+let editingOrdineId = null;
+
+async function salvaOrdineDIL() {
+  const ref = document.getElementById('dil-ref').value.trim();
+  if(!ref) { showToast('Inserisci un riferimento ordine','red'); return; }
+  const righe = getRighe();
+  if(!righe.length) { showToast('Aggiungi almeno un articolo','red'); return; }
+
+  const rmbUsd = parseFloat(document.getElementById('dil-rmb-usd').value)||0;
+  const usdEur = parseFloat(document.getElementById('dil-usd-eur').value)||0;
+  const trasportoRmb = parseFloat(document.getElementById('dil-trasporto-rmb').value)||0;
+  const diritti = parseFloat(document.getElementById('dil-diritti').value)||0;
+  const commissioni = parseFloat(document.getElementById('dil-commissioni').value)||0;
+
+  if(!db.ordiniDIL) db.ordiniDIL=[];
+  if(!db.nextOrdDILId) db.nextOrdDILId=1;
+
+  const ordine = {
+    id: editingOrdineId || db.nextOrdDILId++,
+    fornitore: 'DARK IN LOVE',
+    riferimento: ref,
+    data: document.getElementById('dil-data').value,
+    rmbUsd, usdEur, trasportoRmb, diritti, commissioni,
+    note: document.getElementById('dil-note').value.trim(),
+    stato: 'bozza',
+    articoli: righe,
+  };
+
+  if(editingOrdineId) {
+    const idx = db.ordiniDIL.findIndex(o=>o.id===editingOrdineId);
+    if(idx>=0) db.ordiniDIL[idx]=ordine;
+    editingOrdineId=null;
+  } else {
+    db.ordiniDIL.push(ordine);
+  }
+
+  await saveDB();
+  showToast('Ordine salvato ✓');
+  switchOrdiniTab('lista');
+}
+window.salvaOrdineDIL = salvaOrdineDIL;
+
+function modificaOrdineDIL(id) {
+  const o = (db.ordiniDIL||[]).find(x=>x.id===id);
+  if(!o) return;
+  editingOrdineId = id;
+  switchOrdiniTab('nuovo');
+  // Populate fields
+  setTimeout(()=>{
+    document.getElementById('dil-ref').value = o.riferimento||'';
+    document.getElementById('dil-data').value = o.data||'';
+    document.getElementById('dil-rmb-usd').value = o.rmbUsd||'';
+    document.getElementById('dil-usd-eur').value = o.usdEur||'';
+    document.getElementById('dil-trasporto-rmb').value = o.trasportoRmb||'';
+    document.getElementById('dil-diritti').value = o.diritti||'';
+    document.getElementById('dil-commissioni').value = o.commissioni||'';
+    document.getElementById('dil-note').value = o.note||'';
+    document.getElementById('tbody-dil').innerHTML='';
+    dilRigheId=0;
+    (o.articoli||[]).forEach(a=>aggiungiRigaDIL(a));
+    ricalcolaDIL();
+  }, 50);
+}
+window.modificaOrdineDIL = modificaOrdineDIL;
+
+function apriDettaglioOrdine(id) {
+  const o = (db.ordiniDIL||[]).find(x=>x.id===id);
+  if(!o) return;
+  switchOrdiniTab('dettaglio');
+  const rmbUsd = o.rmbUsd||0;
+  const usdEur = o.usdEur||0;
+  const totRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
+  const totUsd = totRmb*rmbUsd;
+  const totEur = totUsd*usdEur;
+  const trasportoEur = (o.trasportoRmb||0)*rmbUsd*usdEur;
+  const psychoEur = totEur;
+  const dazio = psychoEur*0.12;
+  const iva = psychoEur*0.22;
+  const ivaDiritti = (o.diritti||0)*0.22;
+  const totCostiExtra = trasportoEur+dazio+iva+(o.diritti||0)+ivaDiritti+(o.commissioni||0);
+  const totPezzi = (o.articoli||[]).reduce((a,r)=>a+r.pz,0);
+
+  document.getElementById('ordini-dettaglio-content').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:18px;font-weight:700">${o.riferimento}</div>
+          <div style="font-size:12px;color:var(--text3)">${o.data||''} · DARK IN LOVE · ${o.articoli.length} articoli · ${totPezzi} pezzi</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>
+          <select onchange="cambiaStatoOrdine(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
+            <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
+            <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
+            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+        <div class="metric"><div class="metric-label">Totale ¥</div><div class="metric-value" style="font-size:18px">${Math.round(totRmb).toLocaleString('it')} ¥</div></div>
+        <div class="metric"><div class="metric-label">Totale USD</div><div class="metric-value" style="font-size:18px;color:var(--accent)">${rmbUsd?'$ '+totUsd.toFixed(2):'—'}</div></div>
+        <div class="metric"><div class="metric-label">Totale €</div><div class="metric-value green" style="font-size:18px">${usdEur?fmt(totEur):'—'}</div></div>
+      </div>
+      <div class="card-title">Articoli</div>
+      <div style="overflow-x:auto"><table class="report-table">
+        <thead><tr><th>Articolo</th><th>¥ unit</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th><th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
+        <tbody>${(o.articoli||[]).map(r=>{
+          const pct = totRmb>0?r.totRmb/totRmb:0;
+          const quotaMerce = r.pz>0&&usdEur?(r.totRmb*rmbUsd*usdEur):0;
+          const quotaCosti = r.pz>0&&totPezzi>0?totCostiExtra*(r.pz/totPezzi):0;
+          const costoRiga = r.pz>0?(quotaMerce+quotaCosti)/r.pz:0;
+          const prezzoEur = r.totRmb>0&&rmbUsd&&usdEur?r.prezzoRmb*rmbUsd*usdEur:0;
+          const ricarico = prezzoEur>0&&r.vendita>0&&costoRiga>0?((r.vendita-costoRiga)/prezzoEur)*100:null;
+          return `<tr>
+            <td style="font-weight:600">${r.articolo}</td>
+            <td class="mono">${r.prezzoRmb} ¥</td>
+            <td class="mono">${r.xs||'—'}</td><td class="mono">${r.s||'—'}</td><td class="mono">${r.m||'—'}</td><td class="mono">${r.l||'—'}</td><td class="mono">${r.xl||'—'}</td><td class="mono">${r.xxl||'—'}</td><td class="mono">${r.xxxl||'—'}</td>
+            <td class="mono" style="font-weight:600">${r.pz}</td>
+            <td class="mono">${Math.round(r.totRmb).toLocaleString('it')} ¥</td>
+            <td class="mono" style="color:var(--text3)">${(pct*100).toFixed(1)}%</td>
+            <td class="mono" style="color:var(--green)">${costoRiga?fmt(costoRiga):'—'}</td>
+            <td class="mono">${r.vendita?fmt(r.vendita):'—'}</td>
+            <td class="mono" style="color:${ricarico!==null?(ricarico>=100?'var(--green)':'var(--red)'):'var(--text3)'}">${ricarico!==null?Math.round(ricarico)+'%':'—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      <div class="sep"></div>
+      <div class="sezione-costi" style="margin-top:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--accent)">RIEPILOGO COSTI IMPORTAZIONE</div>
+        <div class="costo-row"><span>Trasporto (¥ → €)</span><span class="mono">${usdEur?fmt(trasportoEur):'—'}</span></div>
+        <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${usdEur?fmt(dazio):'—'}</span></div>
+        <div class="costo-row"><span>IVA (22%)</span><span class="mono">${usdEur?fmt(iva):'—'}</span></div>
+        <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
+        <div class="costo-row"><span>IVA su diritti (22%)</span><span class="mono">${o.diritti?fmt(ivaDiritti):'—'}</span></div>
+        <div class="costo-row"><span>Commissioni Paypal</span><span class="mono">${o.commissioni?fmt(o.commissioni):'—'}</span></div>
+        <div class="costo-row totale"><span>Totale costi aggiuntivi</span><span class="mono">${usdEur?fmt(totCostiExtra):'—'}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+        <div style="background:var(--accent-light);border-radius:var(--radius-lg);padding:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px">PSYCHO (fattura doganale)</div>
+          <div style="font-size:13px">USD: <strong class="mono">${rmbUsd?'$ '+totUsd.toFixed(2):'—'}</strong></div>
+          <div style="font-size:13px">EUR: <strong class="mono">${usdEur?fmt(totEur):'—'}</strong></div>
+        </div>
+        <div style="background:var(--green-light);border-radius:var(--radius-lg);padding:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">EXTRA (rimanente)</div>
+          <div style="font-size:13px;color:var(--text3)">Da concordare col fornitore</div>
+        </div>
+      </div>
+    </div>`;
+}
+window.apriDettaglioOrdine = apriDettaglioOrdine;
+
+async function cambiaStatoOrdine(id, stato) {
+  const o = (db.ordiniDIL||[]).find(x=>x.id===id);
+  if(o) { o.stato=stato; await saveDB(); showToast('Stato aggiornato'); }
+}
+window.cambiaStatoOrdine = cambiaStatoOrdine;
 
 // ── INIT ──
 setLogo();
