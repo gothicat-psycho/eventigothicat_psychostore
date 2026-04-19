@@ -659,13 +659,18 @@ function renderCatalogo() {
 }
 window.renderCatalogo = renderCatalogo;
 
+// Pagination callbacks stored globally
+window._pagCbs = {};
 function renderPagination(id, cur, pages, cb) {
   const el = document.getElementById(id);
   if(!el || pages<=1) { if(el) el.innerHTML=''; return; }
+  window._pagCbs[id] = cb;
+  const prev = Math.max(0, cur-1);
+  const next = Math.min(pages-1, cur+1);
   el.innerHTML = `
-    <button class="btn btn-sm" onclick="((${cb})(${Math.max(0,cur-1)}))">‹</button>
+    <button class="btn btn-sm" onclick="window._pagCbs['${id}'](${prev})">‹</button>
     <span style="font-size:13px;color:var(--text2)">Pag. ${cur+1} / ${pages}</span>
-    <button class="btn btn-sm" onclick="((${cb})(${Math.min(pages-1,cur+1)}))">›</button>`;
+    <button class="btn btn-sm" onclick="window._pagCbs['${id}'](${next})">›</button>`;
 }
 
 async function aggiungiProdotto() {
