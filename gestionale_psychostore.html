@@ -369,14 +369,21 @@
                   <div class="costo-row"><span>Customs Invoice — Psycho (€)</span><span id="rc-psycho-eur" class="mono">—</span></div>
                   <div class="costo-row"><span>Extra (USD)</span><span id="rc-extra-usd" class="mono">—</span></div>
                   <div class="sep"></div>
-                  <div class="costo-row"><span>Dazio (12% fattura doganale €)</span><span id="rc-dazio" class="mono">—</span></div>
-                  <div class="costo-row"><span>IVA (22% fattura doganale €)</span><span id="rc-iva" class="mono">—</span></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase;letter-spacing:.5px">Importazione (paghi al corriere)</div>
+                  <div class="costo-row"><span>Dazio (12% customs invoice)</span><span id="rc-dazio" class="mono">—</span></div>
+                  <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span id="rc-iva" class="mono">—</span></div>
                   <div class="costo-row"><span>Diritti doganali</span><span id="rc-diritti" class="mono">—</span></div>
                   <div class="costo-row"><span>IVA su diritti (22%)</span><span id="rc-iva-diritti" class="mono">—</span></div>
-                  <div class="costo-row"><span>Commissioni Paypal</span><span id="rc-commissioni" class="mono">—</span></div>
+                  <div class="costo-row totale"><span>Totale importazione</span><span id="rc-tot-importazione" class="mono">—</span></div>
                   <div class="sep"></div>
-                  <div class="costo-row totale"><span>Totale costi aggiuntivi (€)</span><span id="rc-tot-extra" class="mono">—</span></div>
-                  <div class="costo-row totale" style="color:var(--green)"><span>Costo medio per pezzo (€)</span><span id="rc-costo-medio" class="mono">—</span></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--green);margin:6px 0 4px;text-transform:uppercase;letter-spacing:.5px">Costi da imputare alla merce</div>
+                  <div class="costo-row"><span>Trasporto</span><span id="rc-trasporto-eur2" class="mono">—</span></div>
+                  <div class="costo-row"><span>Dazio (12%)</span><span id="rc-dazio2" class="mono">—</span></div>
+                  <div class="costo-row"><span>Diritti doganali</span><span id="rc-diritti2" class="mono">—</span></div>
+                  <div class="costo-row"><span>Commissioni Paypal</span><span id="rc-commissioni" class="mono">—</span></div>
+                  <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span id="rc-tot-costi-merce" class="mono">—</span></div>
+                  <div class="sep"></div>
+                  <div class="costo-row totale" style="color:var(--green);font-size:15px"><span>Costo medio per pezzo (€)</span><span id="rc-costo-medio" class="mono">—</span></div>
                 </div>
               </div>
 
@@ -1625,6 +1632,7 @@ function ricalcolaDIL() {
   set('rc-diritti', diritti ? fmt(diritti) : '—');
   set('rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
   set('rc-commissioni', commissioni ? fmt(commissioni) : '—');
+  set('rc-trasporto-eur2', trasportoEur && usdEur ? fmt(trasportoEur) : '—');
   set('rc-dazio2', dazio && usdEur ? fmt(dazio) : '—');
   set('rc-diritti2', diritti ? fmt(diritti) : '—');
   set('rc-tot-importazione', totImportazione && usdEur ? fmt(totImportazione) : '—');
