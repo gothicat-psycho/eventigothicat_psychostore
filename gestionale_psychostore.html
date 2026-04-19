@@ -1551,7 +1551,7 @@ function getRighe() {
   document.querySelectorAll('[id^="dil-row-"]').forEach(tr => {
     const id = tr.id.replace('dil-row-','');
     const art = document.getElementById('dil-art-'+id)?.value?.trim();
-    if(!art) return;
+    if(!art && !document.getElementById('dil-rmb-'+id)?.value) return;
     const prezzoRmb = parseFloat(document.getElementById('dil-rmb-'+id)?.value)||0;
     const xs = parseInt(document.getElementById('dil-xs-'+id)?.value)||0;
     const s  = parseInt(document.getElementById('dil-s-'+id)?.value)||0;
@@ -1602,7 +1602,10 @@ function ricalcolaDIL() {
   const dazio = psychoEur * 0.12;
   const iva = (psychoEur + dazio) * 0.22;
   const ivaDiritti = diritti * 0.22;
-  const totCostiExtra = dazio + iva + diritti + ivaDiritti + commissioni;
+  // Totale importazione = quello che paghi al corriere/dogana
+  const totImportazione = dazio + iva + diritti + ivaDiritti;
+  // Costi da imputare alla merce = quelli che pesano sul costo prodotto
+  const totCostiMerce = trasportoEur + dazio + diritti + commissioni;
   const totPezzi = righe.reduce((a,r)=>a+r.pz, 0);
 
   // Aggiorna display riepilogo
@@ -1622,8 +1625,11 @@ function ricalcolaDIL() {
   set('rc-diritti', diritti ? fmt(diritti) : '—');
   set('rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
   set('rc-commissioni', commissioni ? fmt(commissioni) : '—');
-  set('rc-tot-extra', totCostiExtra && usdEur ? fmt(totCostiExtra) : '—');
-  const costoMedio = totPezzi>0 && usdEur ? (totFattEur+totCostiExtra)/totPezzi : 0;
+  set('rc-dazio2', dazio && usdEur ? fmt(dazio) : '—');
+  set('rc-diritti2', diritti ? fmt(diritti) : '—');
+  set('rc-tot-importazione', totImportazione && usdEur ? fmt(totImportazione) : '—');
+  set('rc-tot-costi-merce', totCostiMerce && usdEur ? fmt(totCostiMerce) : '—');
+  const costoMedio = totPezzi>0 && usdEur ? (totFattEur+totCostiMerce)/totPezzi : 0;
   set('rc-costo-medio', costoMedio ? fmt(costoMedio) : '—');
 
   // Pagamenti
@@ -1634,12 +1640,12 @@ function ricalcolaDIL() {
 
   // Aggiorna ogni riga
   righe.forEach(r => {
-    const pct = totRmb > 0 ? r.totRmb/totRmb : 0;
+    const pct = totMerceRmb > 0 ? r.totRmb/totMerceRmb : 0;
     // Costo per pezzo = (quota merce + quota costi extra) / pezzi
     // Quota merce = prezzo unitario in € (merce+trasporto proporzionale)
     const quotaTrasporto = totMerceRmb>0 ? (r.totRmb/totMerceRmb)*trasportoEur : 0;
     const quotaMerce = r.pz>0 && usdEur ? (r.totRmb*rmbUsd*usdEur) + quotaTrasporto : 0;
-    const quotaCosti = r.pz>0 && totPezzi>0 ? totCostiExtra*(r.pz/totPezzi) : 0;
+    const quotaCosti = r.pz>0 && totMerceRmb>0 ? totCostiMerce*pct : 0;
     const costoRiga = r.pz>0 ? (quotaMerce+quotaCosti)/r.pz : 0;
     const prezzoEur = r.totRmb>0 && rmbUsd && usdEur ? r.prezzoRmb*rmbUsd*usdEur : 0;
     // Ricarico = (vendita - costo magazzino) / prezzo EUR fornitore
@@ -1796,12 +1802,18 @@ function apriDettaglioOrdine(id) {
         <div class="costo-row"><span>Customs Invoice Psycho (USD)</span><span class="mono">${o.psychoUsd?'$ '+o.psychoUsd.toFixed(2):'—'}</span></div>
         <div class="costo-row"><span>Customs Invoice Psycho (€)</span><span class="mono">${psychoEurDet&&usdEur?fmt(psychoEurDet):'—'}</span></div>
         <div class="costo-row"><span>Extra (USD)</span><span class="mono">${rmbUsd?(totUsd>o.psychoUsd?'$ '+(totUsd-o.psychoUsd).toFixed(2):'—'):'—'}</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--accent);margin:8px 0 4px;text-transform:uppercase">Importazione (paghi al corriere)</div>
         <div class="costo-row"><span>Dazio (12% customs invoice)</span><span class="mono">${usdEur?fmt(dazio):'—'}</span></div>
         <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span class="mono">${usdEur?fmt(iva):'—'}</span></div>
         <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
         <div class="costo-row"><span>IVA su diritti (22%)</span><span class="mono">${o.diritti?fmt(ivaDiritti):'—'}</span></div>
+        <div class="costo-row totale"><span>Totale importazione</span><span class="mono">${usdEur?fmt(dazio+iva+(o.diritti||0)+ivaDiritti):'—'}</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--green);margin:8px 0 4px;text-transform:uppercase">Costi da imputare alla merce</div>
+        <div class="costo-row"><span>Trasporto</span><span class="mono">${usdEur?fmt(trasportoEur):'—'}</span></div>
+        <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${usdEur?fmt(dazio):'—'}</span></div>
+        <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
         <div class="costo-row"><span>Commissioni Paypal</span><span class="mono">${o.commissioni?fmt(o.commissioni):'—'}</span></div>
-        <div class="costo-row totale"><span>Totale costi aggiuntivi</span><span class="mono">${usdEur?fmt(totCostiExtra):'—'}</span></div>
+        <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span class="mono">${usdEur?fmt(trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0)):'—'}</span></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
         <div style="background:var(--accent-light);border-radius:var(--radius-lg);padding:12px">
