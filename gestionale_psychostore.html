@@ -356,14 +356,18 @@
               <div class="card">
                 <div class="card-title">Riepilogo costi</div>
                 <div class="sezione-costi">
-                  <div class="costo-row"><span>Subtotale merce (¥)</span><span id="rc-tot-rmb" class="mono">—</span></div>
-                  <div class="costo-row"><span>Subtotale merce (USD)</span><span id="rc-tot-usd" class="mono">—</span></div>
-                  <div class="costo-row"><span>Subtotale merce (€)</span><span id="rc-tot-eur" class="mono">—</span></div>
+                  <div class="costo-row"><span>Merce (¥)</span><span id="rc-tot-rmb" class="mono">—</span></div>
+                  <div class="costo-row"><span>Merce (USD)</span><span id="rc-tot-usd" class="mono">—</span></div>
+                  <div class="costo-row"><span>Merce (€)</span><span id="rc-tot-eur" class="mono">—</span></div>
+                  <div class="costo-row"><span>Trasporto</span><span id="rc-trasporto-eur" class="mono">—</span></div>
                   <div class="sep"></div>
-                  <div class="costo-row"><span>Trasporto (¥ → €)</span><span id="rc-trasporto-eur" class="mono">—</span></div>
-                  <div class="costo-row"><span>Fattura doganale (Psycho USD)</span><span id="rc-psycho-usd" class="mono">—</span></div>
-                  <div class="costo-row"><span>Fattura doganale (Psycho €)</span><span id="rc-psycho-eur" class="mono">—</span></div>
-                  <div class="costo-row"><span>Rimanente (Extra USD)</span><span id="rc-extra-usd" class="mono">—</span></div>
+                  <div class="costo-row" style="font-weight:600"><span>Totale fattura fornitore (¥)</span><span id="rc-fatt-rmb" class="mono">—</span></div>
+                  <div class="costo-row" style="font-weight:600"><span>Totale fattura fornitore (USD)</span><span id="rc-fatt-usd" class="mono">—</span></div>
+                  <div class="costo-row" style="font-weight:600"><span>Totale fattura fornitore (€)</span><span id="rc-fatt-eur" class="mono">—</span></div>
+                  <div class="sep"></div>
+                  <div class="costo-row"><span>Customs Invoice — Psycho (USD)</span><span id="rc-psycho-usd" class="mono">—</span></div>
+                  <div class="costo-row"><span>Customs Invoice — Psycho (€)</span><span id="rc-psycho-eur" class="mono">—</span></div>
+                  <div class="costo-row"><span>Extra (USD)</span><span id="rc-extra-usd" class="mono">—</span></div>
                   <div class="sep"></div>
                   <div class="costo-row"><span>Dazio (12% fattura doganale €)</span><span id="rc-dazio" class="mono">—</span></div>
                   <div class="costo-row"><span>IVA (22% fattura doganale €)</span><span id="rc-iva" class="mono">—</span></div>
@@ -1572,44 +1576,54 @@ function ricalcolaDIL() {
   const diritti = parseFloat(document.getElementById('dil-diritti')?.value)||0;
   const commissioni = parseFloat(document.getElementById('dil-commissioni')?.value)||0;
 
-  const totRmb = righe.reduce((a,r)=>a+r.totRmb, 0);
-  const totUsd = totRmb * rmbUsd;
-  const totEur = totUsd * usdEur;
-  const trasportoEur = (trasportoRmb * rmbUsd) * usdEur;
+  // Merce
+  const totMerceRmb = righe.reduce((a,r)=>a+r.totRmb, 0);
+  const totMerceUsd = totMerceRmb * rmbUsd;
+  const totMerceEur = totMerceUsd * usdEur;
+  // Trasporto
+  const trasportoUsd = trasportoRmb * rmbUsd;
+  const trasportoEur = trasportoUsd * usdEur;
+  // Totale fattura fornitore = merce + trasporto
+  const totFattRmb = totMerceRmb + trasportoRmb;
+  const totFattUsd = totMerceUsd + trasportoUsd;
+  const totFattEur = totMerceEur + trasportoEur;
 
   // Customs invoice (Psycho) = inserito manualmente dall'utente in USD
   const psychoUsd = parseFloat(document.getElementById('dil-psycho-usd')?.value)||0;
   const psychoEur = psychoUsd * usdEur;
-  // Extra = totale merce USD - customs invoice
-  const extraUsd = rmbUsd && totUsd > psychoUsd ? totUsd - psychoUsd : 0;
+  // Extra = (merce USD + trasporto USD) - customs invoice USD
+  const extraUsd = totFattUsd > 0 && psychoUsd > 0 ? totFattUsd - psychoUsd : 0;
   const extraEur = extraUsd * usdEur;
 
-  // Costi importazione corretti:
-  // Dazio = 12% di psychoEur (fattura doganale)
-  // IVA = (psychoEur + dazio) * 22%
-  // IVA su diritti = diritti * 22%
+  // Costi importazione:
+  // Dazio = 12% customs invoice €
+  // IVA = (customs invoice € + dazio) × 22%
+  // IVA su diritti = diritti × 22%
   const dazio = psychoEur * 0.12;
   const iva = (psychoEur + dazio) * 0.22;
   const ivaDiritti = diritti * 0.22;
-  const totCostiExtra = trasportoEur + dazio + iva + diritti + ivaDiritti + commissioni;
+  const totCostiExtra = dazio + iva + diritti + ivaDiritti + commissioni;
   const totPezzi = righe.reduce((a,r)=>a+r.pz, 0);
 
   // Aggiorna display riepilogo
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('rc-tot-rmb', totRmb ? Math.round(totRmb).toLocaleString('it')+' ¥' : '—');
-  set('rc-tot-usd', totUsd && rmbUsd ? '$ '+totUsd.toFixed(2) : '—');
-  set('rc-tot-eur', totEur && usdEur ? fmt(totEur) : '—');
-  set('rc-trasporto-eur', trasportoEur && usdEur ? fmt(trasportoEur) : '—');
+  set('rc-tot-rmb', totMerceRmb ? Math.round(totMerceRmb).toLocaleString('it')+' ¥' : '—');
+  set('rc-tot-usd', totMerceUsd && rmbUsd ? '$ '+totMerceUsd.toFixed(2) : '—');
+  set('rc-tot-eur', totMerceEur && usdEur ? fmt(totMerceEur) : '—');
+  set('rc-trasporto-eur', trasportoEur && usdEur ? fmt(trasportoEur) + ' ($ '+trasportoUsd.toFixed(2)+' · '+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
+  set('rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
+  set('rc-fatt-usd', totFattUsd && rmbUsd ? '$ '+totFattUsd.toFixed(2) : '—');
+  set('rc-fatt-eur', totFattEur && usdEur ? fmt(totFattEur) : '—');
   set('rc-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
   set('rc-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
-  set('rc-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : '—');
+  set('rc-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : (totFattUsd&&!psychoUsd?'inserisci customs invoice':'—'));
   set('rc-dazio', dazio && usdEur ? fmt(dazio) : '—');
   set('rc-iva', iva && usdEur ? fmt(iva) : '—');
   set('rc-diritti', diritti ? fmt(diritti) : '—');
   set('rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
   set('rc-commissioni', commissioni ? fmt(commissioni) : '—');
   set('rc-tot-extra', totCostiExtra && usdEur ? fmt(totCostiExtra) : '—');
-  const costoMedio = totPezzi>0 && usdEur ? (totEur+totCostiExtra)/totPezzi : 0;
+  const costoMedio = totPezzi>0 && usdEur ? (totFattEur+totCostiExtra)/totPezzi : 0;
   set('rc-costo-medio', costoMedio ? fmt(costoMedio) : '—');
 
   // Pagamenti
@@ -1622,7 +1636,9 @@ function ricalcolaDIL() {
   righe.forEach(r => {
     const pct = totRmb > 0 ? r.totRmb/totRmb : 0;
     // Costo per pezzo = (quota merce + quota costi extra) / pezzi
-    const quotaMerce = r.pz>0 && usdEur ? (r.totRmb*rmbUsd*usdEur) : 0;
+    // Quota merce = prezzo unitario in € (merce+trasporto proporzionale)
+    const quotaTrasporto = totMerceRmb>0 ? (r.totRmb/totMerceRmb)*trasportoEur : 0;
+    const quotaMerce = r.pz>0 && usdEur ? (r.totRmb*rmbUsd*usdEur) + quotaTrasporto : 0;
     const quotaCosti = r.pz>0 && totPezzi>0 ? totCostiExtra*(r.pz/totPezzi) : 0;
     const costoRiga = r.pz>0 ? (quotaMerce+quotaCosti)/r.pz : 0;
     const prezzoEur = r.totRmb>0 && rmbUsd && usdEur ? r.prezzoRmb*rmbUsd*usdEur : 0;
