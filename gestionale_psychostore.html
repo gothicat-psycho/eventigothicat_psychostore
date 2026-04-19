@@ -427,7 +427,6 @@
                       <th>Costo €</th>
                       <th>Vendita €</th>
                       <th>Ric%</th>
-                      <th colspan="7" style="text-align:center;background:var(--green-light);color:var(--green)">Barcode catalogo (XS→XXXL)</th>
                       <th></th>
                     </tr></thead>
                     <tbody id="tbody-dil"></tbody>
@@ -1528,14 +1527,18 @@ function aggiungiRigaDIL(articolo) {
     <td class="costo-cell" id="dil-costo-${id}">—</td>
     <td><input class="input-rmb" id="dil-vend-${id}" type="number" step="0.01" value="${a.vendita||''}" placeholder="${a.vendita||'0.00'}" oninput="ricalcolaDIL()"></td>
     <td class="ricarico-cell" id="dil-ric-${id}">—</td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xs-${id}" value="${a.bcXs||''}" placeholder="barcode XS" list="dl-${id}-xs"><datalist id="dl-${id}-xs"></datalist></td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-s-${id}" value="${a.bcS||''}" placeholder="barcode S" list="dl-${id}-s"><datalist id="dl-${id}-s"></datalist></td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-m-${id}" value="${a.bcM||''}" placeholder="barcode M" list="dl-${id}-m"><datalist id="dl-${id}-m"></datalist></td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-l-${id}" value="${a.bcL||''}" placeholder="barcode L" list="dl-${id}-l"><datalist id="dl-${id}-l"></datalist></td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xl-${id}" value="${a.bcXl||''}" placeholder="barcode XL" list="dl-${id}-xl"><datalist id="dl-${id}-xl"></datalist></td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xxl-${id}" value="${a.bcXxl||''}" placeholder="barcode XXL" list="dl-${id}-xxl"><datalist id="dl-${id}-xxl"></datalist></td>
-    <td style="background:var(--green-light)"><input class="input-rmb" style="width:90px;font-size:11px" id="dil-bc-xxxl-${id}" value="${a.bcXxxl||''}" placeholder="barcode XXXL" list="dl-${id}-xxxl"><datalist id="dl-${id}-xxxl"></datalist></td>
-    <td><button onclick="rimuoviRigaDIL(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>`;
+    <td><button onclick="rimuoviRigaDIL(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>
+  </tr>
+  <tr id="dil-row-bc-${id}" style="background:var(--green-light)">
+    <td colspan="2" style="font-size:10px;font-weight:600;color:var(--green);padding:3px 8px">↳ Barcode catalogo:</td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xs-${id}" value="${a.bcXs||''}" placeholder="XS" list="dl-${id}-xs"><datalist id="dl-${id}-xs"></datalist></td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-s-${id}" value="${a.bcS||''}" placeholder="S" list="dl-${id}-s"><datalist id="dl-${id}-s"></datalist></td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-m-${id}" value="${a.bcM||''}" placeholder="M" list="dl-${id}-m"><datalist id="dl-${id}-m"></datalist></td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-l-${id}" value="${a.bcL||''}" placeholder="L" list="dl-${id}-l"><datalist id="dl-${id}-l"></datalist></td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xl-${id}" value="${a.bcXl||''}" placeholder="XL" list="dl-${id}-xl"><datalist id="dl-${id}-xl"></datalist></td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xxl-${id}" value="${a.bcXxl||''}" placeholder="XXL" list="dl-${id}-xxl"><datalist id="dl-${id}-xxl"></datalist></td>
+    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xxxl-${id}" value="${a.bcXxxl||''}" placeholder="XXXL" list="dl-${id}-xxxl"><datalist id="dl-${id}-xxxl"></datalist></td>
+    <td colspan="7"></td>`;
   document.getElementById('tbody-dil').appendChild(tr);
   // Auto-fill prezzo vendita da stock
   checkPrezzoVendita(id);
@@ -1545,6 +1548,8 @@ window.aggiungiRigaDIL = aggiungiRigaDIL;
 function rimuoviRigaDIL(id) {
   const row = document.getElementById('dil-row-'+id);
   if(row) row.remove();
+  const rowBc = document.getElementById('dil-row-bc-'+id);
+  if(rowBc) rowBc.remove();
   ricalcolaDIL();
 }
 window.rimuoviRigaDIL = rimuoviRigaDIL;
