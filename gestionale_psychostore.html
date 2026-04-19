@@ -379,9 +379,13 @@
               <!-- PAGAMENTI -->
               <div class="card">
                 <div class="card-title">Suddivisione pagamenti</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group">
+                  <label>Customs Invoice — importo Psycho (USD) <span style="font-size:10px;color:var(--text3)">inserisci tu</span></label>
+                  <input id="dil-psycho-usd" type="number" step="0.01" placeholder="es. 207.66" oninput="ricalcolaDIL()">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
                   <div style="background:var(--accent-light);border-radius:var(--radius-lg);padding:12px">
-                    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px">PSYCHO (fattura doganale)</div>
+                    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px">PSYCHO (customs invoice)</div>
                     <div style="font-size:11px;color:var(--text2);margin-bottom:2px">USD: <strong id="pag-psycho-usd" class="mono">—</strong></div>
                     <div style="font-size:11px;color:var(--text2)">EUR: <strong id="pag-psycho-eur" class="mono">—</strong></div>
                   </div>
@@ -1571,21 +1575,21 @@ function ricalcolaDIL() {
   const totRmb = righe.reduce((a,r)=>a+r.totRmb, 0);
   const totUsd = totRmb * rmbUsd;
   const totEur = totUsd * usdEur;
-  const trasportoUsd = trasportoRmb * rmbUsd;
-  const trasportoEur = trasportoUsd * usdEur;
+  const trasportoEur = (trasportoRmb * rmbUsd) * usdEur;
 
-  // Fattura doganale = subtotale merce USD (importo dichiarato in dogana)
-  // Psycho = importo fattura doganale (quello che va in dichiarazione doganale)
-  // Il fornitore fa una customs invoice separata (Foglio2) con prezzi più bassi
-  // Qui usiamo il totale USD reale come base
-  const psychoUsd = totUsd; // importo fattura doganale
+  // Customs invoice (Psycho) = inserito manualmente dall'utente in USD
+  const psychoUsd = parseFloat(document.getElementById('dil-psycho-usd')?.value)||0;
   const psychoEur = psychoUsd * usdEur;
-  const extraUsd = 0; // calcolato dal fornitore come differenza
+  // Extra = totale merce USD - customs invoice
+  const extraUsd = rmbUsd && totUsd > psychoUsd ? totUsd - psychoUsd : 0;
   const extraEur = extraUsd * usdEur;
 
-  // Costi importazione (calcolati su psychoEur = fattura doganale)
+  // Costi importazione corretti:
+  // Dazio = 12% di psychoEur (fattura doganale)
+  // IVA = (psychoEur + dazio) * 22%
+  // IVA su diritti = diritti * 22%
   const dazio = psychoEur * 0.12;
-  const iva = psychoEur * 0.22;
+  const iva = (psychoEur + dazio) * 0.22;
   const ivaDiritti = diritti * 0.22;
   const totCostiExtra = trasportoEur + dazio + iva + diritti + ivaDiritti + commissioni;
   const totPezzi = righe.reduce((a,r)=>a+r.pz, 0);
@@ -1596,9 +1600,9 @@ function ricalcolaDIL() {
   set('rc-tot-usd', totUsd && rmbUsd ? '$ '+totUsd.toFixed(2) : '—');
   set('rc-tot-eur', totEur && usdEur ? fmt(totEur) : '—');
   set('rc-trasporto-eur', trasportoEur && usdEur ? fmt(trasportoEur) : '—');
-  set('rc-psycho-usd', psychoUsd && rmbUsd ? '$ '+psychoUsd.toFixed(2) : '—');
+  set('rc-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
   set('rc-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
-  set('rc-extra-usd', '—');
+  set('rc-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : '—');
   set('rc-dazio', dazio && usdEur ? fmt(dazio) : '—');
   set('rc-iva', iva && usdEur ? fmt(iva) : '—');
   set('rc-diritti', diritti ? fmt(diritti) : '—');
@@ -1609,10 +1613,10 @@ function ricalcolaDIL() {
   set('rc-costo-medio', costoMedio ? fmt(costoMedio) : '—');
 
   // Pagamenti
-  set('pag-psycho-usd', psychoUsd && rmbUsd ? '$ '+psychoUsd.toFixed(2) : '—');
+  set('pag-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
   set('pag-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
-  set('pag-extra-usd', '—');
-  set('pag-extra-eur', '—');
+  set('pag-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : '—');
+  set('pag-extra-eur', extraEur && usdEur ? fmt(extraEur) : '—');
 
   // Aggiorna ogni riga
   righe.forEach(r => {
@@ -1662,6 +1666,7 @@ async function salvaOrdineDIL() {
     riferimento: ref,
     data: document.getElementById('dil-data').value,
     rmbUsd, usdEur, trasportoRmb, diritti, commissioni,
+    psychoUsd: parseFloat(document.getElementById('dil-psycho-usd').value)||0,
     note: document.getElementById('dil-note').value.trim(),
     stato: 'bozza',
     articoli: righe,
@@ -1696,6 +1701,7 @@ function modificaOrdineDIL(id) {
     document.getElementById('dil-diritti').value = o.diritti||'';
     document.getElementById('dil-commissioni').value = o.commissioni||'';
     document.getElementById('dil-note').value = o.note||'';
+    document.getElementById('dil-psycho-usd').value = o.psychoUsd||'';
     document.getElementById('tbody-dil').innerHTML='';
     dilRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaDIL(a));
@@ -1715,8 +1721,10 @@ function apriDettaglioOrdine(id) {
   const totEur = totUsd*usdEur;
   const trasportoEur = (o.trasportoRmb||0)*rmbUsd*usdEur;
   const psychoEur = totEur;
-  const dazio = psychoEur*0.12;
-  const iva = psychoEur*0.22;
+  const psychoUsdDet = o.psychoUsd||0;
+  const psychoEurDet = psychoUsdDet * usdEur;
+  const dazio = psychoEurDet * 0.12;
+  const iva = (psychoEurDet + dazio) * 0.22;
   const ivaDiritti = (o.diritti||0)*0.22;
   const totCostiExtra = trasportoEur+dazio+iva+(o.diritti||0)+ivaDiritti+(o.commissioni||0);
   const totPezzi = (o.articoli||[]).reduce((a,r)=>a+r.pz,0);
@@ -1769,8 +1777,11 @@ function apriDettaglioOrdine(id) {
       <div class="sezione-costi" style="margin-top:12px">
         <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--accent)">RIEPILOGO COSTI IMPORTAZIONE</div>
         <div class="costo-row"><span>Trasporto (¥ → €)</span><span class="mono">${usdEur?fmt(trasportoEur):'—'}</span></div>
-        <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${usdEur?fmt(dazio):'—'}</span></div>
-        <div class="costo-row"><span>IVA (22%)</span><span class="mono">${usdEur?fmt(iva):'—'}</span></div>
+        <div class="costo-row"><span>Customs Invoice Psycho (USD)</span><span class="mono">${o.psychoUsd?'$ '+o.psychoUsd.toFixed(2):'—'}</span></div>
+        <div class="costo-row"><span>Customs Invoice Psycho (€)</span><span class="mono">${psychoEurDet&&usdEur?fmt(psychoEurDet):'—'}</span></div>
+        <div class="costo-row"><span>Extra (USD)</span><span class="mono">${rmbUsd?(totUsd>o.psychoUsd?'$ '+(totUsd-o.psychoUsd).toFixed(2):'—'):'—'}</span></div>
+        <div class="costo-row"><span>Dazio (12% customs invoice)</span><span class="mono">${usdEur?fmt(dazio):'—'}</span></div>
+        <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span class="mono">${usdEur?fmt(iva):'—'}</span></div>
         <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
         <div class="costo-row"><span>IVA su diritti (22%)</span><span class="mono">${o.diritti?fmt(ivaDiritti):'—'}</span></div>
         <div class="costo-row"><span>Commissioni Paypal</span><span class="mono">${o.commissioni?fmt(o.commissioni):'—'}</span></div>
