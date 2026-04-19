@@ -1653,8 +1653,8 @@ function ricalcolaDIL() {
     const costoAddizionale = r.pz>0 && totMerceRmb>0 ? (totCostiMerce * pct) / r.pz : 0;
     // 3. Costo reso Avigliana = prezzo EUR reso Cina + costo addizionale
     const costoRiga = r.pz>0 ? prezzoEur + costoAddizionale : 0;
-    // Ricarico = (vendita - costo magazzino) / prezzo EUR fornitore
-    const ricarico = prezzoEur>0 && r.vendita>0 && costoRiga>0 ? ((r.vendita - costoRiga)/prezzoEur)*100 : null;
+    // Ricarico = (vendita - costo addizionale) / prezzo EUR reso Cina × 100
+    const ricarico = prezzoEur>0 && r.vendita>0 ? ((r.vendita - costoAddizionale)/prezzoEur)*100 : null;
 
     const setEl = (suf, val) => { const el=document.getElementById('dil-'+suf+'-'+r.id); if(el) el.textContent=val; };
     setEl('pz', r.pz);
@@ -1789,7 +1789,7 @@ function apriDettaglioOrdine(id) {
           const prezzoEur = rmbUsd&&usdEur ? r.prezzoRmb*rmbUsd*usdEur : 0;
           const costoAdd = r.pz>0&&totMerceRmb>0 ? (totCostiMerceDet*pct)/r.pz : 0;
           const costoRiga = r.pz>0 ? prezzoEur+costoAdd : 0;
-          const ricarico = prezzoEur>0&&r.vendita>0&&costoRiga>0?((r.vendita-costoRiga)/prezzoEur)*100:null;
+          const ricarico = prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
           return `<tr>
             <td style="font-weight:600">${r.articolo}</td>
             <td class="mono">${r.prezzoRmb} ¥</td>
