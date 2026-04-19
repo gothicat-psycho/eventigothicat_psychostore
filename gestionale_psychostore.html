@@ -437,6 +437,27 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
+
+              <!-- TABELLA BARCODE -->
+              <div class="card" style="margin-top:12px">
+                <div class="card-title" style="color:var(--green)">🔖 Associazione barcode catalogo</div>
+                <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Per ogni articolo associa il barcode del tuo catalogo a ogni taglia. Il sistema suggerisce automaticamente i codici trovati nel catalogo.</div>
+                <div style="overflow-x:auto">
+                  <table id="tab-dil-barcodes">
+                    <thead><tr>
+                      <th>Articolo DIL</th>
+                      <th style="background:var(--green-light);color:var(--green)">XS</th>
+                      <th style="background:var(--green-light);color:var(--green)">S</th>
+                      <th style="background:var(--green-light);color:var(--green)">M</th>
+                      <th style="background:var(--green-light);color:var(--green)">L</th>
+                      <th style="background:var(--green-light);color:var(--green)">XL</th>
+                      <th style="background:var(--green-light);color:var(--green)">XXL</th>
+                      <th style="background:var(--green-light);color:var(--green)">XXXL</th>
+                    </tr></thead>
+                    <tbody id="tbody-dil-barcodes"></tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1527,18 +1548,7 @@ function aggiungiRigaDIL(articolo) {
     <td class="costo-cell" id="dil-costo-${id}">—</td>
     <td><input class="input-rmb" id="dil-vend-${id}" type="number" step="0.01" value="${a.vendita||''}" placeholder="${a.vendita||'0.00'}" oninput="ricalcolaDIL()"></td>
     <td class="ricarico-cell" id="dil-ric-${id}">—</td>
-    <td><button onclick="rimuoviRigaDIL(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>
-  </tr>
-  <tr id="dil-row-bc-${id}" style="background:var(--green-light)">
-    <td colspan="2" style="font-size:10px;font-weight:600;color:var(--green);padding:3px 8px">↳ Barcode catalogo:</td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xs-${id}" value="${a.bcXs||''}" placeholder="XS" list="dl-${id}-xs"><datalist id="dl-${id}-xs"></datalist></td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-s-${id}" value="${a.bcS||''}" placeholder="S" list="dl-${id}-s"><datalist id="dl-${id}-s"></datalist></td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-m-${id}" value="${a.bcM||''}" placeholder="M" list="dl-${id}-m"><datalist id="dl-${id}-m"></datalist></td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-l-${id}" value="${a.bcL||''}" placeholder="L" list="dl-${id}-l"><datalist id="dl-${id}-l"></datalist></td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xl-${id}" value="${a.bcXl||''}" placeholder="XL" list="dl-${id}-xl"><datalist id="dl-${id}-xl"></datalist></td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xxl-${id}" value="${a.bcXxl||''}" placeholder="XXL" list="dl-${id}-xxl"><datalist id="dl-${id}-xxl"></datalist></td>
-    <td><input class="input-rmb" style="width:80px;font-size:11px" id="dil-bc-xxxl-${id}" value="${a.bcXxxl||''}" placeholder="XXXL" list="dl-${id}-xxxl"><datalist id="dl-${id}-xxxl"></datalist></td>
-    <td colspan="7"></td>`;
+    <td><button onclick="rimuoviRigaDIL(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>`;
   document.getElementById('tbody-dil').appendChild(tr);
   // Auto-fill prezzo vendita da stock
   checkPrezzoVendita(id);
@@ -1548,8 +1558,6 @@ window.aggiungiRigaDIL = aggiungiRigaDIL;
 function rimuoviRigaDIL(id) {
   const row = document.getElementById('dil-row-'+id);
   if(row) row.remove();
-  const rowBc = document.getElementById('dil-row-bc-'+id);
-  if(rowBc) rowBc.remove();
   ricalcolaDIL();
 }
 window.rimuoviRigaDIL = rimuoviRigaDIL;
@@ -1693,6 +1701,9 @@ function ricalcolaDIL() {
   set('pag-extra-eur', extraEur && usdEur ? fmt(extraEur) : '—');
 
   // Aggiorna ogni riga
+  // Refresh barcode table
+  renderBarcodesTable(righe);
+
   righe.forEach(r => {
     const pct = totMerceRmb > 0 ? r.totRmb/totMerceRmb : 0;
     // 1. Prezzo EUR reso Cina = prezzoRmb × RMB/USD × USD/EUR
@@ -1717,6 +1728,34 @@ function ricalcolaDIL() {
   });
 }
 window.ricalcolaDIL = ricalcolaDIL;
+
+function renderBarcodesTable(righe) {
+  const tbody = document.getElementById('tbody-dil-barcodes');
+  if(!tbody) return;
+  const taglie = ['xs','s','m','l','xl','xxl','xxxl'];
+  tbody.innerHTML = righe.map(r => {
+    const cols = taglie.map(t => {
+      const qty = r[t]||0;
+      const bcId = 'dil-bc-'+t+'-'+r.id;
+      const dlId = 'dl-'+r.id+'-'+t;
+      const val = document.getElementById(bcId)?.value||'';
+      if(!qty) return `<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>`;
+      return `<td style="background:var(--green-light)">
+        <input class="input-rmb" style="width:100px;font-size:11px" id="${bcId}" value="${val}" placeholder="${t.toUpperCase()}" list="${dlId}" oninput="aggiornaBarcode('${bcId}')">
+        <datalist id="${dlId}"></datalist>
+      </td>`;
+    }).join('');
+    return `<tr><td style="font-weight:600;font-size:12px">${r.articolo}</td>${cols}</tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
+  // Populate datalists
+  righe.forEach(r => suggerisciBarcodes(r.id));
+}
+window.renderBarcodesTable = renderBarcodesTable;
+
+function aggiornaBarcode(inputId) {
+  // Just trigger getRighe to pick up the new value on next save
+}
+window.aggiornaBarcode = aggiornaBarcode;
 
 let editingOrdineId = null;
 
