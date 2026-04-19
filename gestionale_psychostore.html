@@ -382,8 +382,7 @@
                   <div class="costo-row"><span>Diritti doganali</span><span id="rc-diritti2" class="mono">—</span></div>
                   <div class="costo-row"><span>Commissioni Paypal</span><span id="rc-commissioni" class="mono">—</span></div>
                   <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span id="rc-tot-costi-merce" class="mono">—</span></div>
-                  <div class="sep"></div>
-                  <div class="costo-row totale" style="color:var(--green);font-size:15px"><span>Costo medio per pezzo (€)</span><span id="rc-costo-medio" class="mono">—</span></div>
+
                 </div>
               </div>
 
@@ -1637,8 +1636,7 @@ function ricalcolaDIL() {
   set('rc-diritti2', diritti ? fmt(diritti) : '—');
   set('rc-tot-importazione', totImportazione && usdEur ? fmt(totImportazione) : '—');
   set('rc-tot-costi-merce', totCostiMerce && usdEur ? fmt(totCostiMerce) : '—');
-  const costoMedio = totPezzi>0 && usdEur ? (totFattEur+totCostiMerce)/totPezzi : 0;
-  set('rc-costo-medio', costoMedio ? fmt(costoMedio) : '—');
+
 
   // Pagamenti
   set('pag-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
@@ -1649,13 +1647,12 @@ function ricalcolaDIL() {
   // Aggiorna ogni riga
   righe.forEach(r => {
     const pct = totMerceRmb > 0 ? r.totRmb/totMerceRmb : 0;
-    // Costo per pezzo = (quota merce + quota costi extra) / pezzi
-    // Quota merce = prezzo unitario in € (merce+trasporto proporzionale)
-    const quotaTrasporto = totMerceRmb>0 ? (r.totRmb/totMerceRmb)*trasportoEur : 0;
-    const quotaMerce = r.pz>0 && usdEur ? (r.totRmb*rmbUsd*usdEur) + quotaTrasporto : 0;
-    const quotaCosti = r.pz>0 && totMerceRmb>0 ? totCostiMerce*pct : 0;
-    const costoRiga = r.pz>0 ? (quotaMerce+quotaCosti)/r.pz : 0;
-    const prezzoEur = r.totRmb>0 && rmbUsd && usdEur ? r.prezzoRmb*rmbUsd*usdEur : 0;
+    // 1. Prezzo EUR reso Cina = prezzoRmb × RMB/USD × USD/EUR
+    const prezzoEur = rmbUsd && usdEur ? r.prezzoRmb * rmbUsd * usdEur : 0;
+    // 2. Costo addizionale per pezzo = (totCostiMerce × % incisione) / pezzi
+    const costoAddizionale = r.pz>0 && totMerceRmb>0 ? (totCostiMerce * pct) / r.pz : 0;
+    // 3. Costo reso Avigliana = prezzo EUR reso Cina + costo addizionale
+    const costoRiga = r.pz>0 ? prezzoEur + costoAddizionale : 0;
     // Ricarico = (vendita - costo magazzino) / prezzo EUR fornitore
     const ricarico = prezzoEur>0 && r.vendita>0 && costoRiga>0 ? ((r.vendita - costoRiga)/prezzoEur)*100 : null;
 
@@ -1755,6 +1752,10 @@ function apriDettaglioOrdine(id) {
   const psychoEurDet = psychoUsdDet * usdEur;
   const dazio = psychoEurDet * 0.12;
   const iva = (psychoEurDet + dazio) * 0.22;
+  const totMerceRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb, 0);
+  const trasportoEurDet = (o.trasportoRmb||0) * rmbUsd * usdEur;
+  const ivaDirittiDet = (o.diritti||0) * 0.22;
+  const totCostiMerceDet = trasportoEurDet + dazio + (o.diritti||0) + (o.commissioni||0);
   const ivaDiritti = (o.diritti||0)*0.22;
   const totCostiExtra = trasportoEur+dazio+iva+(o.diritti||0)+ivaDiritti+(o.commissioni||0);
   const totPezzi = (o.articoli||[]).reduce((a,r)=>a+r.pz,0);
@@ -1784,11 +1785,10 @@ function apriDettaglioOrdine(id) {
       <div style="overflow-x:auto"><table class="report-table">
         <thead><tr><th>Articolo</th><th>¥ unit</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th><th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
         <tbody>${(o.articoli||[]).map(r=>{
-          const pct = totRmb>0?r.totRmb/totRmb:0;
-          const quotaMerce = r.pz>0&&usdEur?(r.totRmb*rmbUsd*usdEur):0;
-          const quotaCosti = r.pz>0&&totPezzi>0?totCostiExtra*(r.pz/totPezzi):0;
-          const costoRiga = r.pz>0?(quotaMerce+quotaCosti)/r.pz:0;
-          const prezzoEur = r.totRmb>0&&rmbUsd&&usdEur?r.prezzoRmb*rmbUsd*usdEur:0;
+          const pct = totMerceRmb>0 ? r.totRmb/totMerceRmb : 0;
+          const prezzoEur = rmbUsd&&usdEur ? r.prezzoRmb*rmbUsd*usdEur : 0;
+          const costoAdd = r.pz>0&&totMerceRmb>0 ? (totCostiMerceDet*pct)/r.pz : 0;
+          const costoRiga = r.pz>0 ? prezzoEur+costoAdd : 0;
           const ricarico = prezzoEur>0&&r.vendita>0&&costoRiga>0?((r.vendita-costoRiga)/prezzoEur)*100:null;
           return `<tr>
             <td style="font-weight:600">${r.articolo}</td>
