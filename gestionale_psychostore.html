@@ -273,7 +273,7 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th style="text-align:center">Stock</th><th>Valore</th><th></th></tr></thead>
+            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th style="text-align:center">Stock</th><th>Prezzo €</th><th>Prezzo CZK</th><th>Valore</th><th></th></tr></thead>
             <tbody id="tab-stock"></tbody></table>
           </div>
           <div id="stock-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -462,6 +462,39 @@ let pendingDel = null;
 
 // ── LOGO set directly in HTML ──
 // ── UTILS ──
+const FORN_COLORS = {
+  'BRANDIT':       { bg:'#DBEAFE', color:'#1E40AF' },
+  'CHIC STAR':     { bg:'#FCE7F3', color:'#9D174D' },
+  'INNOCENT':      { bg:'#D1FAE5', color:'#065F46' },
+  'DEVIL FASHION': { bg:'#EDE9FE', color:'#5B21B6' },
+  'ADRIANO':       { bg:'#FEF3C7', color:'#92400E' },
+  'MOON ATTIC':    { bg:'#E0F2FE', color:'#0C4A6E' },
+  'MINSHAN':       { bg:'#FFE4E6', color:'#9F1239' },
+  'FANTASMAGORIA': { bg:'#F3F4F6', color:'#111827' },
+  'TOXICO':        { bg:'#FEE2E2', color:'#7F1D1D' },
+  'YINCH':         { bg:'#ECFCCB', color:'#365314' },
+  'ONE DIRECTION': { bg:'#FFF7ED', color:'#7C2D12' },
+  'PSYCHO':        { bg:'#1A1A1E', color:'#F0F0F0' },
+  'DARK IN LOVE':  { bg:'#4C0519', color:'#FECDD3' },
+  'RESTYLE':       { bg:'#F0FDF4', color:'#14532D' },
+  'PUNK RAVE':     { bg:'#2D1B69', color:'#DDD6FE' },
+  'BURLESKA':      { bg:'#FDF4FF', color:'#701A75' },
+  'YIWU':          { bg:'#F0F9FF', color:'#0C4A6E' },
+  'OU':            { bg:'#FFFBEB', color:'#78350F' },
+  'PINKBIRD':      { bg:'#FDF2F8', color:'#831843' },
+  'BIGIOTTERIA':   { bg:'#F8FAFC', color:'#334155' },
+  'PSYCHOKULT':    { bg:'#0F172A', color:'#94A3B8' },
+  'REHMAT':        { bg:'#FFFBEB', color:'#92400E' },
+  'BANNED':        { bg:'#FEF2F2', color:'#991B1B' },
+  'CRISTINA':      { bg:'#FDF4FF', color:'#6B21A8' },
+  'RAZAMATAZ':     { bg:'#ECFDF5', color:'#047857' },
+};
+
+function fornBadge(fornitore) {
+  const c = FORN_COLORS[fornitore] || { bg:'#F3F4F6', color:'#374151' };
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${c.bg};color:${c.color}">${fornitore||'-'}</span>`;
+}
+
 function fmt(n) { return '€ ' + parseFloat(n||0).toFixed(2); }
 function fmtDate(d) { if(!d) return '-'; return new Date(d+'T00:00:00').toLocaleDateString('it-IT'); }
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -600,7 +633,7 @@ function renderCatalogo() {
   document.getElementById('tab-catalogo').innerHTML = page.map(p => `
     <tr>
       <td class="mono" style="font-size:12px">${p.barcode}</td>
-      <td><span class="badge badge-gray">${p.fornitore||'-'}</span></td>
+      <td>${fornBadge(p.fornitore)}</td>
       <td>${p.descrizione}</td>
       <td class="mono">${fmt(p.costo)}</td>
       <td class="mono">${fmt(p.prezzo)}</td>
@@ -708,7 +741,7 @@ function renderStock() {
   document.getElementById('tab-stock').innerHTML = page.map(p=>`
     <tr>
       <td class="mono" style="font-size:12px">${p.barcode}</td>
-      <td><span class="badge badge-gray" style="font-size:10px">${p.fornitore||'-'}</span></td>
+      <td>${fornBadge(p.fornitore)}</td>
       <td>${p.descrizione}</td>
       <td style="text-align:center">
         <div class="stock-cell ${getStockClass(p.stock)}" onclick="rettificaStock('${p.barcode}',this)">${p.stock}</div>
