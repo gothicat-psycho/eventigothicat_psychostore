@@ -2378,7 +2378,7 @@ function aggiungiRigaDF(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'df-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id})"></td>
+    <td><input class="input-rmb" style="width:80px" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id});suggerisciBarcodesDF(${id})"></td>
     <td><input class="input-rmb" id="df-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDF()"></td>
     <td><input class="input-qty" id="df-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDF()"></td>
     <td><input class="input-qty" id="df-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaDF()"></td>
@@ -2414,6 +2414,30 @@ function checkPrezzoVenditaDF(id) {
   if(p && p.prezzo && vendEl && !vendEl.value) vendEl.value = p.prezzo.toFixed(2);
 }
 window.checkPrezzoVenditaDF = checkPrezzoVenditaDF;
+
+function suggerisciBarcodesDF(id) {
+  const codice = document.getElementById('df-art-'+id)?.value?.trim();
+  if(!codice || codice.length < 3) return;
+  const taglie = ['xs','s','m','l','xl','xxl','xxxl'];
+  const suffissi = {xs:'XS',s:'S',m:'M',l:'L',xl:'XL',xxl:'XXL',xxxl:'XXXL'};
+  taglie.forEach(t => {
+    const dl = document.getElementById('dl-df-'+id+'-'+t);
+    if(!dl) return;
+    const matches = (db.prodotti||[])
+      .filter(p => p.barcode.toUpperCase().includes(codice.toUpperCase()))
+      .map(p => p.barcode);
+    dl.innerHTML = matches.map(b=>`<option value="${b}">`).join('');
+    const tagliaSuf = suffissi[t];
+    const exactMatch = matches.find(b => {
+      const upper = b.toUpperCase();
+      return upper.includes('F.'+tagliaSuf) || upper.includes('M.'+tagliaSuf) ||
+             upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf);
+    });
+    const inputEl = document.getElementById('df-bc-'+t+'-'+id);
+    if(inputEl && !inputEl.value && exactMatch) inputEl.value = exactMatch;
+  });
+}
+window.suggerisciBarcodesDF = suggerisciBarcodesDF;
 
 function getRigheDF() {
   const righe = [];
@@ -2490,6 +2514,7 @@ function ricalcolaDF() {
   set('df-rc-tot-costi-merce', totCostiMerce && rmbEur ? fmt(totCostiMerce) : '—');
 
   // Aggiorna righe
+  righe.forEach(r => { suggerisciBarcodesDF(r.id); });
   righe.forEach(r => {
     const pct = totMerceRmb > 0 ? r.totRmb/totMerceRmb : 0;
     const prezzoEur = rmbEur ? r.prezzoRmb * rmbEur : 0;
