@@ -2001,6 +2001,9 @@ function calcolaCostoProdottoDIL(o, r) {
   return prezzoEur + costoAdd;
 }
 
+// ── TEMPLATE ETICHETTE (stesso file che funziona con DYMO) ──
+const ETICHETTE_TEMPLATE = '<!DOCTYPE html>\n<html lang="it">\n<head>\n<meta charset="UTF-8">\n<title>Etichette Psycho Store</title>\n<style>\n  * { margin:0; padding:0; box-sizing:border-box; }\n  body { font-family: sans-serif; background:#f0f0f0; }\n\n  .controls {\n    padding:16px;\n    background:#fff;\n    border-bottom:1px solid #ddd;\n    display:flex;\n    align-items:center;\n    gap:12px;\n    flex-wrap:wrap;\n  }\n  .controls h2 { font-size:15px; flex:1; }\n  .btn { padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600; }\n  .btn-primary { background:#1A4FB5;color:#fff; }\n  .btn-gray { background:#e0e0e0;color:#333; }\n  .counter { font-size:13px;color:#666; }\n\n  .preview-area {\n    display:flex;\n    justify-content:center;\n    align-items:center;\n    padding:32px;\n    min-height:300px;\n  }\n\n  /* Etichetta preview */\n  .etichetta {\n    width: 57mm;\n    height: 32mm;\n    padding: 1mm 2mm 4mm;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    justify-content: space-between;\n    overflow: hidden;\n    background: #fff;\n    border: 1px solid #ccc;\n    box-shadow: 0 2px 8px rgba(0,0,0,.15);\n  }\n  .sito { font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center; }\n  .barcode-wrap { display:flex;flex-direction:column;align-items:center;width:100%; }\n  .barcode-canvas { width:52mm;height:5.5mm;display:block; }\n  .codice { font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm; }\n  .prezzo-eur { font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15; }\n  .prezzo-czk { font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15; }\n  .prezzi-wrap { display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm; }\n\n  @media print {\n    @page { size: 57mm 32mm; margin: 0; }\n    body { background:#fff; }\n    .controls { display:none; }\n    .preview-area { padding:0;min-height:0; }\n    .etichetta { border:none;box-shadow:none;width:57mm;height:32mm; }\n  }\n</style>\n</head>\n<body>\n\n<div class="controls">\n  <h2>🏷 Etichette Psycho Store</h2>\n  <span class="counter" id="counter">— / —</span>\n  <button class="btn btn-gray" onclick="precedente()">← Prec</button>\n  <button class="btn btn-gray" onclick="successiva()">Succ →</button>\n  <button class="btn btn-primary" onclick="window.print()">🖨 Stampa questa</button>\n</div>\n\n<div class="preview-area">\n  <div class="etichetta" id="etichetta-display">\n    <div class="sito">www.psycho-store.com</div>\n    <div class="barcode-wrap">\n      <canvas class="barcode-canvas" id="barcode-canvas" width="500" height="80"></canvas>\n      <div class="codice" id="codice-display"></div>\n    </div>\n    <div class="prezzi-wrap">\n      <div class="prezzo-eur" id="prezzo-eur-display"></div>\n      <div class="prezzo-czk" id="prezzo-czk-display"></div>\n    </div>\n  </div>\n</div>\n\n<script>\nconst PATTERNS = [\n  [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],\n  [1,3,1,2,2,2],[1,2,2,2,1,3],[1,2,2,3,1,2],[1,3,2,2,1,2],[2,2,1,2,1,3],\n  [2,2,1,3,1,2],[2,3,1,2,1,2],[1,1,2,2,3,2],[1,2,2,1,3,2],[1,2,2,2,3,1],\n  [1,1,3,2,2,2],[1,2,3,1,2,2],[1,2,3,2,2,1],[2,2,3,2,1,1],[2,2,1,1,3,2],\n  [2,2,1,2,3,1],[2,1,3,2,1,2],[2,2,3,1,1,2],[3,1,2,1,3,1],[3,1,1,2,2,2],\n  [3,2,1,1,2,2],[3,2,1,2,2,1],[3,1,2,2,1,2],[3,2,2,1,1,2],[3,2,2,2,1,1],\n  [2,1,2,1,2,3],[2,1,2,3,2,1],[2,3,2,1,2,1],[1,1,1,3,2,3],[1,3,1,1,2,3],\n  [1,3,1,3,2,1],[1,1,2,3,1,3],[1,3,2,1,1,3],[1,3,2,3,1,1],[2,1,1,3,1,3],\n  [2,3,1,1,1,3],[2,3,1,3,1,1],[1,1,3,1,2,3],[1,1,3,3,2,1],[1,3,3,1,2,1],\n  [1,1,2,1,3,3],[1,1,2,3,3,1],[1,3,2,1,3,1],[1,1,3,1,3,2],[1,1,3,2,3,1],\n  [2,1,3,1,1,3],[2,1,3,3,1,1],[2,1,1,1,3,3],[2,1,1,3,3,1],[2,3,1,1,3,1],\n  [2,1,3,1,3,1],[3,1,1,1,2,3],[3,1,1,3,2,1],[3,3,1,1,2,1],[3,1,2,1,1,3],\n  [3,1,2,3,1,1],[3,3,2,1,1,1],[3,1,4,1,1,1],[2,2,1,4,1,1],[4,3,1,1,1,1],\n  [1,1,1,2,2,4],[1,1,1,4,2,2],[1,2,1,1,2,4],[1,2,1,4,2,1],[1,4,1,1,2,2],\n  [1,4,1,2,2,1],[1,1,2,2,1,4],[1,1,2,4,1,2],[1,2,2,1,1,4],[1,2,2,4,1,1],\n  [1,4,2,1,1,2],[1,4,2,2,1,1],[2,4,1,2,1,1],[2,2,1,1,1,4],[4,1,3,1,1,1],\n  [2,4,1,1,1,2],[1,3,4,1,1,1],[1,1,1,2,4,2],[1,2,1,1,4,2],[1,2,1,2,4,1],\n  [1,1,4,2,1,2],[1,2,4,1,1,2],[1,2,4,2,1,1],[4,1,1,2,1,2],[4,2,1,1,1,2],\n  [4,2,1,2,1,1],[2,1,2,1,4,1],[2,1,4,1,2,1],[4,1,2,1,2,1],[1,1,1,1,4,3],\n  [1,1,1,3,4,1],[1,3,1,1,4,1],[1,1,4,1,1,3],[1,1,4,3,1,1],[4,1,1,1,1,3],\n  [4,1,1,3,1,1],[1,1,3,1,4,1],[1,1,4,1,3,1],[3,1,1,1,4,1],[4,1,1,1,3,1],\n  [2,1,1,2,1,4],[2,1,1,4,1,2],[2,1,1,2,3,2]\n];\nconst START_B = [1,1,4,1,3,2];\nconst STOP    = [2,3,3,1,1,1,2];\n\nfunction disegnaBarcode(testo, canvas) {\n  const ctx = canvas.getContext(\'2d\');\n  const W = canvas.width, H = canvas.height;\n  ctx.fillStyle = \'#fff\';\n  ctx.fillRect(0, 0, W, H);\n  const indices = [];\n  for (let i = 0; i < testo.length; i++) {\n    const c = testo.charCodeAt(i);\n    if (c < 32 || c > 126) return;\n    indices.push(c - 32);\n  }\n  let check = 104;\n  indices.forEach((v, i) => { check += v * (i + 1); });\n  check = check % 103;\n  const bars = [...START_B];\n  indices.forEach(i => bars.push(...PATTERNS[i]));\n  bars.push(...PATTERNS[check]);\n  bars.push(...STOP);\n  const total = bars.reduce((a, b) => a + b, 0);\n  const unit = W / total;\n  let x = 0, black = true;\n  bars.forEach(n => {\n    ctx.fillStyle = black ? \'#000\' : \'#fff\';\n    ctx.fillRect(Math.round(x), 0, Math.max(1, Math.round(n * unit)), H);\n    x += n * unit;\n    black = !black;\n  });\n}\n\n// Lista etichette espansa\nETICHETTE_DATA_PLACEHOLDER\n\nconst lista = [];\netichette.forEach(et => {\n  for (let i = 0; i < et.quantita; i++) lista.push({...et});\n});\n\nlet current = 0;\n\nfunction mostra(idx) {\n  const et = lista[idx];\n  document.getElementById(\'codice-display\').textContent = et.barcode;\n  document.getElementById(\'prezzo-eur-display\').textContent = et.prezzo_eur;\n  document.getElementById(\'prezzo-czk-display\').textContent = et.prezzo_czk;\n  document.getElementById(\'counter\').textContent = (idx+1) + \' / \' + lista.length;\n  const canvas = document.getElementById(\'barcode-canvas\');\n  disegnaBarcode(et.barcode, canvas);\n}\n\nfunction successiva() {\n  if (current < lista.length - 1) { current++; mostra(current); }\n}\nfunction precedente() {\n  if (current > 0) { current--; mostra(current); }\n}\nwindow.successiva = successiva;\nwindow.precedente = precedente;\n\nwindow.addEventListener(\'load\', () => mostra(0));\n</script>\n</body>\n</html>';
+
 // ── GENERATORE BARCODE CODE128 ──
 const _BC_PATTERNS = [
   [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],
@@ -2176,7 +2179,7 @@ function stampaEtichetteOrdine(ordineId) {
     '.bn{background:#e0e0e0;color:#333}',
     '.cnt{font-size:13px;color:#666;min-width:60px;text-align:center}',
     '.pa{display:flex;justify-content:center;align-items:center;padding:24px;min-height:220px}',
-    '.pg{width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;background:#fff;border:1px solid #ccc;box-shadow:0 2px 6px rgba(0,0,0,.15)}',
+    '.pg{width:57mm;height:28mm;padding:0.5mm 2mm 0.5mm;display:flex;flex-direction:column;align-items:center;justify-content:space-around;overflow:hidden;background:#fff;border:1px solid #ccc;box-shadow:0 2px 6px rgba(0,0,0,.15)}',
     '.si{font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center}',
     '.bw{display:flex;flex-direction:column;align-items:center;width:100%}',
     '#bi{width:52mm;height:5.5mm;display:block}',
@@ -2197,14 +2200,26 @@ function stampaEtichetteOrdine(ordineId) {
     '</div>',
     '<div class="pa"><div class="pg">',
     '<div class="si">www.psycho-store.com</div>',
-    '<div class="bw"><img id="bi" src=""><div id="co"></div></div>',
-    '<div class="pw"><div id="pe"></div><div id="sep">/</div><div id="pc"></div></div>',
+    '<div class="bw"><img id="bi" src="' + items[0].img + '"><div id="co">' + items[0].barcode + '</div></div>',
+    '<div class="pw"><div id="pe">' + items[0].pEur + '</div><div id="sep">/</div><div id="pc">' + items[0].pCzk + '</div></div>',
     '</div></div>',
     '<script>' + scriptContent + '<\/script>',
     '</body></html>'
   ].join('');
 
-  const blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8'});
+  // Build etichette array for template
+  const etichetteLista = items.map(it => ({
+    barcode: it.barcode,
+    prezzo_eur: it.pEur,
+    prezzo_czk: it.pCzk,
+    quantita: 1
+  }));
+  
+  // Use exact same template structure that works with DYMO
+  const dataJS = 'const etichette = ' + JSON.stringify(etichetteLista) + ';';
+  const finalHtml = ETICHETTE_TEMPLATE.replace('ETICHETTE_DATA_PLACEHOLDER', dataJS);
+  
+  const blob = new Blob([finalHtml], {type: 'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
