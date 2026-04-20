@@ -1701,15 +1701,10 @@ function suggerisciBarcodes(id) {
   if(!codice || codice.length < 3) return;
   const taglie = ['xs','s','m','l','xl','xxl','xxxl'];
   const suffissi = {xs:'XS',s:'S',m:'M',l:'L',xl:'XL',xxl:'XXL',xxxl:'XXXL'};
+  const matches = (db.prodotti||[])
+    .filter(p => p.barcode.toUpperCase().includes(codice.toUpperCase()))
+    .map(p => p.barcode);
   taglie.forEach(t => {
-    const dl = document.getElementById('dl-'+id+'-'+t);
-    if(!dl) return;
-    // Cerca nel catalogo barcode che contengono il codice DIL
-    const matches = (db.prodotti||[])
-      .filter(p => p.barcode.toUpperCase().includes(codice.toUpperCase()))
-      .map(p => p.barcode);
-    dl.innerHTML = matches.map(b=>`<option value="${b}">`).join('');
-    // Auto-fill se c'è un solo match per questa taglia
     const tagliaSuf = suffissi[t];
     const exactMatch = matches.find(b => {
       const upper = b.toUpperCase();
@@ -2420,13 +2415,10 @@ function suggerisciBarcodesDF(id) {
   if(!codice || codice.length < 3) return;
   const taglie = ['xs','s','m','l','xl','xxl','xxxl'];
   const suffissi = {xs:'XS',s:'S',m:'M',l:'L',xl:'XL',xxl:'XXL',xxxl:'XXXL'};
+  const matches = (db.prodotti||[])
+    .filter(p => p.barcode.toUpperCase().includes(codice.toUpperCase()))
+    .map(p => p.barcode);
   taglie.forEach(t => {
-    const dl = document.getElementById('dl-df-'+id+'-'+t);
-    if(!dl) return;
-    const matches = (db.prodotti||[])
-      .filter(p => p.barcode.toUpperCase().includes(codice.toUpperCase()))
-      .map(p => p.barcode);
-    dl.innerHTML = matches.map(b=>`<option value="${b}">`).join('');
     const tagliaSuf = suffissi[t];
     const exactMatch = matches.find(b => {
       const upper = b.toUpperCase();
