@@ -2147,19 +2147,32 @@ function stampaEtichetteOrdine(ordineId) {
 'function successiva(){if(cur<lista.length-1){cur++;mostra(cur);}}' +
 'function precedente(){if(cur>0){cur--;mostra(cur);}}' +
 'function stampaTutte(){' +
-'  const allHtml = lista.map((et,i) => {' +
-'    const c = document.createElement("canvas"); c.width=500; c.height=80;' +
+'  const items = lista.map((et) => {' +
+'    const c = document.createElement("canvas");' +
+'    c.width=500; c.height=80;' +
 '    disegna(et.barcode, c);' +
-'    return "<div class=\"etichetta\" style=\"page-break-after:always\">"+' +
-'      "<div class=\"sito\">www.psycho-store.com</div>"+' +
-'      "<div class=\"barcode-wrap\"><img src=\""+c.toDataURL()+"\" style=\"width:52mm;height:5.5mm\"><div class=\"codice\">"+et.barcode+"</div></div>"+' +
-'      "<div class=\"prezzi-wrap\"><div class=\"prezzo-eur\">"+et.prezzo_eur+"</div><div class=\"prezzo-czk\">"+et.prezzo_czk+"</div></div>"+' +
-'      "</div>";' +
-'  }).join("");' +
+'    const img = c.toDataURL();' +
+'    return {barcode: et.barcode, eur: et.prezzo_eur, czk: et.prezzo_czk, img: img};' +
+'  });' +
+'  const parts = items.map(it => [' +
+'    "<div style=\"width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;page-break-after:always\">",'+
+'    "<div style=\"font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center\">www.psycho-store.com</div>",'+
+'    "<div style=\"display:flex;flex-direction:column;align-items:center;width:100%\">",'+
+'    "<img src=\"" + it.img + "\" style=\"width:52mm;height:5.5mm;display:block\">",'+
+'    "<div style=\"font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm\">" + it.barcode + "</div>",'+
+'    "</div>",'+
+'    "<div style=\"display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm\">",'+
+'    "<div style=\"font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15\">" + it.eur + "</div>",'+
+'    "<div style=\"font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15\">" + it.czk + "</div>",'+
+'    "</div>",'+
+'    "</div>"' +
+'  ].join(""));' +
+'  const body = parts.join("");' +
+'  const page = "@page{size:57mm 32mm;margin:0}body{margin:0}";' +
 '  const w = window.open("","_blank");' +
-'  w.document.write("<html><head><style>*{margin:0;padding:0;box-sizing:border-box}.etichetta{width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden}.sito{font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center}.barcode-wrap{display:flex;flex-direction:column;align-items:center;width:100%}.codice{font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm}.prezzi-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm}.prezzo-eur{font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}.prezzo-czk{font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}@media print{@page{size:57mm 32mm;margin:0}body{margin:0}}</style></head><body>"+allHtml+"</body></html>");' +
+'  w.document.write("<html><head><style>" + page + "</style></head><body>" + body + "</body></html>");' +
 '  w.document.close();' +
-'  setTimeout(()=>w.print(), 500);' +
+'  setTimeout(function(){w.print();}, 600);' +
 '}' +
 'window.addEventListener("load",()=>mostra(0));' +
 '<\/script></body></html>';
