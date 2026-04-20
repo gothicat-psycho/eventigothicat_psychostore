@@ -2565,8 +2565,7 @@ async function caricaAMagazzinoDF(ordineId) {
   });
   o.stato='ricevuto';
   await saveDB();
-  if(nonTrovati.length) { showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber'); alert(nonTrovati.join('
-')); }
+  if(nonTrovati.length) { showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber'); alert(nonTrovati.join(', ')); }
   else showToast(caricati+' varianti caricate in stock ✓');
   renderOrdiniLista();
 }
