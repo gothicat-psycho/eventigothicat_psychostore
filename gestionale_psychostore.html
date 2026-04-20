@@ -2121,7 +2121,8 @@ function stampaEtichetteOrdine(ordineId) {
 '  <span class="counter" id="counter">1 / ' + totEt + '</span>' +
 '  <button class="btn btn-gray" onclick="precedente()">&#8592; Prec</button>' +
 '  <button class="btn btn-gray" onclick="successiva()">Succ &#8594;</button>' +
-'  <button class="btn btn-primary" onclick="window.print()">Stampa questa</button>' +
+'  <button class="btn btn-primary" onclick="window.print()">&#128424; Stampa questa</button>' +
+'  <button class="btn" style="background:#1A7A4A;color:#fff" onclick="stampaTutte()">&#128424; Stampa tutte</button>' +
 '</div>' +
 '<div class="preview-area">' +
 '<div class="etichetta">' +
@@ -2145,6 +2146,21 @@ function stampaEtichetteOrdine(ordineId) {
 'function mostra(i){const et=lista[i];document.getElementById("codice").textContent=et.barcode;document.getElementById("p-eur").textContent=et.prezzo_eur;document.getElementById("p-czk").textContent=et.prezzo_czk;document.getElementById("counter").textContent=(i+1)+" / "+lista.length;disegna(et.barcode,document.getElementById("bc"));}' +
 'function successiva(){if(cur<lista.length-1){cur++;mostra(cur);}}' +
 'function precedente(){if(cur>0){cur--;mostra(cur);}}' +
+'function stampaTutte(){' +
+'  const allHtml = lista.map((et,i) => {' +
+'    const c = document.createElement("canvas"); c.width=500; c.height=80;' +
+'    disegna(et.barcode, c);' +
+'    return "<div class=\"etichetta\" style=\"page-break-after:always\">"+' +
+'      "<div class=\"sito\">www.psycho-store.com</div>"+' +
+'      "<div class=\"barcode-wrap\"><img src=\""+c.toDataURL()+"\" style=\"width:52mm;height:5.5mm\"><div class=\"codice\">"+et.barcode+"</div></div>"+' +
+'      "<div class=\"prezzi-wrap\"><div class=\"prezzo-eur\">"+et.prezzo_eur+"</div><div class=\"prezzo-czk\">"+et.prezzo_czk+"</div></div>"+' +
+'      "</div>";' +
+'  }).join("");' +
+'  const w = window.open("","_blank");' +
+'  w.document.write("<html><head><style>*{margin:0;padding:0;box-sizing:border-box}.etichetta{width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden}.sito{font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center}.barcode-wrap{display:flex;flex-direction:column;align-items:center;width:100%}.codice{font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm}.prezzi-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm}.prezzo-eur{font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}.prezzo-czk{font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}@media print{@page{size:57mm 32mm;margin:0}body{margin:0}}</style></head><body>"+allHtml+"</body></html>");' +
+'  w.document.close();' +
+'  setTimeout(()=>w.print(), 500);' +
+'}' +
 'window.addEventListener("load",()=>mostra(0));' +
 '<\/script></body></html>';
 
