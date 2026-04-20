@@ -494,8 +494,10 @@
                   <div class="costo-row" style="font-weight:600"><span>Totale fattura fornitore (€)</span><span id="df-rc-fatt-eur" class="mono">—</span></div>
                   <div class="sep"></div>
                   <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase;letter-spacing:.5px">Importazione (paghi al corriere)</div>
-                  <div class="costo-row"><span>Dazio (12% fattura €)</span><span id="df-rc-dazio" class="mono">—</span></div>
-                  <div class="costo-row"><span>IVA ((fattura+dazio) × 22%)</span><span id="df-rc-iva" class="mono">—</span></div>
+                  <div class="costo-row"><span>Customs Invoice (€)</span><span id="df-rc-customs" class="mono">—</span></div>
+                  <div class="costo-row"><span>Extra (€)</span><span id="df-rc-extra" class="mono">—</span></div>
+                  <div class="costo-row"><span>Dazio (12% customs)</span><span id="df-rc-dazio" class="mono">—</span></div>
+                  <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span id="df-rc-iva" class="mono">—</span></div>
                   <div class="costo-row"><span>Diritti doganali</span><span id="df-rc-diritti" class="mono">—</span></div>
                   <div class="costo-row"><span>IVA su diritti (22%)</span><span id="df-rc-iva-diritti" class="mono">—</span></div>
                   <div class="costo-row totale"><span>Totale importazione</span><span id="df-rc-tot-importazione" class="mono">—</span></div>
@@ -506,6 +508,25 @@
                   <div class="costo-row"><span>Diritti doganali</span><span id="df-rc-diritti2" class="mono">—</span></div>
                   <div class="costo-row"><span>Commissioni bancarie</span><span id="df-rc-commissioni" class="mono">—</span></div>
                   <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span id="df-rc-tot-costi-merce" class="mono">—</span></div>
+                </div>
+              </div>
+
+              <!-- PAGAMENTI DF -->
+              <div class="card">
+                <div class="card-title">Suddivisione pagamenti</div>
+                <div class="form-group">
+                  <label>Customs Invoice — importo (€) <span style="font-size:10px;color:var(--text3)">inserisci tu</span></label>
+                  <input id="df-customs-eur" type="number" step="0.01" placeholder="es. 180.00" oninput="ricalcolaDF()">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+                  <div style="background:var(--accent-light);border-radius:var(--radius-lg);padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px">CUSTOMS INVOICE (€)</div>
+                    <div style="font-size:13px">EUR: <strong id="df-pag-customs-eur" class="mono">—</strong></div>
+                  </div>
+                  <div style="background:var(--green-light);border-radius:var(--radius-lg);padding:12px">
+                    <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">EXTRA (€)</div>
+                    <div style="font-size:13px">EUR: <strong id="df-pag-extra-eur" class="mono">—</strong></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2436,8 +2457,12 @@ function ricalcolaDF() {
   const totFattRmb = totMerceRmb + trasportoRmb;
   const totFattEur = totMerceEur + trasportoEur;
 
-  const dazio = totFattEur * 0.12;
-  const iva = (totFattEur + dazio) * 0.22;
+  // Customs invoice EUR (inserita manualmente)
+  const customsEur = parseFloat(document.getElementById('df-customs-eur')?.value)||0;
+  const extraEur = totFattEur > 0 && customsEur > 0 ? totFattEur - customsEur : 0;
+  // Dazio e IVA calcolati sulla customs invoice
+  const dazio = customsEur * 0.12;
+  const iva = (customsEur + dazio) * 0.22;
   const ivaDiritti = diritti * 0.22;
   const totImportazione = dazio + iva + diritti + ivaDiritti;
   const totCostiMerce = trasportoEur + dazio + diritti + commissioni;
@@ -2449,6 +2474,8 @@ function ricalcolaDF() {
   set('df-rc-trasporto-eur', trasportoEur && rmbEur ? fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
   set('df-rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
   set('df-rc-fatt-eur', totFattEur && rmbEur ? fmt(totFattEur) : '—');
+  set('df-rc-customs', customsEur ? fmt(customsEur) : '—');
+  set('df-rc-extra', extraEur ? fmt(extraEur) : '—');
   set('df-rc-dazio', dazio && rmbEur ? fmt(dazio) : '—');
   set('df-rc-iva', iva && rmbEur ? fmt(iva) : '—');
   set('df-rc-diritti', diritti ? fmt(diritti) : '—');
@@ -2458,6 +2485,8 @@ function ricalcolaDF() {
   set('df-rc-dazio2', dazio && rmbEur ? fmt(dazio) : '—');
   set('df-rc-diritti2', diritti ? fmt(diritti) : '—');
   set('df-rc-commissioni', commissioni ? fmt(commissioni) : '—');
+  set('df-pag-customs-eur', customsEur ? fmt(customsEur) : '—');
+  set('df-pag-extra-eur', extraEur ? fmt(extraEur) : (totFattEur&&!customsEur?'inserisci customs':'—'));
   set('df-rc-tot-costi-merce', totCostiMerce && rmbEur ? fmt(totCostiMerce) : '—');
 
   // Aggiorna righe
@@ -2517,6 +2546,7 @@ async function salvaOrdineDF() {
     trasportoRmb: parseFloat(document.getElementById('df-trasporto-rmb').value)||0,
     diritti: parseFloat(document.getElementById('df-diritti').value)||0,
     commissioni: parseFloat(document.getElementById('df-commissioni').value)||0,
+    customsEur: parseFloat(document.getElementById('df-customs-eur').value)||0,
     note: document.getElementById('df-note').value.trim(),
     stato: 'bozza',
     articoli: righe,
@@ -2544,8 +2574,9 @@ function apriDettaglioOrdineDF(id) {
   const trasportoEur = (o.trasportoRmb||0)*rmbEur;
   const totFattRmb = totMerceRmb+(o.trasportoRmb||0);
   const totFattEur = totMerceEur+trasportoEur;
-  const dazio = totFattEur*0.12;
-  const iva = (totFattEur+dazio)*0.22;
+  const customsEurDet = o.customsEur||0;
+  const dazio = customsEurDet*0.12;
+  const iva = (customsEurDet+dazio)*0.22;
   const ivaDiritti = (o.diritti||0)*0.22;
   const totImportazione = dazio+iva+(o.diritti||0)+ivaDiritti;
   const totCostiMerce = trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0);
@@ -2598,8 +2629,10 @@ function apriDettaglioOrdineDF(id) {
       <div class="sezione-costi" style="margin-top:12px">
         <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--accent)">RIEPILOGO COSTI IMPORTAZIONE</div>
         <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase">Importazione (paghi al corriere)</div>
-        <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${rmbEur?fmt(dazio):'—'}</span></div>
-        <div class="costo-row"><span>IVA ((fattura+dazio) × 22%)</span><span class="mono">${rmbEur?fmt(iva):'—'}</span></div>
+        <div class="costo-row"><span>Customs Invoice (€)</span><span class="mono">${o.customsEur?fmt(o.customsEur):'—'}</span></div>
+        <div class="costo-row"><span>Extra (€)</span><span class="mono">${o.customsEur&&rmbEur?fmt(totFattEur-(o.customsEur||0)):'—'}</span></div>
+        <div class="costo-row"><span>Dazio (12% customs)</span><span class="mono">${rmbEur?fmt(dazio):'—'}</span></div>
+        <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span class="mono">${rmbEur?fmt(iva):'—'}</span></div>
         <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
         <div class="costo-row"><span>IVA su diritti</span><span class="mono">${ivaDiritti?fmt(ivaDiritti):'—'}</span></div>
         <div class="costo-row totale"><span>Totale importazione</span><span class="mono">${rmbEur?fmt(totImportazione):'—'}</span></div>
@@ -2633,6 +2666,7 @@ function modificaOrdineDF(id) {
     document.getElementById('df-diritti').value = o.diritti||'';
     document.getElementById('df-commissioni').value = o.commissioni||'';
     document.getElementById('df-note').value = o.note||'';
+    document.getElementById('df-customs-eur').value = o.customsEur||'';
     document.getElementById('tbody-df').innerHTML='';
     dfRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaDF(a));
