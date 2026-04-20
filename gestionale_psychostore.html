@@ -2143,6 +2143,7 @@ function stampaEtichetteOrdine(ordineId) {
     '  var et=lista[i];',
     '  document.getElementById("co").textContent=et.barcode;',
     '  document.getElementById("pe").textContent=et.pEur;',
+    '  console.log("pCzk value:", et.pCzk, "type:", typeof et.pCzk);',
     '  document.getElementById("pc").textContent=et.pCzk;',
     '  document.getElementById("bi").src=et.img;',
     '  document.getElementById("cnt").textContent=(i+1)+" / "+lista.length;',
