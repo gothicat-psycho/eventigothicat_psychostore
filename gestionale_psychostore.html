@@ -2060,7 +2060,6 @@ function stampaEtichetteOrdine(ordineId) {
   const o = (db.ordiniDIL||[]).find(x=>x.id===ordineId);
   if(!o) return;
 
-  // Costruisci lista etichette
   const taglie = [
     {t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},
     {t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}
@@ -2073,11 +2072,9 @@ function stampaEtichetteOrdine(ordineId) {
       const barcode = r[bc]||'';
       if(!qty || !barcode) return;
       const prod = getProdotto(barcode);
-      const prezzo_eur = prod ? Math.round(prod.prezzo||0) + ' EURO' : '— EURO';
-      const prezzo_czk = prod ? (prod.prezzoCzk ? Math.round(prod.prezzoCzk)+' CZK' : '—') : '—';
-      for(let i=0; i<qty; i++) {
-        lista.push({ barcode, prezzo_eur, prezzo_czk });
-      }
+      const pEur = prod ? Math.round(prod.prezzo||0) + ' EURO' : '— EURO';
+      const pCzk = prod ? (prod.prezzoCzk ? Math.round(prod.prezzoCzk)+' CZK' : '—') : '—';
+      for(let i=0; i<qty; i++) lista.push({barcode, pEur, pCzk});
     });
   });
 
@@ -2086,99 +2083,53 @@ function stampaEtichetteOrdine(ordineId) {
     return;
   }
 
-  // Genera HTML etichette in una nuova finestra
-  const rif = o.riferimento;
-  const totEt = lista.length;
-  const listaJson = JSON.stringify(lista);
-  const patJson = JSON.stringify(_BC_PATTERNS);
-  const startJson = JSON.stringify(_BC_START);
-  const stopJson = JSON.stringify(_BC_STOP);
+  // Genera immagini barcode come dataURL per ogni etichetta
+  const items = lista.map(et => {
+    const c = document.createElement('canvas');
+    c.width = 500; c.height = 80;
+    disegnaBarcode128(et.barcode, c);
+    return {barcode: et.barcode, pEur: et.pEur, pCzk: et.pCzk, img: c.toDataURL()};
+  });
 
-  const html = '<!DOCTYPE html>' +
-'<html lang="it"><head><meta charset="UTF-8"><title>Etichette ' + rif + '</title>' +
-'<style>' +
-'* { margin:0;padding:0;box-sizing:border-box; }' +
-'body { font-family:sans-serif;background:#f0f0f0; }' +
-'.controls { padding:12px 16px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:12px;flex-wrap:wrap; }' +
-'.controls h2 { font-size:14px;flex:1; }' +
-'.btn { padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600; }' +
-'.btn-primary { background:#1A4FB5;color:#fff; }' +
-'.btn-gray { background:#e0e0e0;color:#333; }' +
-'.counter { font-size:13px;color:#666;min-width:60px;text-align:center; }' +
-'.preview-area { display:flex;justify-content:center;align-items:center;padding:32px;min-height:260px; }' +
-'.etichetta { width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;background:#fff;border:1px solid #ccc;box-shadow:0 2px 8px rgba(0,0,0,.15); }' +
-'.sito { font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center; }' +
-'.barcode-wrap { display:flex;flex-direction:column;align-items:center;width:100%; }' +
-'.barcode-canvas { width:52mm;height:5.5mm;display:block; }' +
-'.codice { font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm; }' +
-'.prezzi-wrap { display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm; }' +
-'.prezzo-eur { font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15; }' +
-'.prezzo-czk { font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15; }' +
-'@media print { @page { size:57mm 32mm;margin:0; } body { background:#fff; } .controls { display:none; } .preview-area { padding:0;min-height:0; } .etichetta { border:none;box-shadow:none; } }' +
-'</style></head><body>' +
-'<div class="controls">' +
-'  <h2>Etichette ' + rif + ' (' + totEt + ' totali)</h2>' +
-'  <span class="counter" id="counter">1 / ' + totEt + '</span>' +
-'  <button class="btn btn-gray" onclick="precedente()">&#8592; Prec</button>' +
-'  <button class="btn btn-gray" onclick="successiva()">Succ &#8594;</button>' +
-'  <button class="btn btn-primary" onclick="window.print()">&#128424; Stampa questa</button>' +
-'  <button class="btn" style="background:#1A7A4A;color:#fff" onclick="stampaTutte()">&#128424; Stampa tutte</button>' +
-'</div>' +
-'<div class="preview-area">' +
-'<div class="etichetta">' +
-'  <div class="sito">www.psycho-store.com</div>' +
-'  <div class="barcode-wrap">' +
-'    <canvas class="barcode-canvas" id="bc" width="500" height="80"></canvas>' +
-'    <div class="codice" id="codice"></div>' +
-'  </div>' +
-'  <div class="prezzi-wrap">' +
-'    <div class="prezzo-eur" id="p-eur"></div>' +
-'    <div class="prezzo-czk" id="p-czk"></div>' +
-'  </div>' +
-'</div></div>' +
-'<script>' +
-'const _P=' + patJson + ';' +
-'const _S=' + startJson + ';' +
-'const _T=' + stopJson + ';' +
-'function disegna(t,cv){const ctx=cv.getContext("2d");const W=cv.width,H=cv.height;ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);const idx=[];for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);if(c<32||c>126)return;idx.push(c-32);}let chk=104;idx.forEach((v,i)=>{chk+=v*(i+1);});chk=chk%103;const bars=[..._S];idx.forEach(i=>bars.push(..._P[i]));bars.push(..._P[chk]);bars.push(..._T);const tot=bars.reduce((a,b)=>a+b,0);const u=W/tot;let x=0,bl=true;bars.forEach(n=>{ctx.fillStyle=bl?"#000":"#fff";ctx.fillRect(Math.round(x),0,Math.max(1,Math.round(n*u)),H);x+=n*u;bl=!bl;});}' +
-'const lista=' + listaJson + ';' +
-'let cur=0;' +
-'function mostra(i){const et=lista[i];document.getElementById("codice").textContent=et.barcode;document.getElementById("p-eur").textContent=et.prezzo_eur;document.getElementById("p-czk").textContent=et.prezzo_czk;document.getElementById("counter").textContent=(i+1)+" / "+lista.length;disegna(et.barcode,document.getElementById("bc"));}' +
-'function successiva(){if(cur<lista.length-1){cur++;mostra(cur);}}' +
-'function precedente(){if(cur>0){cur--;mostra(cur);}}' +
-'function stampaTutte(){' +
-'  const items = lista.map((et) => {' +
-'    const c = document.createElement("canvas");' +
-'    c.width=500; c.height=80;' +
-'    disegna(et.barcode, c);' +
-'    const img = c.toDataURL();' +
-'    return {barcode: et.barcode, eur: et.prezzo_eur, czk: et.prezzo_czk, img: img};' +
-'  });' +
-'  const parts = items.map(it => [' +
-'    "<div style=\"width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;page-break-after:always\">",'+
-'    "<div style=\"font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center\">www.psycho-store.com</div>",'+
-'    "<div style=\"display:flex;flex-direction:column;align-items:center;width:100%\">",'+
-'    "<img src=\"" + it.img + "\" style=\"width:52mm;height:5.5mm;display:block\">",'+
-'    "<div style=\"font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm\">" + it.barcode + "</div>",'+
-'    "</div>",'+
-'    "<div style=\"display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm\">",'+
-'    "<div style=\"font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15\">" + it.eur + "</div>",'+
-'    "<div style=\"font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15\">" + it.czk + "</div>",'+
-'    "</div>",'+
-'    "</div>"' +
-'  ].join(""));' +
-'  const body = parts.join("");' +
-'  const page = "@page{size:57mm 32mm;margin:0}body{margin:0}";' +
-'  const w = window.open("","_blank");' +
-'  w.document.write("<html><head><style>" + page + "</style></head><body>" + body + "</body></html>");' +
-'  w.document.close();' +
-'  setTimeout(function(){w.print();}, 600);' +
-'}' +
-'window.addEventListener("load",()=>mostra(0));' +
-'<\/script></body></html>';
+  // Costruisci HTML con stili inline
+  const css = [
+    'body{margin:0;padding:0}',
+    '.pg{width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;',
+    'align-items:center;justify-content:space-between;overflow:hidden;page-break-after:always}',
+    '.si{font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center}',
+    '.bw{display:flex;flex-direction:column;align-items:center;width:100%}',
+    '.bi{width:52mm;height:5.5mm;display:block}',
+    '.co{font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm}',
+    '.pw{display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm}',
+    '.pe{font-family:Arial Black,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}',
+    '.pc{font-family:Arial Black,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}',
+    '@media print{@page{size:57mm 32mm;margin:0}}'
+  ].join('');
 
-  // Scarica come file HTML invece di aprire nuova finestra (evita blocchi Safari)
-  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const noBtns = [
+    '<div style="padding:10px;font-family:sans-serif;font-size:13px;border-bottom:1px solid #ddd">',
+    '<strong>Etichette ' + o.riferimento + '</strong> — ' + items.length + ' totali',
+    '</div>'
+  ].join('');
+
+  const body = items.map(it => [
+    '<div class="pg">',
+    '<div class="si">www.psycho-store.com</div>',
+    '<div class="bw">',
+    '<img class="bi" src="' + it.img + '">',
+    '<div class="co">' + it.barcode + '</div>',
+    '</div>',
+    '<div class="pw">',
+    '<div class="pe">' + it.pEur + '</div>',
+    '<div class="pc">' + it.pCzk + '</div>',
+    '</div>',
+    '</div>'
+  ].join('')).join('');
+
+  const noprint = '<style>.noprint{}.pg{}</style>';
+  const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + css + '</style></head><body>' + noBtns + body + '</body></html>';
+
+  const blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -2187,7 +2138,7 @@ function stampaEtichetteOrdine(ordineId) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast('File etichette scaricato — aprilo nel browser per stampare');
+  showToast('File etichette scaricato — aprilo e usa Cmd+P per stampare tutte');
 }
 window.stampaEtichetteOrdine = stampaEtichetteOrdine;
 
