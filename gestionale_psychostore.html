@@ -1601,7 +1601,7 @@ function renderOrdiniLista() {
       <td class="mono">${o.usdEur ? fmt(totEur) : '—'}</td>
       <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
       <td style="display:flex;gap:4px">
-        ${o._tipo!=='DF' ? `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>` : ''}
+        ${o._tipo==='DF' ? `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>` : `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
         ${o._tipo==='DF' ? `<button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>` : `<button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>`}
         ${o.stato!=='ricevuto' ? (o._tipo==='DF' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoDF(${o.id})">Carica stock</button>` : `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">Carica stock</button>`) : '<span class="badge badge-green">In stock</span>'}
         ${o._tipo==='DF' ? `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineDF(${o.id})">Etichette</button>` : `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdine(${o.id})">Etichette</button>`}
@@ -2533,6 +2533,92 @@ async function salvaOrdineDF() {
   switchOrdiniTab('lista');
 }
 window.salvaOrdineDF = salvaOrdineDF;
+
+function apriDettaglioOrdineDF(id) {
+  const o = (db.ordiniDF||[]).find(x=>x.id===id);
+  if(!o) return;
+  switchOrdiniTab('dettaglio');
+  const rmbEur = o.rmbEur||0;
+  const totMerceRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
+  const totMerceEur = totMerceRmb*rmbEur;
+  const trasportoEur = (o.trasportoRmb||0)*rmbEur;
+  const totFattRmb = totMerceRmb+(o.trasportoRmb||0);
+  const totFattEur = totMerceEur+trasportoEur;
+  const dazio = totFattEur*0.12;
+  const iva = (totFattEur+dazio)*0.22;
+  const ivaDiritti = (o.diritti||0)*0.22;
+  const totImportazione = dazio+iva+(o.diritti||0)+ivaDiritti;
+  const totCostiMerce = trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0);
+  const totPezzi = (o.articoli||[]).reduce((a,r)=>a+r.pz,0);
+
+  document.getElementById('ordini-dettaglio-content').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:18px;font-weight:700">${o.riferimento}</div>
+          <div style="font-size:12px;color:var(--text3)">${o.data||''} · DEVIL FASHION · ${(o.articoli||[]).length} articoli · ${totPezzi} pezzi</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>
+          <select onchange="cambiaStatoOrdineDF(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
+            <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
+            <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
+            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+        <div class="metric"><div class="metric-label">Totale ¥</div><div class="metric-value" style="font-size:18px">${Math.round(totFattRmb).toLocaleString('it')} ¥</div></div>
+        <div class="metric"><div class="metric-label">Totale € (fattura)</div><div class="metric-value green" style="font-size:18px">${rmbEur?fmt(totFattEur):'—'}</div></div>
+        <div class="metric"><div class="metric-label">Tasso RMB/EUR</div><div class="metric-value" style="font-size:18px">${rmbEur||'—'}</div></div>
+      </div>
+      <div class="card-title">Articoli</div>
+      <div style="overflow-x:auto"><table class="report-table">
+        <thead><tr><th>Articolo</th><th>¥ unit</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th><th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
+        <tbody>${(o.articoli||[]).map(r=>{
+          const pct = totMerceRmb>0?r.totRmb/totMerceRmb:0;
+          const prezzoEur = rmbEur?r.prezzoRmb*rmbEur:0;
+          const costoAdd = r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
+          const costoRiga = r.pz>0?prezzoEur+costoAdd:0;
+          const ricarico = prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
+          return `<tr>
+            <td style="font-weight:600">${r.articolo}</td>
+            <td class="mono">${r.prezzoRmb} ¥</td>
+            <td class="mono">${r.xs||'—'}</td><td class="mono">${r.s||'—'}</td><td class="mono">${r.m||'—'}</td><td class="mono">${r.l||'—'}</td><td class="mono">${r.xl||'—'}</td><td class="mono">${r.xxl||'—'}</td><td class="mono">${r.xxxl||'—'}</td>
+            <td class="mono" style="font-weight:600">${r.pz}</td>
+            <td class="mono">${Math.round(r.totRmb).toLocaleString('it')} ¥</td>
+            <td class="mono" style="color:var(--text3)">${(pct*100).toFixed(1)}%</td>
+            <td class="mono" style="color:var(--green)">${costoRiga?fmt(costoRiga):'—'}</td>
+            <td class="mono">${r.vendita?fmt(r.vendita):'—'}</td>
+            <td class="mono" style="color:${ricarico!==null?(ricarico>=100?'var(--green)':'var(--red)'):'var(--text3)'}">${ricarico!==null?Math.round(ricarico)+'%':'—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      <div class="sep"></div>
+      <div class="sezione-costi" style="margin-top:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--accent)">RIEPILOGO COSTI IMPORTAZIONE</div>
+        <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase">Importazione (paghi al corriere)</div>
+        <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${rmbEur?fmt(dazio):'—'}</span></div>
+        <div class="costo-row"><span>IVA ((fattura+dazio) × 22%)</span><span class="mono">${rmbEur?fmt(iva):'—'}</span></div>
+        <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
+        <div class="costo-row"><span>IVA su diritti</span><span class="mono">${ivaDiritti?fmt(ivaDiritti):'—'}</span></div>
+        <div class="costo-row totale"><span>Totale importazione</span><span class="mono">${rmbEur?fmt(totImportazione):'—'}</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--green);margin:8px 0 4px;text-transform:uppercase">Costi da imputare alla merce</div>
+        <div class="costo-row"><span>Trasporto</span><span class="mono">${rmbEur?fmt(trasportoEur):'—'}</span></div>
+        <div class="costo-row"><span>Dazio</span><span class="mono">${rmbEur?fmt(dazio):'—'}</span></div>
+        <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
+        <div class="costo-row"><span>Commissioni</span><span class="mono">${o.commissioni?fmt(o.commissioni):'—'}</span></div>
+        <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span class="mono">${rmbEur?fmt(totCostiMerce):'—'}</span></div>
+      </div>
+    </div>`;
+}
+window.apriDettaglioOrdineDF = apriDettaglioOrdineDF;
+
+async function cambiaStatoOrdineDF(id, stato) {
+  const o = (db.ordiniDF||[]).find(x=>x.id===id);
+  if(o) { o.stato=stato; await saveDB(); showToast('Stato aggiornato'); }
+}
+window.cambiaStatoOrdineDF = cambiaStatoOrdineDF;
 
 function modificaOrdineDF(id) {
   const o = (db.ordiniDF||[]).find(x=>x.id===id);
