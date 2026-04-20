@@ -1619,7 +1619,7 @@ function renderOrdiniLista() {
       <td class="mono">${nArt} articoli</td>
       <td class="mono">${Math.round(totRmb).toLocaleString('it')} ¥</td>
       <td class="mono">${o._tipo==='DF' ? '—' : (o.rmbUsd ? '$ '+totUsd.toFixed(2) : '—')}</td>
-      <td class="mono">${o.usdEur ? fmt(totEur) : '—'}</td>
+      <td class="mono">${o._tipo==='DF' ? (o.rmbEur ? fmt(totEur) : '—') : (o.usdEur ? fmt(totEur) : '—')}</td>
       <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
       <td style="display:flex;gap:4px">
         ${o._tipo==='DF' ? `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>` : `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
@@ -2551,6 +2551,8 @@ function renderBarcodesTableDF(righe) {
     }).join('');
     return `<tr><td style="font-weight:600;font-size:12px">${r.articolo||'—'}</td>${cols}</tr>`;
   }).join('') || '<tr><td colspan="8" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
+  // Popola datalist dopo che gli elementi sono nel DOM
+  setTimeout(() => righe.forEach(r => suggerisciBarcodesDF(r.id)), 50);
 }
 
 let editingOrdineDF = null;
