@@ -1505,6 +1505,7 @@ function renderOrdiniLista() {
         <button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>
         <button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>
         ${o.stato!=='ricevuto'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">📦 Carica stock</button>`:'<span class="badge badge-green">✓ In stock</span>'}
+        <button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdine(${o.id})">🏷 Etichette</button>
         <button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>
       </td>
     </tr>`;
@@ -1999,6 +2000,159 @@ function calcolaCostoProdottoDIL(o, r) {
   const costoAdd = r.pz>0 && totMerceRmb>0 ? (totCostiMerce*pct)/r.pz : 0;
   return prezzoEur + costoAdd;
 }
+
+// ── GENERATORE BARCODE CODE128 ──
+const _BC_PATTERNS = [
+  [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],
+  [1,3,1,2,2,2],[1,2,2,2,1,3],[1,2,2,3,1,2],[1,3,2,2,1,2],[2,2,1,2,1,3],
+  [2,2,1,3,1,2],[2,3,1,2,1,2],[1,1,2,2,3,2],[1,2,2,1,3,2],[1,2,2,2,3,1],
+  [1,1,3,2,2,2],[1,2,3,1,2,2],[1,2,3,2,2,1],[2,2,3,2,1,1],[2,2,1,1,3,2],
+  [2,2,1,2,3,1],[2,1,3,2,1,2],[2,2,3,1,1,2],[3,1,2,1,3,1],[3,1,1,2,2,2],
+  [3,2,1,1,2,2],[3,2,1,2,2,1],[3,1,2,2,1,2],[3,2,2,1,1,2],[3,2,2,2,1,1],
+  [2,1,2,1,2,3],[2,1,2,3,2,1],[2,3,2,1,2,1],[1,1,1,3,2,3],[1,3,1,1,2,3],
+  [1,3,1,3,2,1],[1,1,2,3,1,3],[1,3,2,1,1,3],[1,3,2,3,1,1],[2,1,1,3,1,3],
+  [2,3,1,1,1,3],[2,3,1,3,1,1],[1,1,3,1,2,3],[1,1,3,3,2,1],[1,3,3,1,2,1],
+  [1,1,2,1,3,3],[1,1,2,3,3,1],[1,3,2,1,3,1],[1,1,3,1,3,2],[1,1,3,2,3,1],
+  [2,1,3,1,1,3],[2,1,3,3,1,1],[2,1,1,1,3,3],[2,1,1,3,3,1],[2,3,1,1,3,1],
+  [2,1,3,1,3,1],[3,1,1,1,2,3],[3,1,1,3,2,1],[3,3,1,1,2,1],[3,1,2,1,1,3],
+  [3,1,2,3,1,1],[3,3,2,1,1,1],[3,1,4,1,1,1],[2,2,1,4,1,1],[4,3,1,1,1,1],
+  [1,1,1,2,2,4],[1,1,1,4,2,2],[1,2,1,1,2,4],[1,2,1,4,2,1],[1,4,1,1,2,2],
+  [1,4,1,2,2,1],[1,1,2,2,1,4],[1,1,2,4,1,2],[1,2,2,1,1,4],[1,2,2,4,1,1],
+  [1,4,2,1,1,2],[1,4,2,2,1,1],[2,4,1,2,1,1],[2,2,1,1,1,4],[4,1,3,1,1,1],
+  [2,4,1,1,1,2],[1,3,4,1,1,1],[1,1,1,2,4,2],[1,2,1,1,4,2],[1,2,1,2,4,1],
+  [1,1,4,2,1,2],[1,2,4,1,1,2],[1,2,4,2,1,1],[4,1,1,2,1,2],[4,2,1,1,1,2],
+  [4,2,1,2,1,1],[2,1,2,1,4,1],[2,1,4,1,2,1],[4,1,2,1,2,1],[1,1,1,1,4,3],
+  [1,1,1,3,4,1],[1,3,1,1,4,1],[1,1,4,1,1,3],[1,1,4,3,1,1],[4,1,1,1,1,3],
+  [4,1,1,3,1,1],[1,1,3,1,4,1],[1,1,4,1,3,1],[3,1,1,1,4,1],[4,1,1,1,3,1],
+  [2,1,1,2,1,4],[2,1,1,4,1,2],[2,1,1,2,3,2]
+];
+const _BC_START = [1,1,4,1,3,2];
+const _BC_STOP  = [2,3,3,1,1,1,2];
+
+function disegnaBarcode128(testo, canvas) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+  const indices = [];
+  for (let i=0; i<testo.length; i++) {
+    const c = testo.charCodeAt(i);
+    if (c<32||c>126) return;
+    indices.push(c-32);
+  }
+  let check = 104;
+  indices.forEach((v,i) => { check += v*(i+1); });
+  check = check % 103;
+  const bars = [..._BC_START];
+  indices.forEach(i => bars.push(..._BC_PATTERNS[i]));
+  bars.push(..._BC_PATTERNS[check]);
+  bars.push(..._BC_STOP);
+  const total = bars.reduce((a,b)=>a+b,0);
+  const unit = W/total;
+  let x=0, black=true;
+  bars.forEach(n => {
+    ctx.fillStyle = black ? '#000' : '#fff';
+    ctx.fillRect(Math.round(x),0,Math.max(1,Math.round(n*unit)),H);
+    x+=n*unit; black=!black;
+  });
+}
+
+function stampaEtichetteOrdine(ordineId) {
+  const o = (db.ordiniDIL||[]).find(x=>x.id===ordineId);
+  if(!o) return;
+
+  // Costruisci lista etichette
+  const taglie = [
+    {t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},
+    {t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}
+  ];
+
+  const lista = [];
+  (o.articoli||[]).forEach(r => {
+    taglie.forEach(({t,bc}) => {
+      const qty = r[t]||0;
+      const barcode = r[bc]||'';
+      if(!qty || !barcode) return;
+      const prod = getProdotto(barcode);
+      const prezzo_eur = prod ? Math.round(prod.prezzo||0) + ' EURO' : '— EURO';
+      const prezzo_czk = prod ? (prod.prezzoCzk ? Math.round(prod.prezzoCzk)+' CZK' : '—') : '—';
+      for(let i=0; i<qty; i++) {
+        lista.push({ barcode, prezzo_eur, prezzo_czk });
+      }
+    });
+  });
+
+  if(!lista.length) {
+    showToast('Nessun barcode associato — compila prima i barcode nell'ordine','amber');
+    return;
+  }
+
+  // Genera HTML etichette in una nuova finestra
+  const html = `<!DOCTYPE html>
+<html lang="it"><head><meta charset="UTF-8"><title>Etichette ${o.riferimento}</title>
+<style>
+* { margin:0;padding:0;box-sizing:border-box; }
+body { font-family:sans-serif;background:#f0f0f0; }
+.controls { padding:12px 16px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
+.controls h2 { font-size:14px;flex:1; }
+.btn { padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600; }
+.btn-primary { background:#1A4FB5;color:#fff; }
+.btn-gray { background:#e0e0e0;color:#333; }
+.counter { font-size:13px;color:#666;min-width:60px;text-align:center; }
+.preview-area { display:flex;justify-content:center;align-items:center;padding:32px;min-height:260px; }
+.etichetta { width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;background:#fff;border:1px solid #ccc;box-shadow:0 2px 8px rgba(0,0,0,.15); }
+.sito { font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center; }
+.barcode-wrap { display:flex;flex-direction:column;align-items:center;width:100%; }
+.barcode-canvas { width:52mm;height:5.5mm;display:block; }
+.codice { font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm; }
+.prezzi-wrap { display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm; }
+.prezzo-eur { font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15; }
+.prezzo-czk { font-family:Arial Black,Arial,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15; }
+@media print {
+  @page { size:57mm 32mm;margin:0; }
+  body { background:#fff; }
+  .controls { display:none; }
+  .preview-area { padding:0;min-height:0; }
+  .etichetta { border:none;box-shadow:none; }
+}
+</style></head><body>
+<div class="controls">
+  <h2>🏷 Etichette — ${o.riferimento} (${lista.length} totali)</h2>
+  <span class="counter" id="counter">1 / ${lista.length}</span>
+  <button class="btn btn-gray" onclick="precedente()">← Prec</button>
+  <button class="btn btn-gray" onclick="successiva()">Succ →</button>
+  <button class="btn btn-primary" onclick="window.print()">🖨 Stampa questa</button>
+</div>
+<div class="preview-area">
+  <div class="etichetta">
+    <div class="sito">www.psycho-store.com</div>
+    <div class="barcode-wrap">
+      <canvas class="barcode-canvas" id="bc" width="500" height="80"></canvas>
+      <div class="codice" id="codice"></div>
+    </div>
+    <div class="prezzi-wrap">
+      <div class="prezzo-eur" id="p-eur"></div>
+      <div class="prezzo-czk" id="p-czk"></div>
+    </div>
+  </div>
+</div>
+<script>
+const _P = ${JSON.stringify(_BC_PATTERNS)};
+const _S = ${JSON.stringify(_BC_START)};
+const _T = ${JSON.stringify(_BC_STOP)};
+function disegna(testo,canvas){const ctx=canvas.getContext('2d');const W=canvas.width,H=canvas.height;ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);const idx=[];for(let i=0;i<testo.length;i++){const c=testo.charCodeAt(i);if(c<32||c>126)return;idx.push(c-32);}let chk=104;idx.forEach((v,i)=>{chk+=v*(i+1);});chk=chk%103;const bars=[..._S];idx.forEach(i=>bars.push(..._P[i]));bars.push(..._P[chk]);bars.push(..._T);const tot=bars.reduce((a,b)=>a+b,0);const u=W/tot;let x=0,bl=true;bars.forEach(n=>{ctx.fillStyle=bl?'#000':'#fff';ctx.fillRect(Math.round(x),0,Math.max(1,Math.round(n*u)),H);x+=n*u;bl=!bl;});}
+const lista = ${JSON.stringify(lista)};
+let cur = 0;
+function mostra(i){const et=lista[i];document.getElementById('codice').textContent=et.barcode;document.getElementById('p-eur').textContent=et.prezzo_eur;document.getElementById('p-czk').textContent=et.prezzo_czk;document.getElementById('counter').textContent=(i+1)+' / '+lista.length;disegna(et.barcode,document.getElementById('bc'));}
+function successiva(){if(cur<lista.length-1){cur++;mostra(cur);}}
+function precedente(){if(cur>0){cur--;mostra(cur);}}
+window.addEventListener('load',()=>mostra(0));
+</script></body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+window.stampaEtichetteOrdine = stampaEtichetteOrdine;
 
 // ── INIT ──
 setLogo();
