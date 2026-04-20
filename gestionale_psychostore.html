@@ -2158,7 +2158,11 @@ function stampaEtichetteOrdine(ordineId) {
     '  }',
     '  setTimeout(step,300);',
     '}',
-    'window.onload=function(){mostra(0);};'
+    'window.onload=function(){mostra(0);};',
+    'document.addEventListener("keydown",function(e){',
+    '  if(e.code==="Space"&&e.target.tagName!=="BUTTON"){e.preventDefault();succ();}',
+    '  if(e.code==="KeyP"&&!e.metaKey&&!e.ctrlKey){e.preventDefault();window.print();}',
+    '});'
   ].join('');
 
   const fullHtml = [
@@ -2187,6 +2191,7 @@ function stampaEtichetteOrdine(ordineId) {
     '<button class="bn" onclick="succ()">Succ &#8594;</button>',
     '<button class="bp" onclick="window.print()">&#128424; Stampa questa</button>',
     '<button class="bg" onclick="stampaTutte()">&#128424; Stampa tutte</button>',
+    '<span style="font-size:11px;color:#666;margin-left:4px">Scorciatoie: <strong>P</strong> = stampa &nbsp; <strong>Spazio</strong> = avanti</span>',
     '</div>',
     '<div class="pa"><div class="pg">',
     '<div class="si">www.psycho-store.com</div>',
