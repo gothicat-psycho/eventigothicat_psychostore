@@ -2131,7 +2131,71 @@ function stampaEtichetteOrdine(ordineId) {
   ].join('')).join('');
 
   const noprint = '<style>.noprint{}.pg{}</style>';
-  const fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + css + '</style></head><body>' + noBtns + body + '</body></html>';
+  // Genera file con navigazione una-per-una + auto-stampa sequenziale
+  const itemsJson = JSON.stringify(items.map(it => ({
+    barcode: it.barcode, pEur: it.pEur, pCzk: it.pCzk, img: it.img
+  })));
+
+  const scriptContent = [
+    'var lista=' + itemsJson + ';',
+    'var cur=0;',
+    'function mostra(i){',
+    '  var et=lista[i];',
+    '  document.getElementById("co").textContent=et.barcode;',
+    '  document.getElementById("pe").textContent=et.pEur;',
+    '  document.getElementById("pc").textContent=et.pCzk;',
+    '  document.getElementById("bi").src=et.img;',
+    '  document.getElementById("cnt").textContent=(i+1)+" / "+lista.length;',
+    '}',
+    'function succ(){if(cur<lista.length-1){cur++;mostra(cur);}}',
+    'function prec(){if(cur>0){cur--;mostra(cur);}}',
+    'function stampaTutte(){',
+    '  cur=0; mostra(0);',
+    '  function step(){',
+    '    window.print();',
+    '    cur++;',
+    '    if(cur<lista.length){mostra(cur);setTimeout(step,1200);}',
+    '  }',
+    '  setTimeout(step,300);',
+    '}',
+    'window.onload=function(){mostra(0);};'
+  ].join('');
+
+  const fullHtml = [
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>',
+    'body{margin:0;font-family:sans-serif;background:#f0f0f0}',
+    '.ctrl{padding:10px 16px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:10px}',
+    '.ctrl h2{font-size:13px;flex:1}',
+    'button{padding:6px 14px;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600}',
+    '.bp{background:#1A4FB5;color:#fff}',
+    '.bg{background:#1A7A4A;color:#fff}',
+    '.bn{background:#e0e0e0;color:#333}',
+    '.cnt{font-size:13px;color:#666;min-width:60px;text-align:center}',
+    '.pa{display:flex;justify-content:center;align-items:center;padding:24px;min-height:220px}',
+    '.pg{width:57mm;height:32mm;padding:1mm 2mm 4mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;background:#fff;border:1px solid #ccc;box-shadow:0 2px 6px rgba(0,0,0,.15)}',
+    '.si{font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;text-align:center}',
+    '.bw{display:flex;flex-direction:column;align-items:center;width:100%}',
+    '#bi{width:52mm;height:5.5mm;display:block}',
+    '#co{font-family:monospace;font-size:8.5pt;font-weight:bold;text-align:center;margin-top:0.5mm}',
+    '.pw{display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-1mm}',
+    '#pe,#pc{font-family:Arial Black,sans-serif;font-size:15pt;font-weight:900;text-align:center;line-height:1.15}',
+    '@media print{@page{size:57mm 32mm;margin:0}.ctrl{display:none}.pa{padding:0;min-height:0}.pg{border:none;box-shadow:none}}',
+    '</style></head><body>',
+    '<div class="ctrl">',
+    '<h2>Etichette ' + o.riferimento + ' — <span id="cnt"></span></h2>',
+    '<button class="bn" onclick="prec()">&#8592; Prec</button>',
+    '<button class="bn" onclick="succ()">Succ &#8594;</button>',
+    '<button class="bp" onclick="window.print()">&#128424; Stampa questa</button>',
+    '<button class="bg" onclick="stampaTutte()">&#128424; Stampa tutte</button>',
+    '</div>',
+    '<div class="pa"><div class="pg">',
+    '<div class="si">www.psycho-store.com</div>',
+    '<div class="bw"><img id="bi" src=""><div id="co"></div></div>',
+    '<div class="pw"><div id="pe"></div><div id="pc"></div></div>',
+    '</div></div>',
+    '<script>' + scriptContent + '<\/script>',
+    '</body></html>'
+  ].join('');
 
   const blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -2142,7 +2206,7 @@ function stampaEtichetteOrdine(ordineId) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast('File etichette scaricato — aprilo e usa Cmd+P per stampare tutte');
+  showToast('File etichette scaricato!');
 }
 window.stampaEtichetteOrdine = stampaEtichetteOrdine;
 
