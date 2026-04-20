@@ -1601,11 +1601,11 @@ function renderOrdiniLista() {
       <td class="mono">${o.usdEur ? fmt(totEur) : '—'}</td>
       <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
       <td style="display:flex;gap:4px">
-        ${o._tipo==='DF' ? '' : `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
-        <button class="btn btn-sm" onclick="o._tipo==='DF' ? modificaOrdineDF(${o.id}) : modificaOrdineDIL(${o.id})">Modifica</button>
-        ${o.stato!=='ricevuto'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="o._tipo==='DF'?caricaAMagazzinoDF(${o.id}):caricaAMagazzino(${o.id})">📦 Carica stock</button>`:'<span class="badge badge-green">✓ In stock</span>'}
-        <button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="o._tipo==='DF'?stampaEtichetteOrdineDF(${o.id}):stampaEtichetteOrdine(${o.id})">🏷 Etichette</button>
-        <button class="btn btn-sm btn-danger" onclick="confirmDel('${o._tipo==='DF'?'ordineDF':'ordineDIL'}',${o.id},'${o.riferimento}')">Elimina</button>
+        ${o._tipo!=='DF' ? `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>` : ''}
+        ${o._tipo==='DF' ? `<button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>` : `<button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>`}
+        ${o.stato!=='ricevuto' ? (o._tipo==='DF' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoDF(${o.id})">Carica stock</button>` : `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">Carica stock</button>`) : '<span class="badge badge-green">In stock</span>'}
+        ${o._tipo==='DF' ? `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineDF(${o.id})">Etichette</button>` : `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdine(${o.id})">Etichette</button>`}
+        ${o._tipo==='DF' ? `<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDF',${o.id},'${o.riferimento}')">Elimina</button>` : `<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>`}
       </td>
     </tr>`;
   }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine inserito</td></tr>';
@@ -2533,6 +2533,27 @@ async function salvaOrdineDF() {
   switchOrdiniTab('lista');
 }
 window.salvaOrdineDF = salvaOrdineDF;
+
+function modificaOrdineDF(id) {
+  const o = (db.ordiniDF||[]).find(x=>x.id===id);
+  if(!o) return;
+  editingOrdineDF = id;
+  switchOrdiniTab('nuovodf');
+  setTimeout(()=>{
+    document.getElementById('df-ref').value = o.riferimento||'';
+    document.getElementById('df-data').value = o.data||'';
+    document.getElementById('df-rmb-eur').value = o.rmbEur||'';
+    document.getElementById('df-trasporto-rmb').value = o.trasportoRmb||'';
+    document.getElementById('df-diritti').value = o.diritti||'';
+    document.getElementById('df-commissioni').value = o.commissioni||'';
+    document.getElementById('df-note').value = o.note||'';
+    document.getElementById('tbody-df').innerHTML='';
+    dfRigheId=0;
+    (o.articoli||[]).forEach(a=>aggiungiRigaDF(a));
+    ricalcolaDF();
+  }, 50);
+}
+window.modificaOrdineDF = modificaOrdineDF;
 
 async function caricaAMagazzinoDF(ordineId) {
   const o = (db.ordiniDF||[]).find(x=>x.id===ordineId);
