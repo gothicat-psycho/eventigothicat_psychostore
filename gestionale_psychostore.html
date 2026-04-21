@@ -2631,7 +2631,7 @@ function ricalcolaDF() {
   set('df-rc-trasporto-eur', trasportoEur && rmbEur ? fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
   set('df-rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
   set('df-rc-fatt-eur', totFattEur && rmbEur ? fmt(totFattEur) : '—');
-  set('df-rc-customs', customsEur ? fmt(customsEur) : '—');
+  set('df-rc-customs', totCustoms ? fmt(totCustoms) : '—');
   set('df-rc-extra', extraEur ? fmt(extraEur) : '—');
   set('df-rc-dazio', dazio && rmbEur ? fmt(dazio) : '—');
   set('df-rc-iva', iva && rmbEur ? fmt(iva) : '—');
@@ -2642,8 +2642,7 @@ function ricalcolaDF() {
   set('df-rc-dazio2', dazio && rmbEur ? fmt(dazio) : '—');
   set('df-rc-diritti2', diritti ? fmt(diritti) : '—');
   set('df-rc-commissioni', commissioni ? fmt(commissioni) : '—');
-  set('df-pag-customs-eur', customsEur ? fmt(customsEur) : '—');
-  set('df-pag-extra-eur', extraEur ? fmt(extraEur) : (totFattEur&&!customsEur?'inserisci customs':'—'));
+  // (pagamenti già settati sopra)
   set('df-rc-tot-costi-merce', totCostiMerce && rmbEur ? fmt(totCostiMerce) : '—');
 
   // Aggiorna righe
@@ -3035,16 +3034,21 @@ function ricalcolaPR() {
   const trasportoRmb=parseFloat(document.getElementById('pr-trasporto-rmb')?.value)||0;
   const diritti=parseFloat(document.getElementById('pr-diritti')?.value)||0;
   const commissioni=parseFloat(document.getElementById('pr-commissioni')?.value)||0;
-  const customsEur=parseFloat(document.getElementById('pr-customs-eur')?.value)||0;
+  const customsMerce=parseFloat(document.getElementById('pr-customs-eur')?.value)||0;
+  const customsPaypal=parseFloat(document.getElementById('pr-customs-paypal')?.value)||0;
+  const totCustoms=customsMerce+customsPaypal;
 
   const totMerceRmb=righe.reduce((a,r)=>a+r.totRmb,0);
   const totMerceEur=rmbEur>0?totMerceRmb/rmbEur:0;
   const trasportoEur=rmbEur>0?trasportoRmb/rmbEur:0;
   const totFattRmb=totMerceRmb+trasportoRmb;
   const totFattEur=totMerceEur+trasportoEur;
-  const extraEur=totFattEur>0&&customsEur>0?totFattEur-customsEur:0;
-  const dazio=customsEur*0.12;
-  const iva=(customsEur+dazio)*0.22;
+  const totDovuto=totFattEur+commissioni;
+  const extraMerce=totFattEur>0&&customsMerce>0?totFattEur-customsMerce:0;
+  const extraPaypal=commissioni>0&&customsPaypal>=0?commissioni-customsPaypal:0;
+  const totExtra=totDovuto-totCustoms;
+  const dazio=totCustoms*0.12;
+  const iva=(totCustoms+dazio)*0.22;
   const ivaDiritti=diritti*0.22;
   const totImportazione=dazio+iva+diritti+ivaDiritti;
   const totCostiMerce=trasportoEur+dazio+diritti+commissioni;
@@ -3186,7 +3190,10 @@ function apriDettaglioOrdinePR(id) {
   const totMerceEur=rmbEur>0?totMerceRmb/rmbEur:0;
   const trasportoEur=rmbEur>0?(o.trasportoRmb||0)/rmbEur:0;
   const totFattEur=totMerceEur+trasportoEur;
-  const customsEur=o.customsEur||0;
+  const customsMerceD=o.customsMerce||o.customsEur||0;
+  const customsPaypalD=o.customsPaypal||0;
+  const customsEur=customsMerceD+customsPaypalD;
+  const totDovutoDet=totFattEur+(o.commissioni||0);
   const dazio=customsEur*0.12;
   const iva=(customsEur+dazio)*0.22;
   const ivaDiritti=(o.diritti||0)*0.22;
@@ -3242,7 +3249,7 @@ function apriDettaglioOrdinePR(id) {
       <div class="sezione-costi" style="margin-top:12px">
         <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase">Importazione</div>
         <div class="costo-row"><span>Customs Invoice (€)</span><span class="mono">${customsEur?fmt(customsEur):'—'}</span></div>
-        <div class="costo-row"><span>Extra (€)</span><span class="mono">${customsEur&&rmbEur?fmt(totFattEur-customsEur):'—'}</span></div>
+        <div class="costo-row"><span>Extra (€)</span><span class="mono">${customsEur&&rmbEur?fmt(Math.max(0,totDovutoDet-customsEur)):'—'}</span></div>
         <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${rmbEur?fmt(dazio):'—'}</span></div>
         <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span class="mono">${rmbEur?fmt(iva):'—'}</span></div>
         <div class="costo-row"><span>Diritti doganali</span><span class="mono">${o.diritti?fmt(o.diritti):'—'}</span></div>
