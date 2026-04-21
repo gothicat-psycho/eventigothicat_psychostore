@@ -2626,7 +2626,7 @@ function ricalcolaDF() {
   righe.forEach(r => { suggerisciBarcodesDF(r.id); });
   righe.forEach(r => {
     const pct = totMerceRmb > 0 ? r.totRmb/totMerceRmb : 0;
-    const prezzoEur = rmbEur ? r.prezzoRmb * rmbEur : 0;
+    const prezzoEur = rmbEur>0 ? r.prezzoRmb / rmbEur : 0;
     const costoAddizionale = r.pz>0 && totMerceRmb>0 ? (totCostiMerce*pct)/r.pz : 0;
     const costoRiga = r.pz>0 ? prezzoEur + costoAddizionale : 0;
     const ricarico = prezzoEur>0 && r.vendita>0 ? ((r.vendita-costoAddizionale)/prezzoEur)*100 : null;
