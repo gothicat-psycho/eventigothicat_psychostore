@@ -2610,6 +2610,7 @@ function apriDettaglioOrdineDF(id) {
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>
+          <button class="btn btn-sm" style="background:var(--accent);color:#fff" onclick="generaEmailDF(${o.id})">📧 Genera email</button>
           <select onchange="cambiaStatoOrdineDF(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
@@ -2765,6 +2766,61 @@ function stampaEtichetteOrdineDF(ordineId) {
   showToast('File etichette scaricato!');
 }
 window.stampaEtichetteOrdineDF = stampaEtichetteOrdineDF;
+
+// ── EMAIL DEVIL FASHION ──
+function generaEmailDF(id) {
+  const o = (db.ordiniDF||[]).find(x=>x.id===id);
+  if(!o) return;
+
+  const taglie = [
+    {t:'xs', label:'F.XS'}, {t:'s', label:'F.S'}, {t:'m', label:'F.M'},
+    {t:'l', label:'F.L'}, {t:'xl', label:'F.XL'}, {t:'xxl', label:'F.XXL'}, {t:'xxxl', label:'F.XXXL'}
+  ];
+
+  const righeEmail = (o.articoli||[]).map(r => {
+    const lines = [];
+    taglie.forEach(({t, label}) => {
+      const qty = r[t]||0;
+      if(qty > 0) lines.push(label + ' = ' + qty);
+    });
+    if(!lines.length) return '';
+    return r.articolo + '
+' + lines.join('
+');
+  }).filter(Boolean).join('
+
+');
+
+  const emailText = `Dear Iodo,
+how you doing? Hope all good!
+We're ready to send you our new order.
+So, here you are:
+
+${righeEmail}
+
+Could you please tell me if all items are available and send me your delivery list including transport to Italy?
+Thanks a lot and kind regards,
+Carlotta`;
+
+  // Show modal with email text
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:600">📧 Email per Devil Fashion</div>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3)">✕</button>
+      </div>
+      <textarea id="email-df-text" style="width:100%;height:320px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);resize:vertical;background:var(--surface2)">${emailText}</textarea>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('email-df-text').value).then(()=>showToast('Testo copiato!'))" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600">📋 Copia testo</button>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Chiudi</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+window.generaEmailDF = generaEmailDF;
 
 // ── INIT ──
 setLogo();
