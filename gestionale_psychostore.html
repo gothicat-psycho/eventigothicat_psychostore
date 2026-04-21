@@ -610,6 +610,7 @@
               <div class="card">
                 <div class="card-title">Riepilogo costi</div>
                 <div class="sezione-costi">
+                  <div class="costo-row"><span>Totale pezzi</span><span id="pr-rc-tot-pz" class="mono" style="font-weight:600">—</span></div>
                   <div class="costo-row"><span>Merce (¥)</span><span id="pr-rc-tot-rmb" class="mono">—</span></div>
                   <div class="costo-row"><span>Merce (€)</span><span id="pr-rc-tot-eur" class="mono">—</span></div>
                   <div class="costo-row"><span>Trasporto</span><span id="pr-rc-trasporto-eur" class="mono">—</span></div>
@@ -3073,7 +3074,9 @@ function ricalcolaPR() {
   const totCostiMerce=trasportoEur+dazio+diritti+commissioni;
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
-  set('pr-rc-tot-rmb',totMerceRmb?Math.round(totMerceRmb).toLocaleString('it')+' ¥':'—');
+  const totPezzi=righe.reduce((a,r)=>a+r.pz,0);
+  set('pr-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  set('pr-rc-tot-rmb',totMerceRmb?totMerceRmb.toFixed(2)+' ¥':'—');
   set('pr-rc-tot-eur',totMerceEur&&rmbEur?fmt(totMerceEur):'—');
   set('pr-rc-trasporto-eur',trasportoEur&&rmbEur?fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)':'—');
   set('pr-rc-fatt-rmb',totFattRmb?Math.round(totFattRmb).toLocaleString('it')+' ¥':'—');
@@ -3109,7 +3112,7 @@ function ricalcolaPR() {
     const prezzoScontato = r.prezzoRmb>0 ? (r.prezzoRmb*0.95).toFixed(2)+' ¥' : '—';
     setEl('sconto', prezzoScontato);
     setEl('pz',r.pz);
-    setEl('tot',Math.round(r.totRmb).toLocaleString('it')+' ¥');
+    setEl('tot', r.totRmb.toFixed(2)+' ¥');
     setEl('pct',(pct*100).toFixed(1)+'%');
     setEl('costo',costoRiga>0?fmt(costoRiga):'—');
     const ricEl=document.getElementById('pr-ric-'+r.id);
