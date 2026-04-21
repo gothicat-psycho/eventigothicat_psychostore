@@ -2657,17 +2657,22 @@ function renderBarcodesTableDF(righe) {
   if(!tbody) return;
   const taglie = ['xs','s','m','l','xl','xxl','xxxl'];
   tbody.innerHTML = righe.map(r => {
+    // Acc column
+    const accQty = r.acc||0;
+    const accBcId = 'df-bc-acc-'+r.id;
+    const accVal = document.getElementById(accBcId)?.value||(accQty&&r.articolo?r.articolo:'');
+    const accCol = accQty
+      ? `<td style="background:var(--amber-light);text-align:center"><input class="input-rmb" style="width:100px;font-size:11px;text-align:center" id="${accBcId}" value="${accVal}" placeholder="Acc."></td>`
+      : `<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>`;
     const cols = taglie.map(t => {
       const qty = r[t]||0;
       const bcId = 'df-bc-'+t+'-'+r.id;
-      const dlId = 'dl-df-'+r.id+'-'+t;
       const val = document.getElementById(bcId)?.value||'';
       if(!qty) return `<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>`;
       return `<td style="background:var(--green-light);text-align:center"><input class="input-rmb" style="width:100px;font-size:11px;text-align:center" id="${bcId}" value="${val}" placeholder="${t.toUpperCase()}"></td>`;
     }).join('');
-    return `<tr><td style="font-weight:600;font-size:12px">${r.articolo||'—'}</td>${cols}</tr>`;
-  }).join('') || '<tr><td colspan="8" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
-  // Popola datalist dopo che gli elementi sono nel DOM
+    return `<tr><td style="font-weight:600;font-size:12px">${r.articolo||'—'}</td>${accCol}${cols}</tr>`;
+  }).join('') || '<tr><td colspan="9" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
   setTimeout(() => righe.forEach(r => suggerisciBarcodesDF(r.id)), 50);
 }
 
