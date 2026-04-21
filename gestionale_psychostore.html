@@ -3031,7 +3031,8 @@ function getRighePR() {
     const xxl=parseInt(document.getElementById('pr-xxl-'+id)?.value)||0;
     const xxxl=parseInt(document.getElementById('pr-xxxl-'+id)?.value)||0;
     const pz=acc+xs+s+m+l+xl+xxl+xxxl;
-    const totRmb=prezzoRmb*pz;
+    const prezzoScontato = prezzoRmb * 0.95;
+    const totRmb=prezzoScontato*pz;
     const vendita=parseFloat(document.getElementById('pr-vend-'+id)?.value)||0;
     const bcAcc=document.getElementById('pr-bc-acc-'+id)?.value?.trim()||'';
     const bcXs=document.getElementById('pr-bc-xs-'+id)?.value?.trim()||'';
