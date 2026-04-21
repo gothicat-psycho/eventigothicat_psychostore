@@ -543,6 +543,7 @@
                     <thead><tr>
                       <th>Articolo</th>
                       <th>¥ unit</th>
+                      <th style="background:var(--amber-light);color:var(--amber)">Acc.</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
                       <th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th><th></th>
                     </tr></thead>
@@ -562,6 +563,7 @@
                   <table id="tab-df-barcodes">
                     <thead><tr>
                       <th>Articolo DF</th>
+                      <th style="background:var(--amber-light);color:var(--amber);text-align:center;min-width:110px">Acc.</th>
                       <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">XS</th>
                       <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">S</th>
                       <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">M</th>
@@ -655,6 +657,7 @@
                   <table id="tab-pr-articoli">
                     <thead><tr>
                       <th>Articolo</th><th>¥ unit</th><th style="background:var(--green-light);color:var(--green)">¥ -5%</th>
+                      <th style="background:var(--amber-light);color:var(--amber)">Acc.</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
                       <th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th><th></th>
                     </tr></thead>
@@ -674,6 +677,7 @@
                   <table id="tab-pr-barcodes">
                     <thead><tr>
                       <th>Articolo PR</th>
+                      <th style="background:var(--amber-light);color:var(--amber);text-align:center;min-width:110px">Acc.</th>
                       <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">XS</th>
                       <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">S</th>
                       <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">M</th>
@@ -2492,6 +2496,7 @@ function aggiungiRigaDF(articolo) {
   tr.innerHTML = `
     <td><input class="input-rmb" style="width:80px" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id});suggerisciBarcodesDF(${id})"></td>
     <td><input class="input-rmb" id="df-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDF()"></td>
+    <td style="background:var(--amber-light)"><input class="input-qty" id="df-acc-${id}" type="number" min="0" value="${a.acc||''}" oninput="ricalcolaDF()" title="Accessori senza taglia"></td>
     <td><input class="input-qty" id="df-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDF()"></td>
     <td><input class="input-qty" id="df-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaDF()"></td>
     <td><input class="input-qty" id="df-m-${id}" type="number" min="0" value="${a.m||''}" oninput="ricalcolaDF()"></td>
@@ -2555,6 +2560,7 @@ function getRigheDF() {
     const art = document.getElementById('df-art-'+id)?.value?.trim();
     if(!art && !document.getElementById('df-rmb-'+id)?.value) return;
     const prezzoRmb = parseFloat(document.getElementById('df-rmb-'+id)?.value)||0;
+    const acc=parseInt(document.getElementById('df-acc-'+id)?.value)||0;
     const xs=parseInt(document.getElementById('df-xs-'+id)?.value)||0;
     const s=parseInt(document.getElementById('df-s-'+id)?.value)||0;
     const m=parseInt(document.getElementById('df-m-'+id)?.value)||0;
@@ -2562,9 +2568,10 @@ function getRigheDF() {
     const xl=parseInt(document.getElementById('df-xl-'+id)?.value)||0;
     const xxl=parseInt(document.getElementById('df-xxl-'+id)?.value)||0;
     const xxxl=parseInt(document.getElementById('df-xxxl-'+id)?.value)||0;
-    const pz=xs+s+m+l+xl+xxl+xxxl;
+    const pz=acc+xs+s+m+l+xl+xxl+xxxl;
     const totRmb=prezzoRmb*pz;
     const vendita=parseFloat(document.getElementById('df-vend-'+id)?.value)||0;
+    const bcAcc=document.getElementById('df-bc-acc-'+id)?.value?.trim()||'';
     const bcXs=document.getElementById('df-bc-xs-'+id)?.value?.trim()||'';
     const bcS=document.getElementById('df-bc-s-'+id)?.value?.trim()||'';
     const bcM=document.getElementById('df-bc-m-'+id)?.value?.trim()||'';
@@ -2572,7 +2579,7 @@ function getRigheDF() {
     const bcXl=document.getElementById('df-bc-xl-'+id)?.value?.trim()||'';
     const bcXxl=document.getElementById('df-bc-xxl-'+id)?.value?.trim()||'';
     const bcXxxl=document.getElementById('df-bc-xxxl-'+id)?.value?.trim()||'';
-    righe.push({id,articolo:art,prezzoRmb,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
+    righe.push({id,articolo:art,prezzoRmb,acc,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcAcc,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
   });
   return righe;
 }
@@ -2912,6 +2919,7 @@ function aggiungiRigaPR(articolo) {
     <td><input class="input-rmb" style="width:80px" id="pr-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaPR(${id});suggerisciBarcodesPR(${id})"></td>
     <td><input class="input-rmb" id="pr-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaPR()"></td>
     <td class="mono" id="pr-sconto-${id}" style="background:var(--green-light);color:var(--green);font-size:12px;font-weight:600;text-align:center">—</td>
+    <td style="background:var(--amber-light)"><input class="input-qty" id="pr-acc-${id}" type="number" min="0" value="${a.acc||''}" oninput="ricalcolaPR()" title="Accessori senza taglia"></td>
     <td><input class="input-qty" id="pr-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaPR()"></td>
     <td><input class="input-qty" id="pr-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaPR()"></td>
     <td><input class="input-qty" id="pr-m-${id}" type="number" min="0" value="${a.m||''}" oninput="ricalcolaPR()"></td>
@@ -2972,6 +2980,7 @@ function getRighePR() {
     const art = document.getElementById('pr-art-'+id)?.value?.trim();
     if(!art && !document.getElementById('pr-rmb-'+id)?.value) return;
     const prezzoRmb=parseFloat(document.getElementById('pr-rmb-'+id)?.value)||0;
+    const acc=parseInt(document.getElementById('pr-acc-'+id)?.value)||0;
     const xs=parseInt(document.getElementById('pr-xs-'+id)?.value)||0;
     const s=parseInt(document.getElementById('pr-s-'+id)?.value)||0;
     const m=parseInt(document.getElementById('pr-m-'+id)?.value)||0;
@@ -2979,9 +2988,10 @@ function getRighePR() {
     const xl=parseInt(document.getElementById('pr-xl-'+id)?.value)||0;
     const xxl=parseInt(document.getElementById('pr-xxl-'+id)?.value)||0;
     const xxxl=parseInt(document.getElementById('pr-xxxl-'+id)?.value)||0;
-    const pz=xs+s+m+l+xl+xxl+xxxl;
+    const pz=acc+xs+s+m+l+xl+xxl+xxxl;
     const totRmb=prezzoRmb*pz;
     const vendita=parseFloat(document.getElementById('pr-vend-'+id)?.value)||0;
+    const bcAcc=document.getElementById('pr-bc-acc-'+id)?.value?.trim()||'';
     const bcXs=document.getElementById('pr-bc-xs-'+id)?.value?.trim()||'';
     const bcS=document.getElementById('pr-bc-s-'+id)?.value?.trim()||'';
     const bcM=document.getElementById('pr-bc-m-'+id)?.value?.trim()||'';
@@ -2989,7 +2999,7 @@ function getRighePR() {
     const bcXl=document.getElementById('pr-bc-xl-'+id)?.value?.trim()||'';
     const bcXxl=document.getElementById('pr-bc-xxl-'+id)?.value?.trim()||'';
     const bcXxxl=document.getElementById('pr-bc-xxxl-'+id)?.value?.trim()||'';
-    righe.push({id,articolo:art,prezzoRmb,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
+    righe.push({id,articolo:art,prezzoRmb,acc,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcAcc,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
   });
   return righe;
 }
@@ -3060,6 +3070,12 @@ function renderBarcodesTablePR(righe) {
   if(!tbody) return;
   const taglie=['xs','s','m','l','xl','xxl','xxxl'];
   tbody.innerHTML=righe.map(r=>{
+    const accQty=r.acc||0;
+    const accBcId='pr-bc-acc-'+r.id;
+    const accVal=document.getElementById(accBcId)?.value||(accQty&&r.articolo?r.articolo:'');
+    const accCol=accQty
+      ? '<td style="background:var(--amber-light);text-align:center"><input class="input-rmb" style="width:100px;font-size:11px;text-align:center" id="'+accBcId+'" value="'+accVal+'" placeholder="Acc."></td>'
+      : '<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>';
     const cols=taglie.map(t=>{
       const qty=r[t]||0;
       const bcId='pr-bc-'+t+'-'+r.id;
@@ -3067,8 +3083,8 @@ function renderBarcodesTablePR(righe) {
       if(!qty) return '<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>';
       return '<td style="background:var(--green-light);text-align:center"><input class="input-rmb" style="width:100px;font-size:11px;text-align:center" id="'+bcId+'" value="'+val+'" placeholder="'+t.toUpperCase()+'"></td>';
     }).join('');
-    return '<tr><td style="font-weight:600;font-size:12px">'+(r.articolo||'—')+'</td>'+cols+'</tr>';
-  }).join('')||'<tr><td colspan="8" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
+    return '<tr><td style="font-weight:600;font-size:12px">'+(r.articolo||'—')+'</td>'+accCol+cols+'</tr>';
+  }).join('')||'<tr><td colspan="9" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
   setTimeout(()=>righe.forEach(r=>suggerisciBarcodesPR(r.id)),50);
 }
 
@@ -3220,7 +3236,7 @@ async function caricaAMazzinoPR(ordineId) {
   const o=(db.ordiniPR||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
-  const taglieCampi=[{t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},{t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}];
+  const taglieCampi=[{t:'acc',bc:'bcAcc'},{t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},{t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}];
   let caricati=0,nonTrovati=[];
   (o.articoli||[]).forEach(r=>{
     taglieCampi.forEach(({t,bc})=>{
@@ -3354,6 +3370,7 @@ function generaEmailPR(id) {
   ];
   const righeEmail = (o.articoli||[]).map(r => {
     const lines = [];
+    if(r.acc>0) lines.push('= ' + r.acc);
     taglie.forEach(({t,label}) => { const qty=r[t]||0; if(qty>0) lines.push(label+' = '+qty); });
     if(!lines.length) return '';
     return r.articolo + String.fromCharCode(10) + lines.join(String.fromCharCode(10));
