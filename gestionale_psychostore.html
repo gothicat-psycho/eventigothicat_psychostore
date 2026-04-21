@@ -475,7 +475,7 @@
                   <div class="form-group"><label>Data ordine</label><input id="df-data" type="date"></div>
                 </div>
                 <div class="form-row">
-                  <div class="form-group"><label>Tasso RMB/EUR <span style="font-size:10px;color:var(--text3)">(inserire al pagamento)</span></label><input id="df-rmb-eur" type="number" step="0.0001" placeholder="es. 0.1280" oninput="ricalcolaDF()"></div>
+                  <div class="form-group"><label>Divisore RMB÷EUR <span style="font-size:10px;color:var(--text3)">(es. 7.9 → ¥429÷7.9=€54.3)</span></label><input id="df-rmb-eur" type="number" step="0.01" placeholder="es. 7.90" oninput="ricalcolaDF()"></div>
                   <div class="form-group"><label>Trasporto (¥)</label><input id="df-trasporto-rmb" type="number" step="1" placeholder="es. 900" oninput="ricalcolaDF()"></div>
                 </div>
                 <div class="form-row">
@@ -589,7 +589,7 @@
                   <div class="form-group"><label>Data ordine</label><input id="pr-data" type="date"></div>
                 </div>
                 <div class="form-row">
-                  <div class="form-group"><label>Tasso RMB/EUR</label><input id="pr-rmb-eur" type="number" step="0.0001" placeholder="es. 0.1280" oninput="ricalcolaPR()"></div>
+                  <div class="form-group"><label>Divisore RMB÷EUR <span style="font-size:10px;color:var(--text3)">(es. 7.9 → ¥429÷7.9=€54.3)</span></label><input id="pr-rmb-eur" type="number" step="0.01" placeholder="es. 7.90" oninput="ricalcolaPR()"></div>
                   <div class="form-group"><label>Trasporto (¥)</label><input id="pr-trasporto-rmb" type="number" step="1" placeholder="es. 900" oninput="ricalcolaPR()"></div>
                 </div>
                 <div class="form-row">
@@ -654,7 +654,7 @@
                 <div style="overflow-x:auto">
                   <table id="tab-pr-articoli">
                     <thead><tr>
-                      <th>Articolo</th><th>¥ unit</th>
+                      <th>Articolo</th><th>¥ unit</th><th style="background:var(--green-light);color:var(--green)">¥ -5%</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
                       <th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th><th></th>
                     </tr></thead>
@@ -1728,7 +1728,7 @@ function renderOrdiniLista() {
     const nArt = (o.articoli||[]).length;
     const totRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
     const totUsd = (o._tipo==='DF'||o._tipo==='PR') ? 0 : totRmb * (o.rmbUsd||0);
-    const totEur = (o._tipo==='DF'||o._tipo==='PR') ? totRmb*(o.rmbEur||0) : totUsd*(o.usdEur||0);
+    const totEur = (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
     const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto'}[o.stato||'bozza'];
     return `<tr>
       <td class="mono" style="font-size:12px">${o.data||'-'}</td>
@@ -2585,8 +2585,8 @@ function ricalcolaDF() {
   const commissioni = parseFloat(document.getElementById('df-commissioni')?.value)||0;
 
   const totMerceRmb = righe.reduce((a,r)=>a+r.totRmb,0);
-  const totMerceEur = totMerceRmb * rmbEur;
-  const trasportoEur = trasportoRmb * rmbEur;
+  const totMerceEur = rmbEur>0 ? totMerceRmb / rmbEur : 0;
+  const trasportoEur = rmbEur>0 ? trasportoRmb / rmbEur : 0;
   const totFattRmb = totMerceRmb + trasportoRmb;
   const totFattEur = totMerceEur + trasportoEur;
 
@@ -2706,8 +2706,8 @@ function apriDettaglioOrdineDF(id) {
   switchOrdiniTab('dettaglio');
   const rmbEur = o.rmbEur||0;
   const totMerceRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
-  const totMerceEur = totMerceRmb*rmbEur;
-  const trasportoEur = (o.trasportoRmb||0)*rmbEur;
+  const totMerceEur = rmbEur>0 ? totMerceRmb/rmbEur : 0;
+  const trasportoEur = rmbEur>0 ? (o.trasportoRmb||0)/rmbEur : 0;
   const totFattRmb = totMerceRmb+(o.trasportoRmb||0);
   const totFattEur = totMerceEur+trasportoEur;
   const customsEurDet = o.customsEur||0;
@@ -2831,13 +2831,13 @@ async function caricaAMagazzinoDF(ordineId) {
       db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - DEVIL FASHION'});
       const rmbEur=o.rmbEur||0;
       const totMerceRmb=(o.articoli||[]).reduce((a,x)=>a+x.totRmb,0);
-      const trasportoEur=(o.trasportoRmb||0)*rmbEur;
-      const totFattEur=totMerceRmb*rmbEur+trasportoEur;
-      const dazio=totFattEur*0.12;
-      const totCostiMerce=trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0);
+      const trasportoEur=rmbEur>0?(o.trasportoRmb||0)/rmbEur:0;
+      const totFattEur=rmbEur>0?totMerceRmb/rmbEur+trasportoEur:0;
+      const customsEurC=o.customsEur||0,dazioC=customsEurC*0.12;
+      const totCostiMerce=trasportoEur+dazioC+(o.diritti||0)+(o.commissioni||0);
       const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
       const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
-      prod.costo=parseFloat((r.prezzoRmb*rmbEur+costoAdd).toFixed(2));
+      prod.costo=parseFloat((rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd).toFixed(2);
       caricati++;
     });
   });
@@ -2911,6 +2911,7 @@ function aggiungiRigaPR(articolo) {
   tr.innerHTML = `
     <td><input class="input-rmb" style="width:80px" id="pr-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaPR(${id});suggerisciBarcodesPR(${id})"></td>
     <td><input class="input-rmb" id="pr-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaPR()"></td>
+    <td class="mono" id="pr-sconto-${id}" style="background:var(--green-light);color:var(--green);font-size:12px;font-weight:600;text-align:center">—</td>
     <td><input class="input-qty" id="pr-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaPR()"></td>
     <td><input class="input-qty" id="pr-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaPR()"></td>
     <td><input class="input-qty" id="pr-m-${id}" type="number" min="0" value="${a.m||''}" oninput="ricalcolaPR()"></td>
@@ -3002,8 +3003,8 @@ function ricalcolaPR() {
   const customsEur=parseFloat(document.getElementById('pr-customs-eur')?.value)||0;
 
   const totMerceRmb=righe.reduce((a,r)=>a+r.totRmb,0);
-  const totMerceEur=totMerceRmb*rmbEur;
-  const trasportoEur=trasportoRmb*rmbEur;
+  const totMerceEur=rmbEur>0?totMerceRmb/rmbEur:0;
+  const trasportoEur=rmbEur>0?trasportoRmb/rmbEur:0;
   const totFattRmb=totMerceRmb+trasportoRmb;
   const totFattEur=totMerceEur+trasportoEur;
   const extraEur=totFattEur>0&&customsEur>0?totFattEur-customsEur:0;
@@ -3036,11 +3037,13 @@ function ricalcolaPR() {
 
   righe.forEach(r => {
     const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
-    const prezzoEur=rmbEur?r.prezzoRmb*rmbEur:0;
+    const prezzoEur=rmbEur>0?r.prezzoRmb/rmbEur:0;
     const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
     const costoRiga=r.pz>0?prezzoEur+costoAdd:0;
     const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
     const setEl=(suf,val)=>{const el=document.getElementById('pr-'+suf+'-'+r.id);if(el)el.textContent=val;};
+    const prezzoScontato = r.prezzoRmb>0 ? (r.prezzoRmb*0.95).toFixed(1)+' ¥' : '—';
+    setEl('sconto', prezzoScontato);
     setEl('pz',r.pz);
     setEl('tot',Math.round(r.totRmb).toLocaleString('it')+' ¥');
     setEl('pct',(pct*100).toFixed(1)+'%');
@@ -3131,8 +3134,8 @@ function apriDettaglioOrdinePR(id) {
   switchOrdiniTab('dettaglio');
   const rmbEur=o.rmbEur||0;
   const totMerceRmb=(o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
-  const totMerceEur=totMerceRmb*rmbEur;
-  const trasportoEur=(o.trasportoRmb||0)*rmbEur;
+  const totMerceEur=rmbEur>0?totMerceRmb/rmbEur:0;
+  const trasportoEur=rmbEur>0?(o.trasportoRmb||0)/rmbEur:0;
   const totFattEur=totMerceEur+trasportoEur;
   const customsEur=o.customsEur||0;
   const dazio=customsEur*0.12;
@@ -3227,12 +3230,12 @@ async function caricaAMazzinoPR(ordineId) {
       if(!prod){nonTrovati.push(barcode+' (non trovato)');return;}
       db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - PUNK RAVE'});
       const rmbEur=o.rmbEur||0,totMerceRmb=(o.articoli||[]).reduce((a,x)=>a+x.totRmb,0);
-      const trasportoEur=(o.trasportoRmb||0)*rmbEur,totFattEur=totMerceRmb*rmbEur+trasportoEur;
+      const trasportoEur=rmbEur>0?(o.trasportoRmb||0)/rmbEur:0;
       const customsEur=o.customsEur||0,dazio=customsEur*0.12;
       const totCostiMerce=trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0);
       const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
       const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
-      prod.costo=parseFloat((r.prezzoRmb*rmbEur+costoAdd).toFixed(2));
+      prod.costo=parseFloat(((rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd).toFixed(2));
       caricati++;
     });
   });
