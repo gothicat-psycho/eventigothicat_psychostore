@@ -2635,6 +2635,12 @@ function ricalcolaDF() {
   set('df-rc-tot-dovuto', totDovuto && rmbEur ? fmt(totDovuto) : '—');
   set('df-rc-customs', totCustoms ? fmt(totCustoms) : '—');
   set('df-rc-extra', totExtra > 0 ? fmt(totExtra) : '—');
+  set('df-pag-customs-merce', customsMerce ? fmt(customsMerce) : '—');
+  set('df-pag-customs-paypal', customsPaypal ? fmt(customsPaypal) : '—');
+  set('df-pag-customs-eur', totCustoms ? fmt(totCustoms) : '—');
+  set('df-pag-extra-merce', extraMerce ? fmt(extraMerce) : '—');
+  set('df-pag-extra-paypal', extraPaypal ? fmt(extraPaypal) : '—');
+  set('df-pag-extra-eur', totExtra > 0 ? fmt(totExtra) : '—');
   set('df-rc-dazio', dazio && rmbEur ? fmt(dazio) : '—');
   set('df-rc-iva', iva && rmbEur ? fmt(iva) : '—');
   set('df-rc-diritti', diritti ? fmt(diritti) : '—');
