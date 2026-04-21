@@ -1239,7 +1239,7 @@ async function eseguiDel() {
   await saveDB();
   closeModal('modal-del');
   pendingDel = null;
-  renderCatalogo(); renderStock(); renderStockMetrics(); renderEventi(); renderStorico();
+  renderCatalogo(); renderStock(); renderStockMetrics(); renderEventi(); renderStorico(); renderOrdiniLista();
   showToast('Eliminato');
 }
 window.eseguiDel = eseguiDel;
