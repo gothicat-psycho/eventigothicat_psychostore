@@ -2800,15 +2800,18 @@ function generaEmailDF(id) {
 
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
+  modal.setAttribute('data-email-modal', '1');
+  const closeBtn = 'chiudiEmailModal()';
+  const copyBtn = 'copiaEmailDF()';
   modal.innerHTML = '<div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
     '<div style="font-size:16px;font-weight:600">Email per Devil Fashion</div>' +
-    '<button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3)">x</button>' +
+    '<button onclick="chiudiEmailModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3)">&#10005;</button>' +
     '</div>' +
     '<textarea id="email-df-text" style="width:100%;height:320px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);resize:vertical;background:var(--surface2)"></textarea>' +
     '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">' +
-    '<button onclick="navigator.clipboard.writeText(document.getElementById('email-df-text').value).then(()=>showToast('Testo copiato!'))" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600">Copia testo</button>' +
-    '<button onclick="this.closest('[style*=fixed]').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Chiudi</button>' +
+    '<button onclick="copiaEmailDF()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600">Copia testo</button>' +
+    '<button onclick="chiudiEmailModal()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Chiudi</button>' +
     '</div></div>';
 
   document.body.appendChild(modal);
@@ -2816,6 +2819,17 @@ function generaEmailDF(id) {
   modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
 }
 window.generaEmailDF = generaEmailDF;
+
+function chiudiEmailModal() {
+  const m = document.querySelector('[data-email-modal]');
+  if(m) m.remove();
+}
+function copiaEmailDF() {
+  const t = document.getElementById('email-df-text');
+  if(t) navigator.clipboard.writeText(t.value).then(()=>showToast('Testo copiato!'));
+}
+window.chiudiEmailModal = chiudiEmailModal;
+window.copiaEmailDF = copiaEmailDF;
 
 // ── INIT ──
 setLogo();
