@@ -2538,7 +2538,12 @@ window.rimuoviRigaDF = rimuoviRigaDF;
 function checkPrezzoVenditaDF(id) {
   const codice = document.getElementById('df-art-'+id)?.value?.trim();
   if(!codice) return;
-  const p = (db.prodotti||[]).find(x=>x.barcode===codice||x.barcode.startsWith(codice+'.'));
+  const p = (db.prodotti||[]).find(x=>
+    x.barcode===codice ||
+    x.barcode.startsWith(codice+'.') ||
+    x.barcode.startsWith(codice+'F.') ||
+    x.barcode.startsWith(codice+'M.')
+  );
   const vendEl = document.getElementById('df-vend-'+id);
   if(p && p.prezzo && vendEl && !vendEl.value) vendEl.value = p.prezzo.toFixed(2);
 }
@@ -2981,7 +2986,12 @@ window.rimuoviRigaPR = rimuoviRigaPR;
 function checkPrezzoVenditaPR(id) {
   const codice = document.getElementById('pr-art-'+id)?.value?.trim();
   if(!codice) return;
-  const p = (db.prodotti||[]).find(x=>x.barcode===codice||x.barcode.startsWith(codice+'.'));
+  const p = (db.prodotti||[]).find(x=>
+    x.barcode===codice ||
+    x.barcode.startsWith(codice+'.') ||
+    x.barcode.startsWith(codice+'F.') ||
+    x.barcode.startsWith(codice+'M.')
+  );
   const vendEl = document.getElementById('pr-vend-'+id);
   if(p && p.prezzo && vendEl && !vendEl.value) vendEl.value = p.prezzo.toFixed(2);
 }
@@ -3095,7 +3105,7 @@ function ricalcolaPR() {
     const costoRiga=r.pz>0?prezzoEur+costoAdd:0;
     const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
     const setEl=(suf,val)=>{const el=document.getElementById('pr-'+suf+'-'+r.id);if(el)el.textContent=val;};
-    const prezzoScontato = r.prezzoRmb>0 ? (r.prezzoRmb*0.95).toFixed(1)+' ¥' : '—';
+    const prezzoScontato = r.prezzoRmb>0 ? (r.prezzoRmb*0.95).toFixed(2)+' ¥' : '—';
     setEl('sconto', prezzoScontato);
     setEl('pz',r.pz);
     setEl('tot',Math.round(r.totRmb).toLocaleString('it')+' ¥');
