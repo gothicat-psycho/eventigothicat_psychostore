@@ -1546,10 +1546,54 @@ function renderStorico() {
       <td><span class="badge ${v.pagamento==='pos'?'badge-blue':'badge-gray'}">${v.pagamento==='pos'?'💳 POS':'💵 Contanti'}</span></td>
       <td><span class="badge ${v.valuta==='CZK'?'badge-blue':'badge-gray'}">${v.valuta==='CZK'?'CZK':'€ EUR'}</span></td>
       <td class="mono" style="font-weight:500">${totFmt}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dtFmt}')">Elimina</button></td>
+      <td><button class="btn btn-sm" onclick="modificaVendita(${v.id})">Modifica</button> <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dtFmt}')">Elimina</button></td>
     </tr>`;
   }).join('') : '<tr><td colspan="7" class="empty">Nessuna vendita trovata</td></tr>';
 }
+
+function modificaVendita(id) {
+  const v = (db.vendite||[]).find(x=>x.id===id);
+  if(!v) return;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
+  const d = new Date(v.dataOra);
+  const dtFmt = d.toLocaleDateString('it-IT')+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const arts = (v.items||[]).map(it=>`${it.descrizione}${it.qty>1?' ×'+it.qty:''}`).join('<br>');
+  const totFmt = v.valuta==='CZK' ? Math.round(v.totale).toLocaleString('it')+' CZK' : fmt(v.totale);
+
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px">Modifica vendita</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">${dtFmt} — ${totFmt}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">${arts}</div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Metodo di pagamento</label>
+        <select id="mod-vend-pag" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px">
+          <option value="contanti" ${v.pagamento==='contanti'?'selected':''}>💵 Contanti</option>
+          <option value="pos" ${v.pagamento==='pos'?'selected':''}>💳 POS</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="this.closest('[style*=fixed]').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Annulla</button>
+        <button onclick="salvaModificaVendita(${id})" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600">Salva</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+window.modificaVendita = modificaVendita;
+
+async function salvaModificaVendita(id) {
+  const v = (db.vendite||[]).find(x=>x.id===id);
+  if(!v) return;
+  v.pagamento = document.getElementById('mod-vend-pag').value;
+  await saveDB();
+  document.querySelector('[style*="fixed"]')?.remove();
+  showToast('Vendita aggiornata ✓');
+  renderStorico();
+}
+window.salvaModificaVendita = salvaModificaVendita;
 
 // ── DASHBOARD ──
 function renderDashboard() {
