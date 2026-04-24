@@ -785,10 +785,11 @@
                 <div style="overflow-x:auto">
                   <table id="tab-od-articoli">
                     <thead><tr>
-                      <th>Barcode</th>
+                      <th>Codice</th>
                       <th>Descrizione</th>
                       <th id="od-th-prezzo">Prezzo GBP</th>
-                      <th>Qty</th>
+                      <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th>
+                      <th>Pz</th>
                       <th id="od-th-tot">Tot GBP</th>
                       <th>Costo €</th>
                       <th>Vendita €</th>
@@ -3720,10 +3721,16 @@ function aggiungiRigaOD(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'od-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:100px" id="od-bc-${id}" value="${a.barcode||''}" placeholder="es. TPA3214S" oninput="checkPrezzoVenditaOD(${id})"></td>
-    <td><input class="input-rmb" style="width:120px" id="od-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
+    <td><input class="input-rmb" style="width:85px" id="od-cod-${id}" value="${a.codice||''}" placeholder="es. TPA3214" oninput="checkPrezzoVenditaOD(${id})"></td>
+    <td><input class="input-rmb" style="width:130px" id="od-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="od-prezzo-${id}" type="number" step="0.01" value="${a.prezzoUnit||''}" placeholder="0.00" oninput="ricalcolaOD()"></td>
-    <td><input class="input-qty" id="od-qty-${id}" type="number" min="1" value="${a.qty||''}" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-m-${id}" type="number" min="0" value="${a.m||''}" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-l-${id}" type="number" min="0" value="${a.l||''}" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-xl-${id}" type="number" min="0" value="${a.xl||''}" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-xxl-${id}" type="number" min="0" value="${a.xxl||''}" oninput="ricalcolaOD()"></td>
+    <td class="mono" id="od-pz-${id}" style="font-weight:600">0</td>
     <td class="mono" id="od-tot-${id}">0</td>
     <td class="costo-cell" id="od-costo-${id}">—</td>
     <td><input class="input-rmb" id="od-vend-${id}" type="number" step="0.01" value="${a.vendita||''}" placeholder="0.00" oninput="ricalcolaOD()"></td>
@@ -3742,14 +3749,27 @@ function rimuoviRigaOD(id) {
 window.rimuoviRigaOD = rimuoviRigaOD;
 
 function checkPrezzoVenditaOD(id) {
-  const bc = document.getElementById('od-bc-'+id)?.value?.trim();
-  if(!bc) return;
-  const p = getProdotto(bc);
-  if(p) {
+  const cod = document.getElementById('od-cod-'+id)?.value?.trim();
+  if(!cod || cod.length < 3) return;
+  // Cerca nel catalogo un prodotto che inizia con questo codice
+  const taglie = ['XS','S','M','L','XL','XXL'];
+  const suffissi = ['XS','S','M','L','XL','XXL','XXXL','F.XS','F.S','F.M','F.L','F.XL','F.XXL','M.S','M.M','M.L','M.XL','M.XXL'];
+  let found = null;
+  for(const suf of suffissi) {
+    const p = getProdotto(cod+suf) || getProdotto(cod+'.'+suf);
+    if(p) { found = p; break; }
+  }
+  // Anche ricerca diretta
+  if(!found) found = (db.prodotti||[]).find(p=>p.barcode.toUpperCase().startsWith(cod.toUpperCase()));
+  if(found) {
     const descEl = document.getElementById('od-desc-'+id);
-    if(descEl && !descEl.value) descEl.value = p.nome||p.descrizione||'';
+    if(descEl && !descEl.value) {
+      // Rimuovi la taglia dalla descrizione se presente
+      const desc = (found.nome||found.descrizione||'').replace(/[-\s]*(XS|S|M|L|XL|XXL|XXXL)$/i,'').trim();
+      descEl.value = desc;
+    }
     const vendEl = document.getElementById('od-vend-'+id);
-    if(vendEl && !vendEl.value && p.prezzo) vendEl.value = p.prezzo.toFixed(2);
+    if(vendEl && !vendEl.value && found.prezzo) vendEl.value = found.prezzo.toFixed(2);
   }
 }
 window.checkPrezzoVenditaOD = checkPrezzoVenditaOD;
@@ -3758,13 +3778,19 @@ function getRigheOD() {
   const righe = [];
   document.querySelectorAll('[id^="od-row-"]').forEach(tr => {
     const id = tr.id.replace('od-row-','');
-    const barcode = document.getElementById('od-bc-'+id)?.value?.trim()||'';
+    const codice = document.getElementById('od-cod-'+id)?.value?.trim()||'';
     const descrizione = document.getElementById('od-desc-'+id)?.value?.trim()||'';
     const prezzoUnit = parseFloat(document.getElementById('od-prezzo-'+id)?.value)||0;
-    const qty = parseInt(document.getElementById('od-qty-'+id)?.value)||0;
+    const xs = parseInt(document.getElementById('od-xs-'+id)?.value)||0;
+    const s = parseInt(document.getElementById('od-s-'+id)?.value)||0;
+    const m = parseInt(document.getElementById('od-m-'+id)?.value)||0;
+    const l = parseInt(document.getElementById('od-l-'+id)?.value)||0;
+    const xl = parseInt(document.getElementById('od-xl-'+id)?.value)||0;
+    const xxl = parseInt(document.getElementById('od-xxl-'+id)?.value)||0;
+    const qty = xs+s+m+l+xl+xxl;
     const vendita = parseFloat(document.getElementById('od-vend-'+id)?.value)||0;
-    if(!barcode && !prezzoUnit) return;
-    righe.push({id, barcode, descrizione, prezzoUnit, qty, vendita});
+    if(!codice && !prezzoUnit) return;
+    righe.push({id, codice, descrizione, prezzoUnit, xs, s, m, l, xl, xxl, qty, vendita});
   });
   return righe;
 }
@@ -3840,6 +3866,7 @@ function ricalcolaOD() {
     const costoRiga = prezzoEur + toEur(trasPz) + (isUK ? dazioPz : 0);
     const ricarico = costoRiga>0 && r.vendita>0 ? (r.vendita/costoRiga)*100 : null;
     const setEl = (suf,val) => { const el=document.getElementById('od-'+suf+'-'+r.id); if(el) el.textContent=val; };
+    setEl('pz', r.qty);
     setEl('tot', totRiga.toFixed(2)+' '+sym);
     setEl('costo', costoRiga>0 ? fmt(costoRiga) : '—');
     const ricEl = document.getElementById('od-ric-'+r.id);
@@ -3955,15 +3982,17 @@ function apriDettaglioOrdineOD(id) {
       </div>
       <div class="card-title">Articoli</div>
       <div style="overflow-x:auto"><table class="report-table">
-        <thead><tr><th>Barcode</th><th>Descrizione</th><th>Prezzo ${sym}</th><th>Qty</th><th>Tot ${sym}</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
+        <thead><tr><th>Codice</th><th>Descrizione</th><th>Prezzo ${sym}</th><th>Taglie</th><th>Pz</th><th>Tot ${sym}</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
         <tbody>${(o.articoli||[]).map(r=>{
           const prezzoEur=toEur(r.prezzoUnit);
           const costoRiga=prezzoEur+toEur(trasPz)+(isUK?dazioPz:0);
           const ricarico=costoRiga>0&&r.vendita>0?(r.vendita/costoRiga)*100:null;
+          const taglieStr=['XS','S','M','L','XL','XXL'].filter(t=>r[t.toLowerCase()]>0).map(t=>t+':'+r[t.toLowerCase()]).join(' ');
           return `<tr>
-            <td style="font-weight:600;font-family:monospace">${r.barcode}</td>
+            <td style="font-weight:600;font-family:monospace">${r.codice}</td>
             <td style="font-size:12px">${r.descrizione||'—'}</td>
             <td class="mono">${r.prezzoUnit} ${sym}</td>
+            <td class="mono" style="font-size:11px">${taglieStr||'—'}</td>
             <td class="mono">${r.qty}</td>
             <td class="mono">${(r.prezzoUnit*r.qty).toFixed(2)} ${sym}</td>
             <td class="mono" style="color:var(--green)">${costoRiga?fmt(costoRiga):'—'}</td>
@@ -4008,14 +4037,21 @@ async function caricaAMagazzinoOD(ordineId) {
   const totImportazione=dazio+iva+diritti+ivaDiritti;
   const dazioPz=totPezzi>0?totImportazione/totPezzi:0;
   let caricati=0, nonTrovati=[];
+  const taglieMap = [{t:'xs',suf:'XS'},{t:'s',suf:'S'},{t:'m',suf:'M'},{t:'l',suf:'L'},{t:'xl',suf:'XL'},{t:'xxl',suf:'XXL'}];
   (o.articoli||[]).forEach(r=>{
-    if(!r.barcode||!r.qty) return;
-    const prod=getProdotto(r.barcode);
-    if(!prod){nonTrovati.push(r.barcode);return;}
-    db.movimenti.push({id:db.nextMovId++,barcode:r.barcode,qty:r.qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - ONE DIRECTION'});
-    const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
-    prod.costo=parseFloat(costoRiga.toFixed(2));
-    caricati++;
+    taglieMap.forEach(({t,suf})=>{
+      const qty=r[t]||0;
+      if(!qty) return;
+      // Costruisci barcode: cerca prima nel catalogo
+      const candidates=[r.codice+suf, r.codice+'.'+suf, r.codice+'F.'+suf, r.codice+'M.'+suf];
+      let prod=null, barcode='';
+      for(const bc of candidates){ prod=getProdotto(bc); if(prod){barcode=bc;break;} }
+      if(!prod){nonTrovati.push(r.codice+'-'+suf);return;}
+      db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - ONE DIRECTION'});
+      const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
+      prod.costo=parseFloat(costoRiga.toFixed(2));
+      caricati++;
+    });
   });
   o.stato='ricevuto';
   await saveDB();
@@ -4029,12 +4065,18 @@ function stampaEtichetteOrdineOD(ordineId) {
   const o=(db.ordiniOD||[]).find(x=>x.id===ordineId);
   if(!o) return;
   const lista=[];
+  const taglieMapEt=[{t:'xs',suf:'XS'},{t:'s',suf:'S'},{t:'m',suf:'M'},{t:'l',suf:'L'},{t:'xl',suf:'XL'},{t:'xxl',suf:'XXL'}];
   (o.articoli||[]).forEach(r=>{
-    if(!r.barcode||!r.qty) return;
-    const prod=getProdotto(r.barcode);
-    const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
-    const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
-    for(let i=0;i<r.qty;i++) lista.push({barcode:r.barcode,pEur,pCzk});
+    taglieMapEt.forEach(({t,suf})=>{
+      const qty=r[t]||0; if(!qty) return;
+      const candidates=[r.codice+suf,r.codice+'.'+suf,r.codice+'F.'+suf,r.codice+'M.'+suf];
+      let prod=null,barcode='';
+      for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
+      if(!barcode) barcode=r.codice+suf;
+      const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+      const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+      for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
+    });
   });
   if(!lista.length){showToast('Nessun barcode negli articoli','amber');return;}
   const items=lista.map((et,idx)=>{
@@ -4060,22 +4102,12 @@ function generaEmailOD(id) {
   if(!o) return;
   // Raggruppa articoli per codice base (senza taglia finale)
   const gruppi = {};
-  (o.articoli||[]).forEach(r=>{
-    if(!r.barcode||!r.qty) return;
-    // Estrai codice base e taglia: es. TPA3214S -> base=TPA3214, taglia=S
-    const match = r.barcode.match(/^(.+?)(XS|XXL|XXXL|S|M|L|XL)$/i);
-    const base = match ? match[1] : r.barcode;
-    const taglia = match ? match[2].toUpperCase() : '';
-    if(!gruppi[base]) gruppi[base]=[];
-    gruppi[base].push({taglia, qty:r.qty});
-  });
-  // Ordina taglie
-  const ordineTaglia = ['XS','S','M','L','XL','XXL','XXXL'];
-  const righeEmail = Object.entries(gruppi).map(([base, taglie])=>{
-    taglie.sort((a,b)=>ordineTaglia.indexOf(a.taglia)-ordineTaglia.indexOf(b.taglia));
-    const taglieStr = taglie.map(t=>t.qty+(t.taglia?t.taglia:'')).join(' - ');
-    return base + ' = ' + taglieStr;
-  }).join(String.fromCharCode(10));
+  const ordineTaglie=['XS','S','M','L','XL','XXL'];
+  const righeEmail=(o.articoli||[]).map(r=>{
+    const parts=ordineTaglie.filter(t=>r[t.toLowerCase()]>0).map(t=>r[t.toLowerCase()]+t);
+    if(!parts.length) return '';
+    return r.codice+' = '+parts.join(' - ');
+  }).filter(Boolean).join(String.fromCharCode(10));
 
   const nl=String.fromCharCode(10), apos=String.fromCharCode(39);
   const emailText='Dear Jag,'+nl+
