@@ -294,7 +294,7 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th style="text-align:center">Stock</th><th>Prezzo €</th><th>Prezzo CZK</th><th>Valore</th><th></th></tr></thead>
+            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th style="text-align:center">Stock</th><th>Costo unit.</th><th>Valore mag.</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
             <tbody id="tab-stock"></tbody></table>
           </div>
           <div id="stock-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -1439,11 +1439,12 @@ function renderStock() {
       <td style="text-align:center">
         <div class="stock-cell ${getStockClass(p.stock)}" onclick="rettificaStock('${p.barcode}',this)">${p.stock}</div>
       </td>
+      <td class="mono" style="font-size:12px">${p.costo?fmt(p.costo):'—'}</td>
+      <td class="mono" style="font-size:12px">${fmt(p.stock*p.costo)}</td>
       <td class="mono" style="font-size:12px">${p.prezzo?fmt(p.prezzo):'—'}</td>
       <td class="mono" style="font-size:12px">${p.prezzoCzk||'—'}</td>
-      <td class="mono" style="font-size:12px">${fmt(p.stock*p.costo)}</td>
       <td><button class="btn btn-sm" onclick="rettificaStock('${p.barcode}',null)">Rettifica</button></td>
-    </tr>`).join('') || '<tr><td colspan="9" class="empty">Nessun prodotto trovato</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="10" class="empty">Nessun prodotto trovato</td></tr>';
   renderPagination('stock-pagination', stockPage, pages, p=>{ stockPage=p; renderStock(); });
 }
 window.renderStock = renderStock;
@@ -3278,7 +3279,7 @@ async function caricaAMagazzinoDF(ordineId) {
       const totCostiMerce=trasportoEur+dazioC+(o.diritti||0)+(o.commissioni||0);
       const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
       const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
-      prod.costo=parseFloat((rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd).toFixed(2);
+      aggiornaCostoMedioPonderato(prod, qty, (rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd);
       caricati++;
     });
   });
@@ -3713,7 +3714,7 @@ async function caricaAMazzinoPR(ordineId) {
       const totCostiMerce=trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0);
       const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
       const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
-      prod.costo=parseFloat(((rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd).toFixed(2));
+      aggiornaCostoMedioPonderato(prod, qty, (rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd);
       caricati++;
     });
   });
@@ -4264,7 +4265,7 @@ async function caricaAMagazzinoOD(ordineId) {
       if(!prod){nonTrovati.push(r.codice+'-'+suf);return;}
       db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - ONE DIRECTION'});
       const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
-      prod.costo=parseFloat(costoRiga.toFixed(2));
+      aggiornaCostoMedioPonderato(prod, qty, costoRiga);
       caricati++;
     });
   });
@@ -4737,7 +4738,7 @@ async function caricaAMagazzinoINNOCENT(ordineId) {
       if(!prod){nonTrovati.push(r.codice+'-'+suf);return;}
       db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - INNOCENT'});
       const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
-      prod.costo=parseFloat(costoRiga.toFixed(2));
+      aggiornaCostoMedioPonderato(prod, qty, costoRiga);
       caricati++;
     });
   });
