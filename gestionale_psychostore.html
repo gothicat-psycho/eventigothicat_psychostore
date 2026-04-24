@@ -2383,7 +2383,7 @@ function apriDettaglioOrdine(id) {
           const ricarico = prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
           return `<tr>
             <td style="font-weight:600">${r.articolo}</td>
-            <td style="font-size:12px;color:var(--text2)">${r.descrizione||'—'}</td>
+            <td style="font-size:12px;color:var(--text2)">${r.descrizione ? estraiTaglia(r.descrizione).nome || r.descrizione : '—'}</td>
             <td class="mono">${r.prezzoRmb} ¥</td>
             <td class="mono">${r.xs||'—'}</td><td class="mono">${r.s||'—'}</td><td class="mono">${r.m||'—'}</td><td class="mono">${r.l||'—'}</td><td class="mono">${r.xl||'—'}</td><td class="mono">${r.xxl||'—'}</td><td class="mono">${r.xxxl||'—'}</td>
             <td class="mono" style="font-weight:600">${r.pz}</td>
@@ -3051,7 +3051,7 @@ function apriDettaglioOrdineDF(id) {
           const ricarico = prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
           return `<tr>
             <td style="font-weight:600">${r.articolo}</td>
-            <td style="font-size:12px;color:var(--text2)">${r.descrizione||'—'}</td>
+            <td style="font-size:12px;color:var(--text2)">${r.descrizione ? estraiTaglia(r.descrizione).nome || r.descrizione : '—'}</td>
             <td class="mono">${r.prezzoRmb} ¥</td>
             <td class="mono">${r.xs||'—'}</td><td class="mono">${r.s||'—'}</td><td class="mono">${r.m||'—'}</td><td class="mono">${r.l||'—'}</td><td class="mono">${r.xl||'—'}</td><td class="mono">${r.xxl||'—'}</td><td class="mono">${r.xxxl||'—'}</td>
             <td class="mono" style="font-weight:600">${r.pz}</td>
@@ -3516,7 +3516,7 @@ function apriDettaglioOrdinePR(id) {
           const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
           return `<tr>
             <td style="font-weight:600">${r.articolo}</td>
-            <td style="font-size:12px;color:var(--text2)">${r.descrizione||'—'}</td>
+            <td style="font-size:12px;color:var(--text2)">${r.descrizione ? estraiTaglia(r.descrizione).nome || r.descrizione : '—'}</td>
             <td class="mono">${r.prezzoRmb} ¥</td>
             <td class="mono">${r.xs||'—'}</td><td class="mono">${r.s||'—'}</td><td class="mono">${r.m||'—'}</td><td class="mono">${r.l||'—'}</td><td class="mono">${r.xl||'—'}</td><td class="mono">${r.xxl||'—'}</td><td class="mono">${r.xxxl||'—'}</td>
             <td class="mono" style="font-weight:600">${r.pz}</td>
@@ -4061,7 +4061,7 @@ function apriDettaglioOrdineOD(id) {
           const taglieStr=['XS','S','M','L','XL','XXL'].filter(t=>r[t.toLowerCase()]>0).map(t=>t+':'+r[t.toLowerCase()]).join(' ');
           return `<tr>
             <td style="font-weight:600;font-family:monospace">${r.codice}</td>
-            <td style="font-size:12px">${r.descrizione||'—'}</td>
+            <td style="font-size:12px">${r.descrizione ? estraiTaglia(r.descrizione).nome || r.descrizione : '—'}</td>
             <td class="mono">${r.prezzoUnit} ${sym}</td>
             <td class="mono" style="font-size:11px">${taglieStr||'—'}</td>
             <td class="mono">${r.qty}</td>
