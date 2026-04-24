@@ -422,6 +422,7 @@
                   <table id="tab-dil-articoli">
                     <thead><tr>
                       <th>Articolo DIL</th>
+                      <th>Descrizione</th>
                       <th>¥ unit</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
                       <th>Pz</th>
@@ -549,6 +550,7 @@
                   <table id="tab-df-articoli">
                     <thead><tr>
                       <th>Articolo</th>
+                      <th>Descrizione</th>
                       <th>¥ unit</th>
                       <th style="background:var(--amber-light);color:var(--amber)">Acc.</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
@@ -670,7 +672,7 @@
                 <div style="overflow-x:auto">
                   <table id="tab-pr-articoli">
                     <thead><tr>
-                      <th>Articolo</th><th>¥ unit</th><th style="background:var(--green-light);color:var(--green)">¥ -5%</th>
+                      <th>Articolo</th><th>Descrizione</th><th>¥ unit</th><th style="background:var(--green-light);color:var(--green)">¥ -5%</th>
                       <th style="background:var(--amber-light);color:var(--amber)">Acc.</th>
                       <th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th>
                       <th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th><th></th>
@@ -2034,7 +2036,8 @@ function aggiungiRigaDIL(articolo) {
   tr.id = 'dil-row-'+id;
   const TAGLIE_DIL = ['xs','s','m','l','xl','xxl','xxxl'];
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id});suggerisciBarcodes(${id})"></td>
+    <td><input class="input-rmb" style="width:80px" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id});suggerisciBarcodes(${id})" onblur="autofillDescDIL(${id})"></td>
+    <td><input class="input-rmb" style="width:160px" id="dil-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="dil-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDIL()"></td>
     <td><input class="input-qty" id="dil-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDIL()"></td>
     <td><input class="input-qty" id="dil-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaDIL()"></td>
@@ -2121,7 +2124,8 @@ function getRighe() {
     const bcXl   = document.getElementById('dil-bc-xl-'+id)?.value?.trim()||'';
     const bcXxl  = document.getElementById('dil-bc-xxl-'+id)?.value?.trim()||'';
     const bcXxxl = document.getElementById('dil-bc-xxxl-'+id)?.value?.trim()||'';
-    righe.push({id, articolo:art, prezzoRmb, xs, s, m, l, xl, xxl, xxxl, pz, totRmb, vendita, bcXs, bcS, bcM, bcL, bcXl, bcXxl, bcXxxl});
+    const descrizione_dil = document.getElementById('dil-desc-'+id)?.value?.trim()||'';
+    righe.push({id, articolo:art, descrizione:descrizione_dil, prezzoRmb, xs, s, m, l, xl, xxl, xxxl, pz, totRmb, vendita, bcXs, bcS, bcM, bcL, bcXl, bcXxl, bcXxxl});
   });
   return righe;
 }
@@ -2753,7 +2757,8 @@ function aggiungiRigaDF(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'df-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id});suggerisciBarcodesDF(${id})"></td>
+    <td><input class="input-rmb" style="width:80px" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id});suggerisciBarcodesDF(${id})" onblur="autofillDescDF(${id})"></td>
+    <td><input class="input-rmb" style="width:160px" id="df-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="df-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDF()"></td>
     <td style="background:var(--amber-light)"><input class="input-qty" id="df-acc-${id}" type="number" min="0" value="${a.acc||''}" oninput="ricalcolaDF()" title="Accessori senza taglia"></td>
     <td><input class="input-qty" id="df-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDF()"></td>
@@ -2843,7 +2848,8 @@ function getRigheDF() {
     const bcXl=document.getElementById('df-bc-xl-'+id)?.value?.trim()||'';
     const bcXxl=document.getElementById('df-bc-xxl-'+id)?.value?.trim()||'';
     const bcXxxl=document.getElementById('df-bc-xxxl-'+id)?.value?.trim()||'';
-    righe.push({id,articolo:art,prezzoRmb,acc,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcAcc,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
+    const descrizione_df = document.getElementById('df-desc-'+id)?.value?.trim()||'';
+    righe.push({id,articolo:art,descrizione:descrizione_df,prezzoRmb,acc,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcAcc,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
   });
   return righe;
 }
@@ -3200,7 +3206,8 @@ function aggiungiRigaPR(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'pr-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px" id="pr-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaPR(${id});suggerisciBarcodesPR(${id})"></td>
+    <td><input class="input-rmb" style="width:80px" id="pr-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaPR(${id});suggerisciBarcodesPR(${id})" onblur="autofillDescPR(${id})"></td>
+    <td><input class="input-rmb" style="width:160px" id="pr-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="pr-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaPR()"></td>
     <td class="mono" id="pr-sconto-${id}" style="background:var(--green-light);color:var(--green);font-size:12px;font-weight:600;text-align:center">—</td>
     <td style="background:var(--amber-light)"><input class="input-qty" id="pr-acc-${id}" type="number" min="0" value="${a.acc||''}" oninput="ricalcolaPR()" title="Accessori senza taglia"></td>
@@ -3289,7 +3296,8 @@ function getRighePR() {
     const bcXl=document.getElementById('pr-bc-xl-'+id)?.value?.trim()||'';
     const bcXxl=document.getElementById('pr-bc-xxl-'+id)?.value?.trim()||'';
     const bcXxxl=document.getElementById('pr-bc-xxxl-'+id)?.value?.trim()||'';
-    righe.push({id,articolo:art,prezzoRmb,acc,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcAcc,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
+    const descrizione_pr = document.getElementById('pr-desc-'+id)?.value?.trim()||'';
+    righe.push({id,articolo:art,descrizione:descrizione_pr,prezzoRmb,acc,xs,s,m,l,xl,xxl,xxxl,pz,totRmb,vendita,bcAcc,bcXs,bcS,bcM,bcL,bcXl,bcXxl,bcXxxl});
   });
   return righe;
 }
@@ -4200,6 +4208,30 @@ function generaEmailOD(id) {
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
 }
 window.generaEmailOD = generaEmailOD;
+
+// ── AUTOFILL DESCRIZIONE ──
+function _autofillDesc(codice, descElId) {
+  const descEl = document.getElementById(descElId);
+  if(!descEl || descEl.value) return;
+  if(!codice || codice.length < 3) return;
+  const suffissi = ['S','M','L','XS','XL','XXL','F.S','F.M','M.S','M.M'];
+  let found = null;
+  for(const suf of suffissi) {
+    const p = getProdotto(codice+suf) || getProdotto(codice+'.'+suf);
+    if(p) { found = p; break; }
+  }
+  if(!found) found = (db.prodotti||[]).find(p=>p.barcode.toUpperCase().startsWith(codice.toUpperCase()));
+  if(found) {
+    const desc = (found.nome||found.descrizione||'').replace(/[-\s]*(XS|XXL|XXXL|S|M|L|XL)$/i,'').trim();
+    if(desc) descEl.value = desc;
+  }
+}
+function autofillDescDIL(id) { _autofillDesc(document.getElementById('dil-art-'+id)?.value?.trim(), 'dil-desc-'+id); }
+function autofillDescDF(id)  { _autofillDesc(document.getElementById('df-art-'+id)?.value?.trim(),  'df-desc-'+id);  }
+function autofillDescPR(id)  { _autofillDesc(document.getElementById('pr-art-'+id)?.value?.trim(),  'pr-desc-'+id);  }
+window.autofillDescDIL = autofillDescDIL;
+window.autofillDescDF  = autofillDescDF;
+window.autofillDescPR  = autofillDescPR;
 
 // ── INIT ──
 setLogo();
