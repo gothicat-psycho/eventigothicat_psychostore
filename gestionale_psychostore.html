@@ -3722,7 +3722,7 @@ function aggiungiRigaOD(articolo) {
   tr.id = 'od-row-'+id;
   tr.innerHTML = `
     <td><input class="input-rmb" style="width:85px" id="od-cod-${id}" value="${a.codice||''}" placeholder="es. TPA3214" onblur="checkPrezzoVenditaOD(${id})"></td>
-    <td><input class="input-rmb" style="width:130px" id="od-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
+    <td><input class="input-rmb" style="width:200px" id="od-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="od-prezzo-${id}" type="number" step="0.01" value="${a.prezzoUnit||''}" placeholder="0.00" oninput="ricalcolaOD()"></td>
     <td><input class="input-qty" id="od-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaOD()"></td>
     <td><input class="input-qty" id="od-s-${id}" type="number" min="0" value="${a.s||''}" oninput="ricalcolaOD()"></td>
@@ -3864,8 +3864,9 @@ function ricalcolaOD() {
   righe.forEach(r => {
     const totRiga = r.prezzoUnit*r.qty;
     const prezzoEur = toEur(r.prezzoUnit);
-    const costoRiga = prezzoEur + toEur(trasPz) + (isUK ? dazioPz : 0);
-    const ricarico = costoRiga>0 && r.vendita>0 ? (r.vendita/costoRiga)*100 : null;
+    const costoAdd = toEur(trasPz) + (isUK ? dazioPz : 0);
+    const costoRiga = prezzoEur + costoAdd;
+    const ricarico = prezzoEur>0 && r.vendita>0 ? ((r.vendita - costoAdd) / prezzoEur)*100 : null;
     const setEl = (suf,val) => { const el=document.getElementById('od-'+suf+'-'+r.id); if(el) el.textContent=val; };
     setEl('pz', r.qty);
     setEl('tot', totRiga.toFixed(2)+' '+sym);
@@ -3986,8 +3987,9 @@ function apriDettaglioOrdineOD(id) {
         <thead><tr><th>Codice</th><th>Descrizione</th><th>Prezzo ${sym}</th><th>Taglie</th><th>Pz</th><th>Tot ${sym}</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
         <tbody>${(o.articoli||[]).map(r=>{
           const prezzoEur=toEur(r.prezzoUnit);
-          const costoRiga=prezzoEur+toEur(trasPz)+(isUK?dazioPz:0);
-          const ricarico=costoRiga>0&&r.vendita>0?(r.vendita/costoRiga)*100:null;
+          const costoAdd=toEur(trasPz)+(isUK?dazioPz:0);
+          const costoRiga=prezzoEur+costoAdd;
+          const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
           const taglieStr=['XS','S','M','L','XL','XXL'].filter(t=>r[t.toLowerCase()]>0).map(t=>t+':'+r[t.toLowerCase()]).join(' ');
           return `<tr>
             <td style="font-weight:600;font-family:monospace">${r.codice}</td>
