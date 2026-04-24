@@ -3506,7 +3506,7 @@ function apriDettaglioOrdinePR(id) {
       </div>
       <div class="card-title">Articoli</div>
       <div style="overflow-x:auto"><table class="report-table">
-        <thead><tr><th>Articolo</th><th>¥ unit</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th><th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
+        <thead><tr><th>Articolo</th><th>Descrizione</th><th>¥ unit</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th><th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
         <tbody>${(o.articoli||[]).map(r=>{
           const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
           const prezzoEur=rmbEur>0?r.prezzoRmb/rmbEur:0;
@@ -3515,6 +3515,7 @@ function apriDettaglioOrdinePR(id) {
           const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
           return `<tr>
             <td style="font-weight:600">${r.articolo}</td>
+            <td style="font-size:12px;color:var(--text2)">${r.descrizione||'—'}</td>
             <td class="mono">${r.prezzoRmb} ¥</td>
             <td class="mono">${r.xs||'—'}</td><td class="mono">${r.s||'—'}</td><td class="mono">${r.m||'—'}</td><td class="mono">${r.l||'—'}</td><td class="mono">${r.xl||'—'}</td><td class="mono">${r.xxl||'—'}</td><td class="mono">${r.xxxl||'—'}</td>
             <td class="mono" style="font-weight:600">${r.pz}</td>
