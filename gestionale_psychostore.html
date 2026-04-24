@@ -3737,7 +3737,7 @@ function aggiungiRigaOD(articolo) {
     <td class="ricarico-cell" id="od-ric-${id}">—</td>
     <td><button onclick="rimuoviRigaOD(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>`;
   document.getElementById('tbody-od').appendChild(tr);
-  checkPrezzoVenditaOD(id);
+  if(a.codice) checkPrezzoVenditaOD(id);
 }
 window.aggiungiRigaOD = aggiungiRigaOD;
 
@@ -3750,25 +3750,26 @@ window.rimuoviRigaOD = rimuoviRigaOD;
 
 function checkPrezzoVenditaOD(id) {
   const cod = document.getElementById('od-cod-'+id)?.value?.trim();
+  const descEl = document.getElementById('od-desc-'+id);
+  const vendEl = document.getElementById('od-vend-'+id);
   if(!cod || cod.length < 3) return;
-  // Cerca nel catalogo un prodotto che inizia con questo codice
-  const taglie = ['XS','S','M','L','XL','XXL'];
-  const suffissi = ['XS','S','M','L','XL','XXL','XXXL','F.XS','F.S','F.M','F.L','F.XL','F.XXL','M.S','M.M','M.L','M.XL','M.XXL'];
+
+  // Cerca nel catalogo con suffissi taglia comuni, priorità a S/M
+  const suffissiPriority = ['S','M','L','XS','XL','XXL','XXXL','F.S','F.M','M.S','M.M'];
   let found = null;
-  for(const suf of suffissi) {
+  for(const suf of suffissiPriority) {
     const p = getProdotto(cod+suf) || getProdotto(cod+'.'+suf);
     if(p) { found = p; break; }
   }
-  // Anche ricerca diretta
-  if(!found) found = (db.prodotti||[]).find(p=>p.barcode.toUpperCase().startsWith(cod.toUpperCase()));
+  // Fallback: cerca per prefisso
+  if(!found) {
+    found = (db.prodotti||[]).find(p => p.barcode.toUpperCase().startsWith(cod.toUpperCase()));
+  }
   if(found) {
-    const descEl = document.getElementById('od-desc-'+id);
     if(descEl && !descEl.value) {
-      // Rimuovi la taglia dalla descrizione se presente
-      const desc = (found.nome||found.descrizione||'').replace(/[-\s]*(XS|S|M|L|XL|XXL|XXXL)$/i,'').trim();
+      const desc = (found.nome||found.descrizione||'').replace(/[-\s]*(XS|XXL|XXXL|S|M|L|XL)$/i,'').trim();
       descEl.value = desc;
     }
-    const vendEl = document.getElementById('od-vend-'+id);
     if(vendEl && !vendEl.value && found.prezzo) vendEl.value = found.prezzo.toFixed(2);
   }
 }
