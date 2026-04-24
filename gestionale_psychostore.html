@@ -2423,7 +2423,10 @@ function apriDettaglioOrdine(id) {
         </div>
         <div style="background:var(--green-light);border-radius:var(--radius-lg);padding:12px">
           <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">EXTRA (rimanente)</div>
-          <div style="font-size:13px;color:var(--text3)">Da concordare col fornitore</div>
+          ${o.psychoUsd && rmbUsd && totUsd > o.psychoUsd ? `
+            <div style="font-size:13px">USD: <strong class="mono">$ ${(totUsd - o.psychoUsd).toFixed(2)}</strong></div>
+            <div style="font-size:13px">EUR: <strong class="mono">${fmt((totUsd - o.psychoUsd) * usdEur)}</strong></div>
+          ` : `<div style="font-size:13px;color:var(--text3)">Da concordare col fornitore</div>`}
         </div>
       </div>
     </div>`;
