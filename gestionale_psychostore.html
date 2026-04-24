@@ -804,6 +804,25 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
+
+              <div class="card" style="margin-top:12px">
+                <div class="card-title" style="color:var(--green)">🔖 Associazione barcode catalogo</div>
+                <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Per ogni articolo il sistema cerca automaticamente i barcode nel catalogo. Puoi modificarli manualmente.</div>
+                <div style="overflow-x:auto">
+                  <table id="tab-od-barcodes">
+                    <thead><tr>
+                      <th>Codice OD</th>
+                      <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">XS</th>
+                      <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">S</th>
+                      <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">M</th>
+                      <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">L</th>
+                      <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">XL</th>
+                      <th style="background:var(--green-light);color:var(--green);text-align:center;min-width:110px">XXL</th>
+                    </tr></thead>
+                    <tbody id="tbody-od-barcodes"></tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3791,7 +3810,13 @@ function getRigheOD() {
     const qty = xs+s+m+l+xl+xxl;
     const vendita = parseFloat(document.getElementById('od-vend-'+id)?.value)||0;
     if(!codice && !prezzoUnit) return;
-    righe.push({id, codice, descrizione, prezzoUnit, xs, s, m, l, xl, xxl, qty, vendita});
+    const bcXs  = document.getElementById('od-bc-xs-'+id)?.value?.trim()||'';
+    const bcS   = document.getElementById('od-bc-s-'+id)?.value?.trim()||'';
+    const bcM   = document.getElementById('od-bc-m-'+id)?.value?.trim()||'';
+    const bcL   = document.getElementById('od-bc-l-'+id)?.value?.trim()||'';
+    const bcXl  = document.getElementById('od-bc-xl-'+id)?.value?.trim()||'';
+    const bcXxl = document.getElementById('od-bc-xxl-'+id)?.value?.trim()||'';
+    righe.push({id, codice, descrizione, prezzoUnit, xs, s, m, l, xl, xxl, qty, vendita, bcXs, bcS, bcM, bcL, bcXl, bcXxl});
   });
   return righe;
 }
@@ -3877,8 +3902,35 @@ function ricalcolaOD() {
       ricEl.className = 'ricarico-cell '+(ricarico!==null?(ricarico>=100?'ricarico-ok':'ricarico-low'):'');
     }
   });
+  renderBarcodesTableOD(righe);
 }
 window.ricalcolaOD = ricalcolaOD;
+
+function renderBarcodesTableOD(righe) {
+  const tbody = document.getElementById('tbody-od-barcodes');
+  if(!tbody) return;
+  const taglieMap = [
+    {t:'xs',suf:'XS'},{t:'s',suf:'S'},{t:'m',suf:'M'},
+    {t:'l',suf:'L'},{t:'xl',suf:'XL'},{t:'xxl',suf:'XXL'}
+  ];
+  tbody.innerHTML = righe.map(r => {
+    const cols = taglieMap.map(({t,suf}) => {
+      const qty = r[t]||0;
+      const bcId = 'od-bc-'+t+'-'+r.id;
+      const existingVal = document.getElementById(bcId)?.value||'';
+      if(!qty) return '<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>';
+      // Auto-suggest barcode from catalog
+      let autoVal = existingVal;
+      if(!autoVal && r.codice) {
+        const candidates = [r.codice+suf, r.codice+'.'+suf, r.codice+'F.'+suf, r.codice+'M.'+suf];
+        for(const bc of candidates) { if(getProdotto(bc)){autoVal=bc;break;} }
+      }
+      return '<td style="background:var(--green-light);text-align:center"><input class="input-rmb" style="width:100px;font-size:11px;text-align:center" id="'+bcId+'" value="'+autoVal+'" placeholder="'+suf+'"></td>';
+    }).join('');
+    return '<tr><td style="font-weight:600;font-size:12px">'+(r.codice||'—')+'</td>'+cols+'</tr>';
+  }).join('') || '<tr><td colspan="7" class="empty">Aggiungi articoli nella tabella sopra</td></tr>';
+}
+window.renderBarcodesTableOD = renderBarcodesTableOD;
 
 async function salvaOrdineOD() {
   const ref = document.getElementById('od-ref').value.trim();
@@ -4046,9 +4098,15 @@ async function caricaAMagazzinoOD(ordineId) {
       const qty=r[t]||0;
       if(!qty) return;
       // Costruisci barcode: cerca prima nel catalogo
-      const candidates=[r.codice+suf, r.codice+'.'+suf, r.codice+'F.'+suf, r.codice+'M.'+suf];
-      let prod=null, barcode='';
-      for(const bc of candidates){ prod=getProdotto(bc); if(prod){barcode=bc;break;} }
+      // Use saved barcode if available, otherwise search catalog
+      const bcKeyMap = {XS:'bcXs',S:'bcS',M:'bcM',L:'bcL',XL:'bcXl',XXL:'bcXxl'};
+      const savedBc = r[bcKeyMap[suf]]||'';
+      let prod=null, barcode=savedBc||'';
+      if(barcode) { prod=getProdotto(barcode); }
+      if(!prod) {
+        const candidates=[r.codice+suf, r.codice+'.'+suf, r.codice+'F.'+suf, r.codice+'M.'+suf];
+        for(const bc of candidates){ prod=getProdotto(bc); if(prod){barcode=bc;break;} }
+      }
       if(!prod){nonTrovati.push(r.codice+'-'+suf);return;}
       db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - ONE DIRECTION'});
       const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
