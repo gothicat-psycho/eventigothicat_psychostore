@@ -314,6 +314,7 @@
           <button class="tab-btn" id="otab-nuovo" onclick="switchOrdiniTab('nuovo')">＋ Nuovo ordine DIL</button>
           <button class="tab-btn" id="otab-nuovodf" onclick="switchOrdiniTab('nuovodf')">＋ Nuovo ordine DF</button>
           <button class="tab-btn" id="otab-nuovopr" onclick="switchOrdiniTab('nuovopr')">＋ Nuovo ordine PR</button>
+          <button class="tab-btn" id="otab-nuovood" onclick="switchOrdiniTab('nuovood')">＋ Nuovo ordine OD</button>
         </div>
 
         <!-- LISTA ORDINI -->
@@ -701,6 +702,105 @@
                     </tr></thead>
                     <tbody id="tbody-pr-barcodes"></tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NUOVO ORDINE ONE DIRECTION -->
+        <div id="ordini-nuovood" style="display:none">
+          <div class="ordine-grid">
+            <div>
+              <div class="card">
+                <div class="card-title" style="color:#065F46">&#9670; One Direction — Parametri ordine</div>
+                <div class="form-row">
+                  <div class="form-group"><label>Riferimento ordine</label><input id="od-ref" placeholder="es. OD-2025-01"></div>
+                  <div class="form-group"><label>Data ordine</label><input id="od-data" type="date"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Valuta ordine</label>
+                    <select id="od-valuta" onchange="ricalcolaOD()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                      <option value="GBP">GBP (sterline)</option>
+                      <option value="EUR">EUR (euro)</option>
+                    </select>
+                  </div>
+                  <div class="form-group"><label>Tasso GBP/EUR <span id="od-tasso-label" style="font-size:10px;color:var(--text3)">(solo se GBP)</span></label><input id="od-gbp-eur" type="number" step="0.0001" placeholder="es. 1.18" oninput="ricalcolaOD()"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label>Trasporto totale <span id="od-tras-valuta">GBP</span></label><input id="od-trasporto" type="number" step="0.01" placeholder="es. 30.00" oninput="ricalcolaOD()"></div>
+                  <div class="form-group">
+                    <label>Magazzino spedizione</label>
+                    <select id="od-magazzino" onchange="ricalcolaOD()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                      <option value="nl">🇳🇱 Paesi Bassi (no dazio)</option>
+                      <option value="uk">🇬🇧 UK (con customs/dazio)</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="od-customs-section" style="display:none">
+                  <div class="form-row">
+                    <div class="form-group"><label>Valore merce customs (€)</label><input id="od-customs-merce" type="number" step="0.01" placeholder="es. 200.00" oninput="ricalcolaOD()"></div>
+                    <div class="form-group"><label>Diritti doganali (€)</label><input id="od-diritti" type="number" step="0.01" placeholder="es. 15.00" oninput="ricalcolaOD()"></div>
+                  </div>
+                </div>
+                <div class="form-group"><label>Note</label><input id="od-note" placeholder="Note libere"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Riepilogo costi</div>
+                <div class="sezione-costi">
+                  <div class="costo-row"><span>Totale pezzi</span><span id="od-rc-tot-pz" class="mono" style="font-weight:600">—</span></div>
+                  <div class="costo-row"><span>Merce</span><span id="od-rc-tot-merce" class="mono">—</span></div>
+                  <div class="costo-row"><span>Trasporto</span><span id="od-rc-trasporto" class="mono">—</span></div>
+                  <div class="costo-row"><span>Trasporto per pezzo</span><span id="od-rc-tras-pz" class="mono">—</span></div>
+                  <div class="costo-row" style="font-weight:600"><span>Totale fattura</span><span id="od-rc-tot-fatt" class="mono">—</span></div>
+                  <div class="costo-row" style="font-weight:600"><span>Totale fattura (€)</span><span id="od-rc-tot-eur" class="mono">—</span></div>
+                  <div id="od-rc-customs-section">
+                    <div class="sep"></div>
+                    <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase">Importazione UK (paghi al corriere)</div>
+                    <div class="costo-row"><span>Customs Invoice (€)</span><span id="od-rc-customs" class="mono">—</span></div>
+                    <div class="costo-row"><span>Extra (€)</span><span id="od-rc-extra" class="mono">—</span></div>
+                    <div class="costo-row"><span>Dazio (12%)</span><span id="od-rc-dazio" class="mono">—</span></div>
+                    <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span id="od-rc-iva" class="mono">—</span></div>
+                    <div class="costo-row"><span>Diritti doganali</span><span id="od-rc-diritti" class="mono">—</span></div>
+                    <div class="costo-row"><span>IVA su diritti (22%)</span><span id="od-rc-iva-diritti" class="mono">—</span></div>
+                    <div class="costo-row totale"><span>Totale importazione</span><span id="od-rc-tot-importazione" class="mono">—</span></div>
+                  </div>
+                  <div class="sep"></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--green);margin:6px 0 4px;text-transform:uppercase">Costo per articolo</div>
+                  <div class="costo-row"><span>Prezzo + trasporto</span><span id="od-rc-costo-pz" class="mono">—</span></div>
+                  <div class="costo-row"><span>+ Dazio per pezzo</span><span id="od-rc-dazio-pz" class="mono">—</span></div>
+                  <div class="costo-row totale" style="color:var(--green)"><span>Costo totale per pezzo</span><span id="od-rc-costo-tot-pz" class="mono">—</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="card ordine-articoli">
+                <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+                  <span>Articoli ordine</span>
+                  <button class="btn btn-sm btn-primary" onclick="aggiungiRigaOD()">+ Aggiungi articolo</button>
+                </div>
+                <div style="overflow-x:auto">
+                  <table id="tab-od-articoli">
+                    <thead><tr>
+                      <th>Barcode</th>
+                      <th>Descrizione</th>
+                      <th id="od-th-prezzo">Prezzo GBP</th>
+                      <th>Qty</th>
+                      <th id="od-th-tot">Tot GBP</th>
+                      <th>Costo €</th>
+                      <th>Vendita €</th>
+                      <th>Ric%</th>
+                      <th></th>
+                    </tr></thead>
+                    <tbody id="tbody-od"></tbody>
+                  </table>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-primary" onclick="salvaOrdineOD()">💾 Salva ordine</button>
+                  <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
             </div>
@@ -1253,6 +1353,7 @@ async function eseguiDel() {
   if(tipo==='ordineDIL') { db.ordiniDIL = (db.ordiniDIL||[]).filter(o=>o.id!==id); }
   if(tipo==='ordineDF') { db.ordiniDF = (db.ordiniDF||[]).filter(o=>o.id!==id); }
   if(tipo==='ordinePR') { db.ordiniPR = (db.ordiniPR||[]).filter(o=>o.id!==id); }
+  if(tipo==='ordineOD') { db.ordiniOD = (db.ordiniOD||[]).filter(o=>o.id!==id); }
   await saveDB();
   closeModal('modal-del');
   pendingDel = null;
@@ -1840,6 +1941,7 @@ function switchOrdiniTab(tab) {
   document.getElementById('ordini-nuovo').style.display = tab==='nuovo' ? 'block' : 'none';
   document.getElementById('ordini-nuovodf').style.display = tab==='nuovodf' ? 'block' : 'none';
   document.getElementById('ordini-nuovopr').style.display = tab==='nuovopr' ? 'block' : 'none';
+  document.getElementById('ordini-nuovood').style.display = tab==='nuovood' ? 'block' : 'none';
   document.getElementById('ordini-dettaglio').style.display = tab==='dettaglio' ? 'block' : 'none';
   document.querySelectorAll('[id^="otab-"]').forEach(b=>b.classList.remove('active'));
   const bt = document.getElementById('otab-'+tab);
@@ -1848,6 +1950,7 @@ function switchOrdiniTab(tab) {
   if(tab==='nuovo') initNuovoOrdineDIL();
   if(tab==='nuovodf' && !editingOrdineDF) initNuovoOrdineDF();
   if(tab==='nuovopr' && !editingOrdinePR) initNuovoOrdinePR();
+  if(tab==='nuovood' && !editingOrdineOD) initNuovoOrdineOD();
 }
 window.switchOrdiniTab = switchOrdiniTab;
 
@@ -1859,29 +1962,30 @@ function renderOrdiniLista() {
   const ordiniDIL = [...(db.ordiniDIL||[])].map(o=>({...o,_tipo:'DIL'}));
   const ordiniDF = [...(db.ordiniDF||[])].map(o=>({...o,_tipo:'DF'}));
   const ordiniPR = [...(db.ordiniPR||[])].map(o=>({...o,_tipo:'PR'}));
-  const ordini = [...ordiniDIL,...ordiniDF,...ordiniPR].sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const ordiniOD = [...(db.ordiniOD||[])].map(o=>({...o,_tipo:'OD'}));
+  const ordini = [...ordiniDIL,...ordiniDF,...ordiniPR,...ordiniOD].sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   const tbody = document.getElementById('tab-ordini-dil');
   if(!tbody) return;
   tbody.innerHTML = ordini.length ? ordini.map(o=>{
     const nArt = (o.articoli||[]).length;
-    const totRmb = (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
-    const totUsd = (o._tipo==='DF'||o._tipo==='PR') ? 0 : totRmb * (o.rmbUsd||0);
-    const totEur = (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
+    const totRmb = o._tipo==='OD' ? (o.articoli||[]).reduce((a,r)=>a+(r.prezzoUnit||0)*(r.qty||0),0) : (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
+    const totUsd = (o._tipo==='DF'||o._tipo==='PR'||o._tipo==='OD') ? 0 : totRmb * (o.rmbUsd||0);
+    const totEur = o._tipo==='OD' ? (o.valuta==='EUR'?totRmb:(o.gbpEur>0?totRmb*o.gbpEur:0)) : (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
     const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto'}[o.stato||'bozza'];
     return `<tr>
       <td class="mono" style="font-size:12px">${o.data||'-'}</td>
-      <td style="font-weight:600">${o.riferimento||'-'} <span class="badge" style="font-size:10px;background:${o._tipo==='DF'?'#EDE9FE':o._tipo==='PR'?'#FEF3C7':'#FCE7F3'};color:${o._tipo==='DF'?'#5B21B6':o._tipo==='PR'?'#92400E':'#9D174D'}">${o._tipo==='DF'?'DEVIL FASHION':o._tipo==='PR'?'PUNK RAVE':'DARK IN LOVE'}</span></td>
+      <td style="font-weight:600">${o.riferimento||'-'} <span class="badge" style="font-size:10px;background:${o._tipo==='DF'?'#EDE9FE':o._tipo==='PR'?'#FEF3C7':o._tipo==='OD'?'#D1FAE5':'#FCE7F3'};color:${o._tipo==='DF'?'#5B21B6':o._tipo==='PR'?'#92400E':o._tipo==='OD'?'#065F46':'#9D174D'}">${o._tipo==='DF'?'DEVIL FASHION':o._tipo==='PR'?'PUNK RAVE':o._tipo==='OD'?'ONE DIRECTION':'DARK IN LOVE'}</span></td>
       <td class="mono">${nArt} articoli</td>
       <td class="mono">${Math.round(totRmb).toLocaleString('it')} ¥</td>
       <td class="mono">${o._tipo==='DF' ? '—' : (o.rmbUsd ? '$ '+totUsd.toFixed(2) : '—')}</td>
       <td class="mono">${(o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur ? fmt(totEur) : '—') : (o.usdEur ? fmt(totEur) : '—')}</td>
       <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
       <td style="display:flex;gap:4px">
-        ${o._tipo==='DF' ? `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>` : o._tipo==='PR' ? `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdinePR(${o.id})">Apri</button>` : `<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
-        ${o._tipo==='DF' ? `<button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>` : o._tipo==='PR' ? `<button class="btn btn-sm" onclick="modificaOrdinePR(${o.id})">Modifica</button>` : `<button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>`}
-        ${o.stato!=='ricevuto' ? (o._tipo==='DF' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoDF(${o.id})">Carica stock</button>` : o._tipo==='PR' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMazzinoPR(${o.id})">Carica stock</button>` : `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">Carica stock</button>`) : '<span class="badge badge-green">In stock</span>'}
-        ${o._tipo==='DF' ? `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineDF(${o.id})">Etichette</button>` : o._tipo==='PR' ? `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdinePR(${o.id})">Etichette</button>` : `<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdine(${o.id})">Etichette</button>`}
-        ${o._tipo==='DF' ? `<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDF',${o.id},'${o.riferimento}')">Elimina</button>` : o._tipo==='PR' ? `<button class="btn btn-sm btn-danger" onclick="confirmDel('ordinePR',${o.id},'${o.riferimento}')">Elimina</button>` : `<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>`}
+        ${o._tipo==='DF'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdinePR(${o.id})">Apri</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineOD(${o.id})">Apri</button>`:`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
+        ${o._tipo==='DF'?`<button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>`:o._tipo==='PR'?`<button class="btn btn-sm" onclick="modificaOrdinePR(${o.id})">Modifica</button>`:o._tipo==='OD'?`<button class="btn btn-sm" onclick="modificaOrdineOD(${o.id})">Modifica</button>`:`<button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>`}
+        ${o.stato!=='ricevuto'?(o._tipo==='DF'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoDF(${o.id})">Carica stock</button>`:o._tipo==='PR'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMazzinoPR(${o.id})">Carica stock</button>`:o._tipo==='OD'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoOD(${o.id})">Carica stock</button>`:`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">Carica stock</button>`):'<span class="badge badge-green">In stock</span>'}
+        ${o._tipo==='DF'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineDF(${o.id})">Etichette</button>`:o._tipo==='PR'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdinePR(${o.id})">Etichette</button>`:o._tipo==='OD'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineOD(${o.id})">Etichette</button>`:`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdine(${o.id})">Etichette</button>`}
+        ${o._tipo==='DF'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDF',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordinePR',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineOD',${o.id},'${o.riferimento}')">Elimina</button>`:`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>`}
       </td>
     </tr>`;
   }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine inserito</td></tr>';
@@ -3586,6 +3690,422 @@ function generaEmailPR(id) {
   modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
 }
 window.generaEmailPR = generaEmailPR;
+
+// ── ORDINI ONE DIRECTION ──
+
+let odRigheId = 0;
+let editingOrdineOD = null;
+
+function initNuovoOrdineOD() {
+  odRigheId = 0;
+  editingOrdineOD = null;
+  ['od-ref','od-gbp-eur','od-trasporto','od-customs-merce','od-diritti','od-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const dataEl = document.getElementById('od-data');
+  if(dataEl) dataEl.value = new Date().toISOString().split('T')[0];
+  document.getElementById('od-valuta').value = 'GBP';
+  document.getElementById('od-magazzino').value = 'nl';
+  document.getElementById('tbody-od').innerHTML = '';
+  aggiungiRigaOD();
+  ricalcolaOD();
+}
+
+function aggiungiRigaOD(articolo) {
+  const id = ++odRigheId;
+  const a = articolo || {};
+  const valuta = document.getElementById('od-valuta')?.value || 'GBP';
+  const sym = valuta === 'GBP' ? '£' : '€';
+  const tr = document.createElement('tr');
+  tr.id = 'od-row-'+id;
+  tr.innerHTML = `
+    <td><input class="input-rmb" style="width:100px" id="od-bc-${id}" value="${a.barcode||''}" placeholder="es. TPA3214S" oninput="checkPrezzoVenditaOD(${id})"></td>
+    <td><input class="input-rmb" style="width:120px" id="od-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
+    <td><input class="input-rmb" id="od-prezzo-${id}" type="number" step="0.01" value="${a.prezzoUnit||''}" placeholder="0.00" oninput="ricalcolaOD()"></td>
+    <td><input class="input-qty" id="od-qty-${id}" type="number" min="1" value="${a.qty||''}" oninput="ricalcolaOD()"></td>
+    <td class="mono" id="od-tot-${id}">0</td>
+    <td class="costo-cell" id="od-costo-${id}">—</td>
+    <td><input class="input-rmb" id="od-vend-${id}" type="number" step="0.01" value="${a.vendita||''}" placeholder="0.00" oninput="ricalcolaOD()"></td>
+    <td class="ricarico-cell" id="od-ric-${id}">—</td>
+    <td><button onclick="rimuoviRigaOD(${id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></td>`;
+  document.getElementById('tbody-od').appendChild(tr);
+  checkPrezzoVenditaOD(id);
+}
+window.aggiungiRigaOD = aggiungiRigaOD;
+
+function rimuoviRigaOD(id) {
+  const row = document.getElementById('od-row-'+id);
+  if(row) row.remove();
+  ricalcolaOD();
+}
+window.rimuoviRigaOD = rimuoviRigaOD;
+
+function checkPrezzoVenditaOD(id) {
+  const bc = document.getElementById('od-bc-'+id)?.value?.trim();
+  if(!bc) return;
+  const p = getProdotto(bc);
+  if(p) {
+    const descEl = document.getElementById('od-desc-'+id);
+    if(descEl && !descEl.value) descEl.value = p.nome||p.descrizione||'';
+    const vendEl = document.getElementById('od-vend-'+id);
+    if(vendEl && !vendEl.value && p.prezzo) vendEl.value = p.prezzo.toFixed(2);
+  }
+}
+window.checkPrezzoVenditaOD = checkPrezzoVenditaOD;
+
+function getRigheOD() {
+  const righe = [];
+  document.querySelectorAll('[id^="od-row-"]').forEach(tr => {
+    const id = tr.id.replace('od-row-','');
+    const barcode = document.getElementById('od-bc-'+id)?.value?.trim()||'';
+    const descrizione = document.getElementById('od-desc-'+id)?.value?.trim()||'';
+    const prezzoUnit = parseFloat(document.getElementById('od-prezzo-'+id)?.value)||0;
+    const qty = parseInt(document.getElementById('od-qty-'+id)?.value)||0;
+    const vendita = parseFloat(document.getElementById('od-vend-'+id)?.value)||0;
+    if(!barcode && !prezzoUnit) return;
+    righe.push({id, barcode, descrizione, prezzoUnit, qty, vendita});
+  });
+  return righe;
+}
+
+function ricalcolaOD() {
+  const righe = getRigheOD();
+  const valuta = document.getElementById('od-valuta')?.value||'GBP';
+  const gbpEur = parseFloat(document.getElementById('od-gbp-eur')?.value)||0;
+  const trasporto = parseFloat(document.getElementById('od-trasporto')?.value)||0;
+  const magazzino = document.getElementById('od-magazzino')?.value||'nl';
+  const customsMerce = parseFloat(document.getElementById('od-customs-merce')?.value)||0;
+  const diritti = parseFloat(document.getElementById('od-diritti')?.value)||0;
+  const isUK = magazzino === 'uk';
+  const sym = valuta==='GBP' ? '£' : '€';
+
+  // Update UI labels
+  const thPrezzo = document.getElementById('od-th-prezzo');
+  const thTot = document.getElementById('od-th-tot');
+  const trasValuta = document.getElementById('od-tras-valuta');
+  if(thPrezzo) thPrezzo.textContent = 'Prezzo '+sym;
+  if(thTot) thTot.textContent = 'Tot '+sym;
+  if(trasValuta) trasValuta.textContent = sym;
+
+  // Show/hide customs section
+  const customsSec = document.getElementById('od-customs-section');
+  const rcCustomsSec = document.getElementById('od-rc-customs-section');
+  if(customsSec) customsSec.style.display = isUK ? 'block' : 'none';
+  if(rcCustomsSec) rcCustomsSec.style.display = isUK ? 'block' : 'none';
+
+  const totPezzi = righe.reduce((a,r)=>a+r.qty,0);
+  const totMerce = righe.reduce((a,r)=>a+r.prezzoUnit*r.qty,0);
+  const totFatt = totMerce + trasporto;
+  const trasPz = totPezzi>0 ? trasporto/totPezzi : 0;
+
+  // EUR conversion
+  const toEur = v => valuta==='EUR' ? v : (gbpEur>0 ? v*gbpEur : 0);
+  const totFattEur = toEur(totFatt);
+  const trasPzEur = toEur(trasPz);
+
+  // UK customs
+  const dazio = isUK && customsMerce ? customsMerce*0.12 : 0;
+  const iva = isUK && customsMerce ? (customsMerce+dazio)*0.22 : 0;
+  const ivaDiritti = diritti*0.22;
+  const totImportazione = dazio+iva+diritti+ivaDiritti;
+  const extraEur = isUK && customsMerce && totFattEur ? totFattEur-customsMerce : 0;
+  const dazioPz = totPezzi>0 ? totImportazione/totPezzi : 0;
+  const costoPz = toEur(trasPz) + (isUK ? dazioPz : 0);
+
+  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  set('od-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  set('od-rc-tot-merce', totMerce ? totMerce.toFixed(2)+' '+sym : '—');
+  set('od-rc-trasporto', trasporto ? trasporto.toFixed(2)+' '+sym : '—');
+  set('od-rc-tras-pz', trasPz ? trasPz.toFixed(2)+' '+sym+'/pz' : '—');
+  set('od-rc-tot-fatt', totFatt ? totFatt.toFixed(2)+' '+sym : '—');
+  set('od-rc-tot-eur', totFattEur ? fmt(totFattEur) : (valuta==='EUR'?fmt(totFatt):'inserisci tasso'));
+  if(isUK) {
+    set('od-rc-customs', customsMerce ? fmt(customsMerce) : '—');
+    set('od-rc-extra', extraEur ? fmt(extraEur) : '—');
+    set('od-rc-dazio', dazio ? fmt(dazio) : '—');
+    set('od-rc-iva', iva ? fmt(iva) : '—');
+    set('od-rc-diritti', diritti ? fmt(diritti) : '—');
+    set('od-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
+    set('od-rc-tot-importazione', totImportazione ? fmt(totImportazione) : '—');
+  }
+  set('od-rc-costo-pz', trasPzEur ? fmt(trasPzEur)+'/pz' : '—');
+  set('od-rc-dazio-pz', isUK&&dazioPz ? fmt(dazioPz)+'/pz' : '—');
+  set('od-rc-costo-tot-pz', costoPz ? fmt(costoPz)+'/pz aggiuntivo' : '—');
+
+  // Update righe
+  righe.forEach(r => {
+    const totRiga = r.prezzoUnit*r.qty;
+    const prezzoEur = toEur(r.prezzoUnit);
+    const costoRiga = prezzoEur + toEur(trasPz) + (isUK ? dazioPz : 0);
+    const ricarico = costoRiga>0 && r.vendita>0 ? (r.vendita/costoRiga)*100 : null;
+    const setEl = (suf,val) => { const el=document.getElementById('od-'+suf+'-'+r.id); if(el) el.textContent=val; };
+    setEl('tot', totRiga.toFixed(2)+' '+sym);
+    setEl('costo', costoRiga>0 ? fmt(costoRiga) : '—');
+    const ricEl = document.getElementById('od-ric-'+r.id);
+    if(ricEl) {
+      ricEl.textContent = ricarico!==null ? Math.round(ricarico)+'%' : '—';
+      ricEl.className = 'ricarico-cell '+(ricarico!==null?(ricarico>=100?'ricarico-ok':'ricarico-low'):'');
+    }
+  });
+}
+window.ricalcolaOD = ricalcolaOD;
+
+async function salvaOrdineOD() {
+  const ref = document.getElementById('od-ref').value.trim();
+  if(!ref) { showToast('Inserisci un riferimento ordine','red'); return; }
+  const righe = getRigheOD();
+  if(!righe.length) { showToast('Aggiungi almeno un articolo','red'); return; }
+  if(!db.ordiniOD) db.ordiniOD=[];
+  if(!db.nextOrdODId) db.nextOrdODId=1;
+  const ordine = {
+    id: editingOrdineOD || db.nextOrdODId++,
+    fornitore: 'ONE DIRECTION',
+    riferimento: ref,
+    data: document.getElementById('od-data').value,
+    valuta: document.getElementById('od-valuta').value,
+    gbpEur: parseFloat(document.getElementById('od-gbp-eur').value)||0,
+    trasporto: parseFloat(document.getElementById('od-trasporto').value)||0,
+    magazzino: document.getElementById('od-magazzino').value,
+    customsMerce: parseFloat(document.getElementById('od-customs-merce').value)||0,
+    diritti: parseFloat(document.getElementById('od-diritti').value)||0,
+    note: document.getElementById('od-note').value.trim(),
+    stato: 'bozza',
+    articoli: righe,
+  };
+  if(editingOrdineOD) {
+    const idx = db.ordiniOD.findIndex(o=>o.id===editingOrdineOD);
+    if(idx>=0) db.ordiniOD[idx]=ordine;
+    editingOrdineOD=null;
+  } else {
+    db.ordiniOD.push(ordine);
+  }
+  await saveDB();
+  showToast('Ordine One Direction salvato ✓');
+  switchOrdiniTab('lista');
+}
+window.salvaOrdineOD = salvaOrdineOD;
+
+function modificaOrdineOD(id) {
+  const o = (db.ordiniOD||[]).find(x=>x.id===id);
+  if(!o) return;
+  editingOrdineOD = id;
+  switchOrdiniTab('nuovood');
+  setTimeout(()=>{
+    document.getElementById('od-ref').value = o.riferimento||'';
+    document.getElementById('od-data').value = o.data||'';
+    document.getElementById('od-valuta').value = o.valuta||'GBP';
+    document.getElementById('od-gbp-eur').value = o.gbpEur||'';
+    document.getElementById('od-trasporto').value = o.trasporto||'';
+    document.getElementById('od-magazzino').value = o.magazzino||'nl';
+    document.getElementById('od-customs-merce').value = o.customsMerce||'';
+    document.getElementById('od-diritti').value = o.diritti||'';
+    document.getElementById('od-note').value = o.note||'';
+    document.getElementById('tbody-od').innerHTML='';
+    odRigheId=0;
+    (o.articoli||[]).forEach(a=>aggiungiRigaOD(a));
+    ricalcolaOD();
+  },50);
+}
+window.modificaOrdineOD = modificaOrdineOD;
+
+function apriDettaglioOrdineOD(id) {
+  const o = (db.ordiniOD||[]).find(x=>x.id===id);
+  if(!o) return;
+  switchOrdiniTab('dettaglio');
+  const valuta = o.valuta||'GBP';
+  const sym = valuta==='GBP'?'£':'€';
+  const gbpEur = o.gbpEur||0;
+  const toEur = v => valuta==='EUR'?v:(gbpEur>0?v*gbpEur:0);
+  const isUK = o.magazzino==='uk';
+  const totPezzi = (o.articoli||[]).reduce((a,r)=>a+r.qty,0);
+  const totMerce = (o.articoli||[]).reduce((a,r)=>a+r.prezzoUnit*r.qty,0);
+  const totFatt = totMerce+(o.trasporto||0);
+  const totFattEur = toEur(totFatt);
+  const trasPz = totPezzi>0?(o.trasporto||0)/totPezzi:0;
+  const customsMerce = o.customsMerce||0;
+  const diritti = o.diritti||0;
+  const dazio = isUK&&customsMerce?customsMerce*0.12:0;
+  const iva = isUK&&customsMerce?(customsMerce+dazio)*0.22:0;
+  const ivaDiritti = diritti*0.22;
+  const totImportazione = dazio+iva+diritti+ivaDiritti;
+  const dazioPz = totPezzi>0?totImportazione/totPezzi:0;
+
+  document.getElementById('ordini-dettaglio-content').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:18px;font-weight:700">${o.riferimento}</div>
+          <div style="font-size:12px;color:var(--text3)">${o.data||''} · ONE DIRECTION · ${totPezzi} pezzi · ${isUK?'🇬🇧 UK':'🇳🇱 Paesi Bassi'}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="modificaOrdineOD(${o.id})">Modifica</button>
+          <button class="btn btn-sm" style="background:var(--accent);color:#fff" onclick="generaEmailOD(${o.id})">📧 Genera email</button>
+          <select onchange="cambiaStatoOrdineOD(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
+            <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
+            <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
+            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        <div class="metric"><div class="metric-label">Totale ${sym}</div><div class="metric-value" style="font-size:18px">${totFatt.toFixed(2)} ${sym}</div></div>
+        <div class="metric"><div class="metric-label">Totale €</div><div class="metric-value green" style="font-size:18px">${totFattEur?fmt(totFattEur):'—'}</div></div>
+        <div class="metric"><div class="metric-label">Trasporto/pz</div><div class="metric-value" style="font-size:18px">${trasPz.toFixed(2)} ${sym}</div></div>
+      </div>
+      <div class="card-title">Articoli</div>
+      <div style="overflow-x:auto"><table class="report-table">
+        <thead><tr><th>Barcode</th><th>Descrizione</th><th>Prezzo ${sym}</th><th>Qty</th><th>Tot ${sym}</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
+        <tbody>${(o.articoli||[]).map(r=>{
+          const prezzoEur=toEur(r.prezzoUnit);
+          const costoRiga=prezzoEur+toEur(trasPz)+(isUK?dazioPz:0);
+          const ricarico=costoRiga>0&&r.vendita>0?(r.vendita/costoRiga)*100:null;
+          return `<tr>
+            <td style="font-weight:600;font-family:monospace">${r.barcode}</td>
+            <td style="font-size:12px">${r.descrizione||'—'}</td>
+            <td class="mono">${r.prezzoUnit} ${sym}</td>
+            <td class="mono">${r.qty}</td>
+            <td class="mono">${(r.prezzoUnit*r.qty).toFixed(2)} ${sym}</td>
+            <td class="mono" style="color:var(--green)">${costoRiga?fmt(costoRiga):'—'}</td>
+            <td class="mono">${r.vendita?fmt(r.vendita):'—'}</td>
+            <td class="mono" style="color:${ricarico!==null?(ricarico>=100?'var(--green)':'var(--red)'):'var(--text3)'}">${ricarico!==null?Math.round(ricarico)+'%':'—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      ${isUK?`<div class="sep"></div>
+      <div class="sezione-costi" style="margin-top:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase">Importazione UK</div>
+        <div class="costo-row"><span>Customs Invoice</span><span class="mono">${customsMerce?fmt(customsMerce):'—'}</span></div>
+        <div class="costo-row"><span>Extra</span><span class="mono">${customsMerce&&totFattEur?fmt(totFattEur-customsMerce):'—'}</span></div>
+        <div class="costo-row"><span>Dazio (12%)</span><span class="mono">${fmt(dazio)}</span></div>
+        <div class="costo-row"><span>IVA</span><span class="mono">${fmt(iva)}</span></div>
+        <div class="costo-row"><span>Diritti</span><span class="mono">${fmt(diritti)}</span></div>
+        <div class="costo-row totale"><span>Totale importazione</span><span class="mono">${fmt(totImportazione)}</span></div>
+      </div>`:''}
+    </div>`;
+}
+window.apriDettaglioOrdineOD = apriDettaglioOrdineOD;
+
+async function cambiaStatoOrdineOD(id,stato) {
+  const o=(db.ordiniOD||[]).find(x=>x.id===id);
+  if(o){o.stato=stato;await saveDB();showToast('Stato aggiornato');}
+}
+window.cambiaStatoOrdineOD = cambiaStatoOrdineOD;
+
+async function caricaAMagazzinoOD(ordineId) {
+  const o=(db.ordiniOD||[]).find(x=>x.id===ordineId);
+  if(!o) return;
+  if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
+  const valuta=o.valuta||'GBP', gbpEur=o.gbpEur||0;
+  const toEur = v => valuta==='EUR'?v:(gbpEur>0?v*gbpEur:0);
+  const totPezzi=(o.articoli||[]).reduce((a,r)=>a+r.qty,0);
+  const isUK=o.magazzino==='uk';
+  const trasPz=totPezzi>0?(o.trasporto||0)/totPezzi:0;
+  const customsMerce=o.customsMerce||0, diritti=o.diritti||0;
+  const dazio=isUK&&customsMerce?customsMerce*0.12:0;
+  const iva=isUK&&customsMerce?(customsMerce+dazio)*0.22:0;
+  const ivaDiritti=diritti*0.22;
+  const totImportazione=dazio+iva+diritti+ivaDiritti;
+  const dazioPz=totPezzi>0?totImportazione/totPezzi:0;
+  let caricati=0, nonTrovati=[];
+  (o.articoli||[]).forEach(r=>{
+    if(!r.barcode||!r.qty) return;
+    const prod=getProdotto(r.barcode);
+    if(!prod){nonTrovati.push(r.barcode);return;}
+    db.movimenti.push({id:db.nextMovId++,barcode:r.barcode,qty:r.qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - ONE DIRECTION'});
+    const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
+    prod.costo=parseFloat(costoRiga.toFixed(2));
+    caricati++;
+  });
+  o.stato='ricevuto';
+  await saveDB();
+  if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
+  else showToast(caricati+' articoli caricati in stock');
+  renderOrdiniLista();
+}
+window.caricaAMagazzinoOD = caricaAMagazzinoOD;
+
+function stampaEtichetteOrdineOD(ordineId) {
+  const o=(db.ordiniOD||[]).find(x=>x.id===ordineId);
+  if(!o) return;
+  const lista=[];
+  (o.articoli||[]).forEach(r=>{
+    if(!r.barcode||!r.qty) return;
+    const prod=getProdotto(r.barcode);
+    const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+    const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+    for(let i=0;i<r.qty;i++) lista.push({barcode:r.barcode,pEur,pCzk});
+  });
+  if(!lista.length){showToast('Nessun barcode negli articoli','amber');return;}
+  const items=lista.map((et,idx)=>{
+    const c=document.createElement('canvas');c.width=500;c.height=80;
+    disegnaBarcode128(et.barcode,c);
+    const ctx=c.getContext('2d');ctx.fillStyle='rgba(255,255,255,0.01)';ctx.fillRect(idx%100,79,1,1);
+    return {barcode:et.barcode,pEur:et.pEur,pCzk:et.pCzk,img:c.toDataURL()};
+  });
+  const logoSrc=document.getElementById('logo-img')?.src||'';
+  const dataJS='const etichette='+JSON.stringify(items.map(it=>({barcode:it.barcode,prezzo_eur:it.pEur,prezzo_czk:it.pCzk,quantita:1})))+'; window.PSYCHO_LOGO='+JSON.stringify(logoSrc)+';';
+  const finalHtml=getEtichetteTemplate().replace('ETICHETTE_DATA_PLACEHOLDER',dataJS);
+  const blob=new Blob([finalHtml],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='etichette_'+o.riferimento+'.html';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  showToast('File etichette scaricato!');
+}
+window.stampaEtichetteOrdineOD = stampaEtichetteOrdineOD;
+
+function generaEmailOD(id) {
+  const o=(db.ordiniOD||[]).find(x=>x.id===id);
+  if(!o) return;
+  // Raggruppa articoli per codice base (senza taglia finale)
+  const gruppi = {};
+  (o.articoli||[]).forEach(r=>{
+    if(!r.barcode||!r.qty) return;
+    // Estrai codice base e taglia: es. TPA3214S -> base=TPA3214, taglia=S
+    const match = r.barcode.match(/^(.+?)(XS|XXL|XXXL|S|M|L|XL)$/i);
+    const base = match ? match[1] : r.barcode;
+    const taglia = match ? match[2].toUpperCase() : '';
+    if(!gruppi[base]) gruppi[base]=[];
+    gruppi[base].push({taglia, qty:r.qty});
+  });
+  // Ordina taglie
+  const ordineTaglia = ['XS','S','M','L','XL','XXL','XXXL'];
+  const righeEmail = Object.entries(gruppi).map(([base, taglie])=>{
+    taglie.sort((a,b)=>ordineTaglia.indexOf(a.taglia)-ordineTaglia.indexOf(b.taglia));
+    const taglieStr = taglie.map(t=>t.qty+(t.taglia?t.taglia:'')).join(' - ');
+    return base + ' = ' + taglieStr;
+  }).join(String.fromCharCode(10));
+
+  const nl=String.fromCharCode(10), apos=String.fromCharCode(39);
+  const emailText='Dear Jag,'+nl+
+    'how are you? Hope all good!'+nl+nl+
+    'I'+apos+'m writing you as we'+apos+'d need to place a new order, so...here it is:'+nl+
+    righeEmail+nl+nl+
+    'Could you please tell us if you have these items available in Europe?'+nl+
+    'We'+apos+'d need this order to be shipped to Italy at our usual home address.'+nl+
+    'I keep waiting for your kind reply.'+nl+
+    'Many thanks and kind regards,'+nl+
+    'Carlotta';
+
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
+  modal.setAttribute('data-email-modal','1');
+  modal.innerHTML='<div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+    '<div style="font-size:16px;font-weight:600">Email per One Direction</div>'+
+    '<button onclick="chiudiEmailModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3)">&#10005;</button>'+
+    '</div>'+
+    '<textarea id="email-df-text" style="width:100%;height:320px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);resize:vertical;background:var(--surface2)"></textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'+
+    '<button onclick="copiaEmailDF()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600">Copia testo</button>'+
+    '<button onclick="chiudiEmailModal()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Chiudi</button>'+
+    '</div></div>';
+  document.body.appendChild(modal);
+  document.getElementById('email-df-text').value=emailText;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+}
+window.generaEmailOD = generaEmailOD;
 
 // ── INIT ──
 setLogo();
