@@ -270,7 +270,7 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Costo</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
+            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Costo</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
             <tbody id="tab-catalogo"></tbody></table>
           </div>
           <div id="cat-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -293,7 +293,7 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th style="text-align:center">Stock</th><th>Prezzo €</th><th>Prezzo CZK</th><th>Valore</th><th></th></tr></thead>
+            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th style="text-align:center">Stock</th><th>Prezzo €</th><th>Prezzo CZK</th><th>Valore</th><th></th></tr></thead>
             <tbody id="tab-stock"></tbody></table>
           </div>
           <div id="stock-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -1205,7 +1205,8 @@ function renderCatalogo() {
     <tr>
       <td class="mono" style="font-size:12px">${p.barcode}</td>
       <td>${fornBadge(p.fornitore)}</td>
-      <td>${p.descrizione}</td>
+      <td style="font-size:12px;max-width:200px">${getNomeProdotto(p)||p.descrizione}</td>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${getTagliaProdotto(p)||'—'}</td>
       <td class="mono">${fmt(p.costo)}</td>
       <td class="mono">${fmt(p.prezzo)}</td>
       <td class="mono">${p.prezzoCzk||'-'}</td>
@@ -1213,7 +1214,7 @@ function renderCatalogo() {
         <button class="btn btn-sm" onclick="apriEditProdotto('${p.barcode}')">Modifica</button>
         <button class="btn btn-sm btn-danger" onclick="confirmDel('prodotto','${p.barcode}', this.dataset.nome)" data-nome="${p.descrizione}">Elimina</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="7" class="empty">Nessun prodotto trovato</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">Nessun prodotto trovato</td></tr>';
   renderPagination('cat-pagination', catPage, pages, p=>{ catPage=p; renderCatalogo(); });
 }
 window.renderCatalogo = renderCatalogo;
@@ -1318,13 +1319,16 @@ function renderStock() {
     <tr>
       <td class="mono" style="font-size:12px">${p.barcode}</td>
       <td>${fornBadge(p.fornitore)}</td>
-      <td>${p.descrizione}</td>
+      <td style="font-size:12px;max-width:180px">${getNomeProdotto(p)||p.descrizione}</td>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${getTagliaProdotto(p)||'—'}</td>
       <td style="text-align:center">
         <div class="stock-cell ${getStockClass(p.stock)}" onclick="rettificaStock('${p.barcode}',this)">${p.stock}</div>
       </td>
+      <td class="mono" style="font-size:12px">${p.prezzo?fmt(p.prezzo):'—'}</td>
+      <td class="mono" style="font-size:12px">${p.prezzoCzk||'—'}</td>
       <td class="mono" style="font-size:12px">${fmt(p.stock*p.costo)}</td>
       <td><button class="btn btn-sm" onclick="rettificaStock('${p.barcode}',null)">Rettifica</button></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="empty">Nessun prodotto trovato</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="9" class="empty">Nessun prodotto trovato</td></tr>';
   renderPagination('stock-pagination', stockPage, pages, p=>{ stockPage=p; renderStock(); });
 }
 window.renderStock = renderStock;
