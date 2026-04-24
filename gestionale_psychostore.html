@@ -3010,7 +3010,7 @@ function apriDettaglioOrdineDF(id) {
   const trasportoEur = rmbEur>0 ? (o.trasportoRmb||0)/rmbEur : 0;
   const totFattRmb = totMerceRmb+(o.trasportoRmb||0);
   const totFattEur = totMerceEur+trasportoEur;
-  const customsEurDet = o.customsEur||0;
+  const customsEurDet = o.customsMerce||o.customsEur||0;
   const dazio = customsEurDet*0.12;
   const iva = (customsEurDet+dazio)*0.22;
   const ivaDiritti = (o.diritti||0)*0.22;
