@@ -3795,8 +3795,8 @@ function checkPrezzoVenditaOD(id) {
   }
   if(found) {
     if(descEl && !descEl.value) {
-      const desc = (found.nome||found.descrizione||'').replace(/[-\s]*(XS|XXL|XXXL|S|M|L|XL)$/i,'').trim();
-      descEl.value = desc;
+      const nome = getNomeProdotto(found);
+      if(nome) descEl.value = nome;
     }
     if(vendEl && !vendEl.value && found.prezzo) vendEl.value = found.prezzo.toFixed(2);
   }
@@ -4209,6 +4209,28 @@ function generaEmailOD(id) {
 }
 window.generaEmailOD = generaEmailOD;
 
+// ── UTILITY: ESTRAI TAGLIA DA DESCRIZIONE ──
+function estraiTaglia(desc) {
+  if(!desc) return {nome:'', taglia:''};
+  // Pattern: descrizione che finisce con - XL, - S, - M, ecc.
+  const match = desc.match(/^(.*?)[\s\-]+?(XS|XXL|XXXL|XL|S|M|L|2XL|3XL)\s*$/i);
+  if(match) return {nome: match[1].trim(), taglia: match[2].toUpperCase()};
+  // Anche senza trattino: "NOME M" alla fine
+  const match2 = desc.match(/^(.*)\s+(XS|XXL|XXXL|XL|S|M|L|2XL|3XL)\s*$/i);
+  if(match2) return {nome: match2[1].trim(), taglia: match2[2].toUpperCase()};
+  return {nome: desc.trim(), taglia: ''};
+}
+
+function getNomeProdotto(p) {
+  if(!p) return '';
+  return estraiTaglia(p.descrizione).nome || p.descrizione || '';
+}
+
+function getTagliaProdotto(p) {
+  if(!p) return '';
+  return estraiTaglia(p.descrizione).taglia;
+}
+
 // ── AUTOFILL DESCRIZIONE ──
 function _autofillDesc(codice, descElId) {
   const descEl = document.getElementById(descElId);
@@ -4222,8 +4244,8 @@ function _autofillDesc(codice, descElId) {
   }
   if(!found) found = (db.prodotti||[]).find(p=>p.barcode.toUpperCase().startsWith(codice.toUpperCase()));
   if(found) {
-    const desc = (found.nome||found.descrizione||'').replace(/[-\s]*(XS|XXL|XXXL|S|M|L|XL)$/i,'').trim();
-    if(desc) descEl.value = desc;
+    const nome = getNomeProdotto(found);
+    if(nome) descEl.value = nome;
   }
 }
 function autofillDescDIL(id) { _autofillDesc(document.getElementById('dil-art-'+id)?.value?.trim(), 'dil-desc-'+id); }
