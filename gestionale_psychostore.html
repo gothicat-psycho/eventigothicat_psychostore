@@ -304,6 +304,7 @@
         <div class="card-title" style="color:var(--amber)">⚙ Strumenti</div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="applicaPrezziCzk()">Applica prezzi CZK automatici a tutti i prodotti</button>
+          <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="cambiaFornitorePerPrefisso()">Cambia fornitore per prefisso</button>
           <span style="font-size:11px;color:var(--text3)">Imposta il prezzo CZK per ogni prodotto in base al suo prezzo EUR</span>
         </div>
       </div>
@@ -1457,6 +1458,22 @@ async function applicaPrezziCzk() {
   renderStock();
   showToast(`Prezzi CZK aggiornati per ${count} prodotti`);
 }
+async function cambiaFornitorePerPrefisso() {
+  const prefisso = prompt('Prefisso barcode (es. DT.):');
+  if(!prefisso) return;
+  const nuovoFornitore = prompt('Nuovo fornitore:');
+  if(!nuovoFornitore) return;
+  const prodotti = (db.prodotti||[]).filter(p => p.barcode.toUpperCase().startsWith(prefisso.toUpperCase()));
+  if(!prodotti.length) { showToast('Nessun prodotto trovato con prefisso "'+prefisso+'"', 'amber'); return; }
+  if(!confirm(`Trovati ${prodotti.length} prodotti con prefisso "${prefisso}".\nCambiare fornitore in "${nuovoFornitore}"?`)) return;
+  prodotti.forEach(p => p.fornitore = nuovoFornitore);
+  await saveDB();
+  showToast(prodotti.length + ' prodotti aggiornati ✓');
+  renderCatalogo();
+  renderStock();
+}
+window.cambiaFornitorePerPrefisso = cambiaFornitorePerPrefisso;
+
 window.applicaPrezziCzk = applicaPrezziCzk;
 
 async function rettificaStock(barcode, el) {
