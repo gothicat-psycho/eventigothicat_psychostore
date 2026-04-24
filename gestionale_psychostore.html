@@ -323,7 +323,7 @@
             <div class="card-title">Ordini Dark In Love</div>
             <div class="table-wrap">
               <table><thead><tr>
-                <th>Data</th><th>Riferimento</th><th>Articoli</th><th>Totale ¥</th><th>Totale USD</th><th>Totale €</th><th>Stato</th><th></th>
+                <th>Data</th><th>Riferimento</th><th>Articoli</th><th>Totale ¥</th><th>Totale £</th><th>Totale USD</th><th>Totale €</th><th>Stato</th><th></th>
               </tr></thead>
               <tbody id="tab-ordini-dil"></tbody></table>
             </div>
@@ -1996,9 +1996,10 @@ function renderOrdiniLista() {
       <td class="mono" style="font-size:12px">${o.data||'-'}</td>
       <td style="font-weight:600">${o.riferimento||'-'} <span class="badge" style="font-size:10px;background:${o._tipo==='DF'?'#EDE9FE':o._tipo==='PR'?'#FEF3C7':o._tipo==='OD'?'#D1FAE5':'#FCE7F3'};color:${o._tipo==='DF'?'#5B21B6':o._tipo==='PR'?'#92400E':o._tipo==='OD'?'#065F46':'#9D174D'}">${o._tipo==='DF'?'DEVIL FASHION':o._tipo==='PR'?'PUNK RAVE':o._tipo==='OD'?'ONE DIRECTION':'DARK IN LOVE'}</span></td>
       <td class="mono">${nArt} articoli</td>
-      <td class="mono">${Math.round(totRmb).toLocaleString('it')} ¥</td>
-      <td class="mono">${o._tipo==='DF' ? '—' : (o.rmbUsd ? '$ '+totUsd.toFixed(2) : '—')}</td>
-      <td class="mono">${(o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur ? fmt(totEur) : '—') : (o.usdEur ? fmt(totEur) : '—')}</td>
+      <td class="mono">${o._tipo==='OD' ? '—' : Math.round(totRmb).toLocaleString('it')+' ¥'}</td>
+      <td class="mono">${o._tipo==='OD' ? (o.valuta==='GBP' ? totRmb.toFixed(2)+' £' : '—') : '—'}</td>
+      <td class="mono">${o._tipo==='DF' || o._tipo==='OD' ? '—' : (o.rmbUsd ? '$ '+totUsd.toFixed(2) : '—')}</td>
+      <td class="mono">${(o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur ? fmt(totEur) : '—') : o._tipo==='OD' ? fmt(totEur) : (o.usdEur ? fmt(totEur) : '—')}</td>
       <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
       <td style="display:flex;gap:4px">
         ${o._tipo==='DF'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdinePR(${o.id})">Apri</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineOD(${o.id})">Apri</button>`:`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
