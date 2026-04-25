@@ -1864,6 +1864,14 @@ function modificaVendita(id) {
           </select>
         </div>
       </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Evento</label>
+        <select id="mv-evento" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+          <option value="">— Nessun evento —</option>
+          ${(db.eventi||[]).map(e=>`<option value="${e.nome}" ${v.evento===e.nome?'selected':''}>${e.nome}</option>`).join('')}
+        </select>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('modal-mod-vendita').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Annulla</button>
         <button onclick="salvaModificaVendita(${id})" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600">Salva modifiche</button>
@@ -1925,6 +1933,8 @@ async function salvaModificaVendita(id) {
   v.totale = tot;
   v.pagamento = document.getElementById('mv-pag').value;
   v.valuta = document.getElementById('mv-valuta').value;
+  const eventoVal = document.getElementById('mv-evento').value;
+  if(eventoVal) v.evento = eventoVal; else delete v.evento;
   await saveDB();
   document.getElementById('modal-mod-vendita')?.remove();
   showToast('Vendita aggiornata ✓');
