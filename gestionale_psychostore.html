@@ -312,7 +312,7 @@
           </div>
           <div class="table-wrap">
             <table><thead><tr>
-  <th style="width:32px"><input type="checkbox" id="stock-sel-all" onchange="toggleSelezionaTutti(this)" title="Seleziona tutti"></th>
+  <th style="width:32px"><input type="checkbox" id="stock-sel-all" onchange="toggleSelezionaTutti(this)" title="Seleziona tutti" style="width:18px;height:18px;cursor:pointer"></th>
   <th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Categoria</th><th style="text-align:center">Stock</th><th>Costo unit.</th><th>Valore mag.</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th>
 </tr></thead>
             <tbody id="tab-stock"></tbody></table>
@@ -1454,7 +1454,7 @@ function renderStock() {
   const page = list.slice(stockPage*PAGE_SIZE,(stockPage+1)*PAGE_SIZE);
   document.getElementById('tab-stock').innerHTML = page.map(p=>`
     <tr>
-      <td style="text-align:center"><input type="checkbox" class="stock-sel-cb" value="${p.barcode}" onchange="aggiornaBarraAzioni()"></td>
+      <td style="text-align:center"><input type="checkbox" class="stock-sel-cb" value="${p.barcode}" onchange="aggiornaBarraAzioni()" style="width:18px;height:18px;cursor:pointer"></td>
       <td class="mono" style="font-size:12px">${p.barcode}</td>
       <td>${fornBadge(p.fornitore)}</td>
       <td style="font-size:12px;max-width:180px">${getNomeProdotto(p)||p.descrizione}</td>
