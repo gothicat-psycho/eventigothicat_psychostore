@@ -1131,13 +1131,27 @@
           <button class="tab-btn" id="rtab-orario" onclick="switchReportTab('orario')">🕐 Orario</button>
         </div>
         <div id="report-evento">
-          <div class="card"><select id="r-ev" onchange="renderREvento()" style="max-width:300px"><option value="">Seleziona evento...</option></select></div>
-          <div id="r-ev-content"></div>
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <select id="r-ev" onchange="renderREvento()" style="max-width:300px"><option value="">Seleziona evento...</option></select>
+              <select id="r-ev-sort" onchange="renderREvento()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+                <option value="qty">↓ Pezzi</option>
+                <option value="fatturato">↓ Fatturato</option>
+                <option value="categoria">↓ Categoria</option>
+              </select>
+            </div>
+            <div id="r-ev-content"></div>
+          </div>
         </div>
         <div id="report-prodotti" style="display:none">
           <div class="card"><div class="flex-row" style="gap:8px">
             <select id="r-prod-ev" onchange="renderRProdotti()" style="max-width:300px"><option value="">Tutti gli eventi</option></select>
             <select id="r-prod-forn" onchange="renderRProdotti()" style="max-width:200px"><option value="">Tutti i fornitori</option></select>
+            <select id="r-prod-sort" onchange="renderRProdotti()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+              <option value="qty">↓ Pezzi</option>
+              <option value="fatturato">↓ Fatturato</option>
+              <option value="categoria">↓ Categoria</option>
+            </select>
           </div></div>
           <div id="r-prod-content"></div>
         </div>
