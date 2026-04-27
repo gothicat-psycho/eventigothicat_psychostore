@@ -1190,7 +1190,7 @@
         <div class="card">
           <div class="card-title">Scontrini</div>
           <div class="table-wrap">
-            <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Articoli</th><th>Pagamento</th><th>Valuta</th><th>Totale</th><th></th></tr></thead>
+            <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Articoli</th><th>Pagamento</th><th>Valuta</th><th>Totale</th><th>Costo merce</th><th>Margine</th><th></th></tr></thead>
             <tbody id="tab-storico"></tbody></table>
           </div>
         </div>
@@ -1965,16 +1965,27 @@ function renderStorico() {
     const dtFmt = `${d.toLocaleDateString('it-IT')} ${d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}`;
     const arts = (v.items||[]).map(it=>`${it.descrizione}${it.qty>1?' ×'+it.qty:''}`).join(', ');
     const totFmt = v.valuta==='CZK' ? Math.round(v.totale).toLocaleString('it')+' CZK' : fmt(v.totale);
+    // Calcola costo merce venduta
+    const costoMerce = (v.items||[]).reduce((acc,it)=>{
+      const p = getProdotto(it.barcode);
+      const costo = p && p.costo ? p.costo*(it.qty||1) : 0;
+      return acc+costo;
+    },0);
+    const incassoEur = v.valuta!=='CZK' ? v.totale : 0;
+    const margine = costoMerce>0 && incassoEur>0 ? ((incassoEur-costoMerce)/incassoEur*100) : null;
+    const margineClass = margine!==null ? (margine>=50?'color:var(--green)':'color:var(--amber)') : 'color:var(--text3)';
     return `<tr>
       <td class="mono" style="font-size:12px;white-space:nowrap">${dtFmt}</td>
       <td style="font-weight:500">${ev?ev.nome:'-'}</td>
-      <td style="font-size:12px;color:var(--text2);max-width:350px">${arts}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
       <td><span class="badge ${v.pagamento==='pos'?'badge-blue':'badge-gray'}">${v.pagamento==='pos'?'💳 POS':'💵 Contanti'}</span></td>
       <td><span class="badge ${v.valuta==='CZK'?'badge-blue':'badge-gray'}">${v.valuta==='CZK'?'CZK':'€ EUR'}</span></td>
       <td class="mono" style="font-weight:500">${totFmt}</td>
+      <td class="mono" style="font-size:12px;color:var(--text3)">${costoMerce>0?fmt(costoMerce):'—'}</td>
+      <td class="mono" style="font-size:12px;${margineClass}">${margine!==null?Math.round(margine)+'%':'—'}</td>
       <td><button class="btn btn-sm" onclick="modificaVendita(${v.id})">Modifica</button> <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dtFmt}')">Elimina</button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty">Nessuna vendita trovata</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="empty">Nessuna vendita trovata</td></tr>';
 }
 
 function modificaVendita(id) {
