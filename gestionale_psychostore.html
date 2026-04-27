@@ -1211,6 +1211,7 @@ function showToast(msg, type='green') {
   setTimeout(()=>el.classList.remove('show'), 2500);
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+window.closeModal = closeModal;
 document.querySelectorAll('.modal-backdrop').forEach(el => {
   el.addEventListener('click', e => { if(e.target===el && el.id!=='modal-login') closeModal(el.id); });
 });
