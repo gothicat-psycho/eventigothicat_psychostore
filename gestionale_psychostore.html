@@ -1954,11 +1954,16 @@ function renderStorico() {
   const nArt = list.reduce((a,v)=>a+(v.items||[]).length,0);
   const pos = list.filter(v=>v.pagamento==='pos').reduce((a,v)=>a+v.totale,0);
   const cont = list.filter(v=>v.pagamento!=='pos').reduce((a,v)=>a+v.totale,0);
+  const costoMerceTot = list.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
+  const margTot = totEur>0&&costoMerceTot>0 ? (totEur-costoMerceTot)/totEur*100 : null;
   document.getElementById('storico-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${list.length}</div><div class="metric-sub">${nArt} articoli</div></div>
     <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div></div>
     ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
-    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div class="metric-value" style="font-size:16px">${fmt(pos)} / ${fmt(cont)}</div></div>`;
+    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div class="metric-value" style="font-size:16px">${fmt(pos)} / ${fmt(cont)}</div></div>
+    <div class="metric"><div class="metric-label">Costo merce venduta</div><div class="metric-value" style="color:var(--text2)">${costoMerceTot>0?fmt(costoMerceTot):'—'}</div></div>
+    ${margTot!==null?`<div class="metric"><div class="metric-label">Margine lordo</div><div class="metric-value" style="color:${margTot>=50?'var(--green)':'var(--amber)'}">${Math.round(margTot)}%</div></div>`:''}
+  `;
   document.getElementById('tab-storico').innerHTML = list.length ? list.map(v=>{
     const ev = getEvento(v.eventoId);
     const d = new Date(v.dataOra);
