@@ -1141,7 +1141,13 @@
           </div></div>
           <div id="r-prod-content"></div>
         </div>
-        <div id="report-fornitori" style="display:none"><div id="r-forn-content"></div></div>
+        <div id="report-fornitori" style="display:none">
+        <div class="flex-row" style="margin-bottom:12px;gap:8px">
+          <select id="r-forn-sort" onchange="renderRFornitori()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+            <option value="fatturato">↓ Fatturato</option>
+            <option value="qty">↓ Pezzi</option>
+          </select>
+        </div><div id="r-forn-content"></div></div>
         <div id="report-giornaliero" style="display:none">
           <div class="card"><select id="r-giorn-ev" onchange="renderRGiornaliero()" style="max-width:300px"><option value="">Seleziona evento...</option></select></div>
           <div id="r-giorn-content"></div>
@@ -2072,8 +2078,13 @@ function renderREvento() {
   const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
   const prodCount = {};
   vend.forEach(v=>(v.items||[]).forEach(it=>{ prodCount[it.barcode]=(prodCount[it.barcode]||{qty:0,fatturato:0}); prodCount[it.barcode].qty+=(it.qty||1); prodCount[it.barcode].fatturato+=(it.prezzo||0); }));
-  const top = Object.entries(prodCount).sort((a,b)=>b[1].qty-a[1].qty).slice(0,10);
-  const maxQ = top.length?top[0][1].qty:1;
+  const sortEv = document.getElementById('r-ev-sort')?.value||'qty';
+  let top = Object.entries(prodCount);
+  if(sortEv==='fatturato') top.sort((a,b)=>b[1].fatturato-a[1].fatturato);
+  else if(sortEv==='categoria') top.sort((a,b)=>{ const pa=getProdotto(a[0]),pb=getProdotto(b[0]); return (pa?.categoria||'').localeCompare(pb?.categoria||''); });
+  else top.sort((a,b)=>b[1].qty-a[1].qty);
+  top = top.slice(0,10);
+  const maxQ = sortEv==='fatturato' ? (top.length?top[0][1].fatturato:1) : (top.length?top[0][1].qty:1);
   el.innerHTML = `
     <div class="grid4" style="margin-bottom:12px">
       <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${vend.length}</div><div class="metric-sub">${nArt} articoli</div></div>
@@ -2083,14 +2094,15 @@ function renderREvento() {
     </div>
     <div class="report-card">
       <div class="report-card-title">Top 10 prodotti venduti</div>
-      <table class="report-table"><thead><tr><th>#</th><th>Barcode</th><th>Prodotto</th><th>Pezzi</th><th>Fatturato</th><th></th></tr></thead>
-      <tbody>${top.map(([b,d],i)=>{ const p=getProdotto(b); return `<tr>
+      <table class="report-table"><thead><tr><th>#</th><th>Barcode</th><th>Categoria</th><th>Prodotto</th><th>Pezzi</th><th>Fatturato</th><th></th></tr></thead>
+      <tbody>${top.map(([b,d],i)=>{ const p=getProdotto(b); const barVal=sortEv==='fatturato'?d.fatturato:d.qty; const barMax=sortEv==='fatturato'?top[0][1].fatturato:top[0][1].qty; return `<tr>
         <td class="mono" style="color:var(--text3)">${i+1}</td>
         <td class="mono" style="font-size:12px">${b}</td>
-        <td style="font-weight:${i<3?700:400}">${p?p.descrizione:b}</td>
+        <td style="font-size:11px;color:var(--text3)">${p?.categoria||'—'}</td>
+        <td style="font-weight:${i<3?700:400}">${p?getNomeProdotto(p)||p.descrizione:b}</td>
         <td class="mono">${d.qty}</td>
         <td class="mono">${fmt(d.fatturato)}</td>
-        <td style="width:25%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(d.qty/maxQ*100)}%"></div></div></td>
+        <td style="width:20%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(barVal/barMax*100)}%"></div></div></td>
       </tr>`; }).join('')}</tbody></table>
     </div>`;
 }
@@ -2103,19 +2115,24 @@ function renderRProdotti() {
   if(evId) vend = vend.filter(v=>v.eventoId===evId);
   const prodCount = {};
   vend.forEach(v=>(v.items||[]).forEach(it=>{ const p=getProdotto(it.barcode); if(forn&&p&&p.fornitore!==forn) return; prodCount[it.barcode]=(prodCount[it.barcode]||{qty:0,fatturato:0}); prodCount[it.barcode].qty+=(it.qty||1); prodCount[it.barcode].fatturato+=(it.prezzo||0); }));
-  const ranked = Object.entries(prodCount).sort((a,b)=>b[1].qty-a[1].qty);
-  const maxQ = ranked.length?ranked[0][1].qty:1;
+  const sortProd = document.getElementById('r-prod-sort')?.value||'qty';
+  let ranked = Object.entries(prodCount);
+  if(sortProd==='fatturato') ranked.sort((a,b)=>b[1].fatturato-a[1].fatturato);
+  else if(sortProd==='categoria') ranked.sort((a,b)=>{ const pa=getProdotto(a[0]),pb=getProdotto(b[0]); return (pa?.categoria||'zzz').localeCompare(pb?.categoria||'zzz'); });
+  else ranked.sort((a,b)=>b[1].qty-a[1].qty);
+  const maxQ = ranked.length ? (sortProd==='fatturato'?ranked[0][1].fatturato:ranked[0][1].qty) : 1;
   document.getElementById('r-prod-content').innerHTML = ranked.length ? `<div class="report-card">
     <div class="report-card-title">Prodotti più venduti</div>
-    <table class="report-table"><thead><tr><th>#</th><th>Barcode</th><th>Fornitore</th><th>Prodotto</th><th>Pezzi</th><th>Fatturato</th><th></th></tr></thead>
-    <tbody>${ranked.map(([b,d],i)=>{ const p=getProdotto(b); return `<tr>
+    <table class="report-table"><thead><tr><th>#</th><th>Barcode</th><th>Categoria</th><th>Fornitore</th><th>Prodotto</th><th>Pezzi</th><th>Fatturato</th><th></th></tr></thead>
+    <tbody>${ranked.map(([b,d],i)=>{ const p=getProdotto(b); const barVal=sortProd==='fatturato'?d.fatturato:d.qty; return `<tr>
       <td class="mono" style="color:var(--text3)">${i+1}</td>
       <td class="mono" style="font-size:12px">${b}</td>
+      <td style="font-size:11px;color:var(--text3)">${p?.categoria||'—'}</td>
       <td><span class="badge badge-gray" style="font-size:10px">${p?p.fornitore||'-':'-'}</span></td>
-      <td style="font-weight:${i<3?700:400}">${p?p.descrizione:b}</td>
+      <td style="font-weight:${i<3?700:400}">${p?getNomeProdotto(p)||p.descrizione:b}</td>
       <td class="mono">${d.qty}</td>
       <td class="mono">${fmt(d.fatturato)}</td>
-      <td style="width:20%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(d.qty/maxQ*100)}%"></div></div></td>
+      <td style="width:15%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(barVal/maxQ*100)}%"></div></div></td>
     </tr>`; }).join('')}</tbody></table></div>` : '<div class="report-card"><p class="empty">Nessun dato</p></div>';
 }
 window.renderRProdotti = renderRProdotti;
@@ -2123,7 +2140,8 @@ window.renderRProdotti = renderRProdotti;
 function renderRFornitori() {
   const fornMap = {};
   (db.vendite||[]).forEach(v=>(v.items||[]).forEach(it=>{ const p=getProdotto(it.barcode); const f=p?p.fornitore||'Altro':'Altro'; if(!fornMap[f]) fornMap[f]={qty:0,fatturato:0}; fornMap[f].qty+=(it.qty||1); fornMap[f].fatturato+=(it.prezzo||0); }));
-  const ranked = Object.entries(fornMap).sort((a,b)=>b[1].fatturato-a[1].fatturato);
+  const sortForn = document.getElementById('r-forn-sort')?.value||'fatturato';
+  const ranked = Object.entries(fornMap).sort((a,b)=>sortForn==='qty'?b[1].qty-a[1].qty:b[1].fatturato-a[1].fatturato);
   const maxF = ranked.length?ranked[0][1].fatturato:1;
   document.getElementById('r-forn-content').innerHTML = ranked.length ? `<div class="report-card">
     <div class="report-card-title">Vendite per fornitore</div>
