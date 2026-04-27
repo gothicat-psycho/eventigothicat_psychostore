@@ -1354,6 +1354,11 @@ window.closeModal = closeModal;
 document.querySelectorAll('.modal-backdrop').forEach(el => {
   el.addEventListener('click', e => { if(e.target===el && el.id!=='modal-login') closeModal(el.id); });
 });
+// Bilancio modal listener (added after DOM load)
+document.addEventListener('DOMContentLoaded', () => {
+  const bil = document.getElementById('modal-bilancio-evento');
+  if(bil) bil.addEventListener('click', e => { if(e.target===bil) closeModal('modal-bilancio-evento'); });
+});
 
 // ── AUTH ──
 function verificaLogin() {
@@ -5087,11 +5092,14 @@ function aggiornaBilancio() {
 window.aggiornaBilancio = aggiornaBilancio;
 
 async function aggiuntaVoceCosto() {
-  const desc = document.getElementById('bil-costo-desc').value.trim();
-  const imp = parseFloat(document.getElementById('bil-costo-imp').value)||0;
-  if(!desc||!imp) { showToast('Inserisci descrizione e importo','amber'); return; }
+  const descEl = document.getElementById('bil-costo-desc');
+  const impEl = document.getElementById('bil-costo-imp');
+  const desc = descEl?.value?.trim()||'';
+  const imp = parseFloat(impEl?.value)||0;
+  if(!desc) { showToast('Inserisci una descrizione','amber'); return; }
+  if(!imp) { showToast('Inserisci un importo valido','amber'); return; }
   const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
-  if(!ev) return;
+  if(!ev) { showToast('Evento non trovato','red'); return; }
   if(!ev.bilancio) ev.bilancio={voci:[],ricavi:[],gothicat:false};
   if(!ev.bilancio.voci) ev.bilancio.voci=[];
   ev.bilancio.voci.push({
