@@ -1706,7 +1706,9 @@ function renderEventi() {
     const quotaGothicat = bil.gothicat ? costiTot*0.5 : 0;
     const costiNetti = costiTot - quotaGothicat;
     const costoMerceEv = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
-    const utileEv = (bil.voci||[]).length>0 ? (tot + ricaviExtra - costoMerceEv - costiNetti) : null;
+    const incassoEv = bil.incassoManuale > 0 ? bil.incassoManuale : tot;
+    const costoMerceEvFin = bil.costoMerceManuale > 0 ? bil.costoMerceManuale : costoMerceEv;
+    const utileEv = (bil.voci||[]).length>0 ? (incassoEv + ricaviExtra - costoMerceEvFin - costiNetti) : null;
     return `<tr>
       <td style="font-weight:600">${ev.nome}</td>
       <td class="mono">${fmtDate(ev.inizio)}</td>
@@ -5024,6 +5026,10 @@ function apriBilancioEvento(id) {
   document.getElementById('bil-ev-titolo').textContent = 'Bilancio — '+ev.nome;
   const bil = ev.bilancio||{};
   document.getElementById('bil-gothicat').checked = bil.gothicat||false;
+  const manualeEl = document.getElementById('bil-incasso-manuale');
+  const costoManualeEl = document.getElementById('bil-costo-merce-manuale');
+  if(manualeEl) manualeEl.value = bil.incassoManuale||'';
+  if(costoManualeEl) costoManualeEl.value = bil.costoMerceManuale||'';
   renderBilancioVoci(bil);
   aggiornaBilancio();
   document.getElementById('modal-bilancio-evento').classList.add('open');
@@ -5065,10 +5071,14 @@ function aggiornaBilancio() {
   const quotaGothicat = isGothicat ? costiTot*0.5 : 0;
   const costiNetti = costiTot - quotaGothicat;
 
-  // Incasso vendite evento
+  // Incasso: usa manuale se presente, altrimenti calcola dalle vendite
+  const incassoManuale = parseFloat(document.getElementById('bil-incasso-manuale')?.value)||0;
+  const costoMerceManuale = parseFloat(document.getElementById('bil-costo-merce-manuale')?.value)||0;
   const vend = (db.vendite||[]).filter(v=>v.eventoId===bilancioEventoId);
-  const incasso = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
-  const costoMerce = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
+  const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
+  const incasso = incassoManuale > 0 ? incassoManuale : incassoVendite;
+  const costoMerce = costoMerceManuale > 0 ? costoMerceManuale : costoMerceVendite;
   const utile = incasso + ricaviExtra - costoMerce - costiNetti;
   const margine = incasso>0 ? utile/incasso*100 : null;
 
@@ -5165,6 +5175,10 @@ async function salvaBilancio() {
   if(!ev) return;
   if(!ev.bilancio) ev.bilancio={voci:[],ricavi:[],gothicat:false};
   ev.bilancio.gothicat = document.getElementById('bil-gothicat').checked;
+  const im = parseFloat(document.getElementById('bil-incasso-manuale')?.value)||0;
+  const cm = parseFloat(document.getElementById('bil-costo-merce-manuale')?.value)||0;
+  if(im) ev.bilancio.incassoManuale = im; else delete ev.bilancio.incassoManuale;
+  if(cm) ev.bilancio.costoMerceManuale = cm; else delete ev.bilancio.costoMerceManuale;
   await saveDB();
   closeModal('modal-bilancio-evento');
   renderEventi();
@@ -5651,6 +5665,18 @@ showSection('dashboard', document.querySelector('.nav-item'));
 <div class="modal-backdrop" id="modal-bilancio-evento">
 <div class="modal" style="max-width:900px;width:95vw;max-height:90vh;overflow-y:auto">
 <div class="modal-title" id="bil-ev-titolo">Bilancio evento</div>
+
+<div style="background:var(--surface2);border-radius:var(--radius);padding:12px;margin-bottom:16px">
+  <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase">Incasso storico (eventi passati)</div>
+  <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Se l'evento è già terminato e le vendite non sono state caricate nel sistema, inserisci qui l'incasso totale manuale. Questo non modifica lo stock.</div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <label style="font-size:13px">Incasso manuale (€):</label>
+    <input type="number" step="0.01" id="bil-incasso-manuale" placeholder="es. 1992.00" oninput="aggiornaBilancio()" style="width:140px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+    <label style="font-size:13px;margin-left:8px">Costo merce manuale (€):</label>
+    <input type="number" step="0.01" id="bil-costo-merce-manuale" placeholder="es. 701.00" oninput="aggiornaBilancio()" style="width:140px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+    <span style="font-size:11px;color:var(--text3)">(lascia vuoto se le vendite sono nel sistema)</span>
+  </div>
+</div>
 
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:var(--radius)">
 <label style="font-size:13px;font-weight:600">Costi divisi al 50% con Gothicat:</label>
