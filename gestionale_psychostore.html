@@ -311,7 +311,10 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Categoria</th><th style="text-align:center">Stock</th><th>Costo unit.</th><th>Valore mag.</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
+            <table><thead><tr>
+  <th style="width:32px"><input type="checkbox" id="stock-sel-all" onchange="toggleSelezionaTutti(this)" title="Seleziona tutti"></th>
+  <th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Categoria</th><th style="text-align:center">Stock</th><th>Costo unit.</th><th>Valore mag.</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th>
+</tr></thead>
             <tbody id="tab-stock"></tbody></table>
           </div>
           <div id="stock-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -1450,6 +1453,7 @@ function renderStock() {
   const page = list.slice(stockPage*PAGE_SIZE,(stockPage+1)*PAGE_SIZE);
   document.getElementById('tab-stock').innerHTML = page.map(p=>`
     <tr>
+      <td style="text-align:center"><input type="checkbox" class="stock-sel-cb" value="${p.barcode}" onchange="aggiornaBarraAzioni()"></td>
       <td class="mono" style="font-size:12px">${p.barcode}</td>
       <td>${fornBadge(p.fornitore)}</td>
       <td style="font-size:12px;max-width:180px">${getNomeProdotto(p)||p.descrizione}</td>
