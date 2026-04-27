@@ -1507,9 +1507,11 @@ function renderStock() {
   const q = document.getElementById('search-stock').value.toLowerCase();
   const forn = document.getElementById('filter-stock-forn').value;
   const stato = document.getElementById('filter-stock-stato').value;
+  const cat = document.getElementById('filter-stock-cat')?.value||'';
   let list = (db.prodotti||[]).map(p=>({...p, stock:getStock(p.barcode)})).filter(p=>
     (!q || p.barcode.toLowerCase().includes(q) || p.descrizione.toLowerCase().includes(q) || (p.fornitore||'').toLowerCase().includes(q)) &&
     (!forn || p.fornitore===forn) &&
+    (!cat || p.categoria===cat) &&
     (!stato || (stato==='ok'&&p.stock>0) || (stato==='zero'&&p.stock<=0))
   );
   const total = list.length;
