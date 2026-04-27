@@ -1112,7 +1112,7 @@
         <div class="card">
           <div class="card-title">Elenco eventi</div>
           <div class="table-wrap">
-            <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale €</th><th></th></tr></thead>
+            <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale €</th><th>Utile stimato</th><th></th></tr></thead>
             <tbody id="tab-eventi"></tbody></table>
           </div>
         </div>
@@ -1695,6 +1695,13 @@ function renderEventi() {
     const eur = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
     const czk = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
     const tot = eur + (ev.czkRate&&czk ? czk/ev.czkRate : 0);
+    const bil = ev.bilancio||{};
+    const costiTot = (bil.voci||[]).reduce((a,v)=>a+v.importo,0);
+    const ricaviExtra = (bil.ricavi||[]).reduce((a,v)=>a+v.importo,0);
+    const quotaGothicat = bil.gothicat ? costiTot*0.5 : 0;
+    const costiNetti = costiTot - quotaGothicat;
+    const costoMerceEv = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
+    const utileEv = (bil.voci||[]).length>0 ? (tot + ricaviExtra - costoMerceEv - costiNetti) : null;
     return `<tr>
       <td style="font-weight:600">${ev.nome}</td>
       <td class="mono">${fmtDate(ev.inizio)}</td>
@@ -1705,8 +1712,10 @@ function renderEventi() {
       <td class="mono" style="color:var(--green);font-weight:500">${fmt(eur)}</td>
       <td class="mono">${czk>0?Math.round(czk).toLocaleString('it')+' CZK':'-'}</td>
       <td class="mono" style="font-weight:600;color:var(--green)">${fmt(tot)}</td>
+      <td class="mono" style="font-weight:600;color:${utileEv>=0?'var(--green)':'var(--red)'}">${utileEv!==null?fmt(utileEv):'—'}</td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
+        <button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="apriBilancioEvento(${ev.id})">💰 Bilancio</button>
         <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome}')">Elimina</button>
       </td>
     </tr>`;
@@ -4998,6 +5007,161 @@ function stampaEtichetteOrdineINNOCENT(ordineId) {
 }
 window.stampaEtichetteOrdineINNOCENT = stampaEtichetteOrdineINNOCENT;
 
+
+// ── BILANCIO EVENTO ──
+
+let bilancioEventoId = null;
+
+function apriBilancioEvento(id) {
+  bilancioEventoId = id;
+  const ev = (db.eventi||[]).find(e=>e.id===id);
+  if(!ev) return;
+  document.getElementById('bil-ev-titolo').textContent = 'Bilancio — '+ev.nome;
+  const bil = ev.bilancio||{};
+  document.getElementById('bil-gothicat').checked = bil.gothicat||false;
+  renderBilancioVoci(bil);
+  aggiornaBilancio();
+  document.getElementById('modal-bilancio-evento').classList.add('open');
+}
+window.apriBilancioEvento = apriBilancioEvento;
+
+function renderBilancioVoci(bil) {
+  const isGothicat = document.getElementById('bil-gothicat').checked;
+  // Costi
+  const tbody = document.getElementById('tbody-bil-costi');
+  tbody.innerHTML = (bil.voci||[]).map((v,i)=>`<tr>
+    <td style="padding:4px 6px;font-size:12px" class="mono">${v.data||'—'}</td>
+    <td style="padding:4px 6px;font-size:12px">${v.desc}</td>
+    <td style="padding:4px 6px;font-size:11px;color:var(--text3)">${v.cat||'—'}</td>
+    <td style="padding:4px 6px;text-align:right" class="mono">${fmt(v.importo)}</td>
+    <td style="padding:4px 6px;text-align:right;color:var(--accent)" class="mono">${isGothicat?fmt(v.importo*0.5):'—'}</td>
+    <td><button onclick="rimuoviVoceCosto(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3)">✕</button></td>
+  </tr>`).join('') || '<tr><td colspan="6" style="padding:8px;color:var(--text3);font-size:12px">Nessuna voce</td></tr>';
+  // Ricavi
+  const tbodyR = document.getElementById('tbody-bil-ricavi');
+  tbodyR.innerHTML = (bil.ricavi||[]).map((v,i)=>`<tr>
+    <td style="padding:4px 6px;font-size:12px" class="mono">${v.data||'—'}</td>
+    <td style="padding:4px 6px;font-size:12px">${v.desc}</td>
+    <td style="padding:4px 6px;font-size:11px;color:var(--text3)">${v.cat||'—'}</td>
+    <td style="padding:4px 6px;text-align:right;color:var(--green)" class="mono">${fmt(v.importo)}</td>
+    <td><button onclick="rimuoviVoceRicavo(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3)">✕</button></td>
+  </tr>`).join('') || '<tr><td colspan="5" style="padding:8px;color:var(--text3);font-size:12px">Nessun ricavo extra</td></tr>';
+}
+
+function aggiornaBilancio() {
+  const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
+  if(!ev) return;
+  const bil = ev.bilancio||{};
+  const isGothicat = document.getElementById('bil-gothicat').checked;
+  renderBilancioVoci({...bil, gothicat:isGothicat});
+
+  const costiTot = (bil.voci||[]).reduce((a,v)=>a+v.importo,0);
+  const ricaviExtra = (bil.ricavi||[]).reduce((a,v)=>a+v.importo,0);
+  const quotaGothicat = isGothicat ? costiTot*0.5 : 0;
+  const costiNetti = costiTot - quotaGothicat;
+
+  // Incasso vendite evento
+  const vend = (db.vendite||[]).filter(v=>v.eventoId===bilancioEventoId);
+  const incasso = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  const costoMerce = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
+  const utile = incasso + ricaviExtra - costoMerce - costiNetti;
+  const margine = incasso>0 ? utile/incasso*100 : null;
+
+  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  set('bil-tot-costi', costiTot?fmt(costiTot):'—');
+  set('bil-tot-gothicat', isGothicat&&quotaGothicat?fmt(quotaGothicat):'—');
+  set('bil-tot-ricavi', ricaviExtra?fmt(ricaviExtra):'—');
+  set('bil-incasso', fmt(incasso));
+  set('bil-sum-ricavi', ricaviExtra?fmt(ricaviExtra):'—');
+  set('bil-costo-merce', costoMerce?fmt(costoMerce):'—');
+  set('bil-sum-costi', costiTot?fmt(costiTot):'—');
+  set('bil-rim-gothicat', isGothicat&&quotaGothicat?fmt(quotaGothicat):'—');
+  const utileEl = document.getElementById('bil-utile');
+  if(utileEl) { utileEl.textContent=fmt(utile); utileEl.style.color=utile>=0?'var(--green)':'var(--red)'; }
+  set('bil-margine-pct', margine!==null?Math.round(margine)+'%':'—');
+  const gothLabel = document.getElementById('bil-gothicat-label');
+  if(gothLabel) gothLabel.style.display = isGothicat?'':'none';
+  const rimEl = document.getElementById('bil-rim-gothicat');
+  if(rimEl) rimEl.style.display = isGothicat?'':'none';
+}
+window.aggiornaBilancio = aggiornaBilancio;
+
+async function aggiuntaVoceCosto() {
+  const desc = document.getElementById('bil-costo-desc').value.trim();
+  const imp = parseFloat(document.getElementById('bil-costo-imp').value)||0;
+  if(!desc||!imp) { showToast('Inserisci descrizione e importo','amber'); return; }
+  const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
+  if(!ev) return;
+  if(!ev.bilancio) ev.bilancio={voci:[],ricavi:[],gothicat:false};
+  if(!ev.bilancio.voci) ev.bilancio.voci=[];
+  ev.bilancio.voci.push({
+    data: document.getElementById('bil-costo-data').value||'',
+    desc,
+    cat: document.getElementById('bil-costo-cat').value||'',
+    importo: imp
+  });
+  await saveDB();
+  ['bil-costo-desc','bil-costo-data','bil-costo-imp'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bil-costo-cat').value='';
+  aggiornaBilancio();
+  renderEventi();
+}
+window.aggiuntaVoceCosto = aggiuntaVoceCosto;
+
+async function aggiuntaVoceRicavo() {
+  const desc = document.getElementById('bil-ricavo-desc').value.trim();
+  const imp = parseFloat(document.getElementById('bil-ricavo-imp').value)||0;
+  if(!desc||!imp) { showToast('Inserisci descrizione e importo','amber'); return; }
+  const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
+  if(!ev) return;
+  if(!ev.bilancio) ev.bilancio={voci:[],ricavi:[],gothicat:false};
+  if(!ev.bilancio.ricavi) ev.bilancio.ricavi=[];
+  ev.bilancio.ricavi.push({
+    data: document.getElementById('bil-ricavo-data').value||'',
+    desc,
+    cat: document.getElementById('bil-ricavo-cat').value||'',
+    importo: imp
+  });
+  await saveDB();
+  ['bil-ricavo-desc','bil-ricavo-data','bil-ricavo-imp'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bil-ricavo-cat').value='';
+  aggiornaBilancio();
+  renderEventi();
+}
+window.aggiuntaVoceRicavo = aggiuntaVoceRicavo;
+
+async function rimuoviVoceCosto(idx) {
+  const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
+  if(!ev||!ev.bilancio) return;
+  ev.bilancio.voci.splice(idx,1);
+  await saveDB();
+  aggiornaBilancio();
+  renderEventi();
+}
+window.rimuoviVoceCosto = rimuoviVoceCosto;
+
+async function rimuoviVoceRicavo(idx) {
+  const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
+  if(!ev||!ev.bilancio) return;
+  ev.bilancio.ricavi.splice(idx,1);
+  await saveDB();
+  aggiornaBilancio();
+  renderEventi();
+}
+window.rimuoviVoceRicavo = rimuoviVoceRicavo;
+
+async function salvaBilancio() {
+  const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
+  if(!ev) return;
+  if(!ev.bilancio) ev.bilancio={voci:[],ricavi:[],gothicat:false};
+  ev.bilancio.gothicat = document.getElementById('bil-gothicat').checked;
+  await saveDB();
+  closeModal('modal-bilancio-evento');
+  renderEventi();
+  showToast('Bilancio salvato ✓');
+}
+window.salvaBilancio = salvaBilancio;
+
 // ── ORDINI ADRIANO ──
 
 let adrRigheId = 0;
@@ -5472,5 +5636,118 @@ populateFornSelects();
 renderDashboard();
 showSection('dashboard', document.querySelector('.nav-item'));
 </script>
+
+<!-- MODAL BILANCIO EVENTO -->
+<div class="modal-backdrop" id="modal-bilancio-evento">
+<div class="modal" style="max-width:900px;width:95vw;max-height:90vh;overflow-y:auto">
+<div class="modal-title" id="bil-ev-titolo">Bilancio evento</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:var(--radius)">
+<label style="font-size:13px;font-weight:600">Costi divisi al 50% con Gothicat:</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+<input type="checkbox" id="bil-gothicat" onchange="aggiornaBilancio()" style="width:16px;height:16px">
+<span style="font-size:13px">Sì, condividi con Gothicat</span>
+</label>
+</div>
+
+<!-- VOCI DI COSTO -->
+<div class="card-title">Voci di costo</div>
+<div style="overflow-x:auto;margin-bottom:8px">
+<table id="tab-bil-costi" style="width:100%;border-collapse:collapse;font-size:13px">
+<thead><tr>
+<th style="padding:6px;text-align:left;color:var(--text3);font-size:11px">Data</th>
+<th style="padding:6px;text-align:left;color:var(--text3);font-size:11px">Descrizione</th>
+<th style="padding:6px;text-align:left;color:var(--text3);font-size:11px">Categoria</th>
+<th style="padding:6px;text-align:right;color:var(--text3);font-size:11px">Importo €</th>
+<th style="padding:6px;text-align:right;color:var(--text3);font-size:11px">50% Gothicat</th>
+<th></th>
+</tr></thead>
+<tbody id="tbody-bil-costi"></tbody>
+<tfoot><tr>
+<td colspan="3" style="padding:8px 6px;font-weight:700;font-size:13px">TOTALE COSTI</td>
+<td class="mono" style="padding:8px 6px;text-align:right;font-weight:700" id="bil-tot-costi">—</td>
+<td class="mono" style="padding:8px 6px;text-align:right;color:var(--accent);font-weight:700" id="bil-tot-gothicat">—</td>
+<td></td>
+</tr></tfoot>
+</table>
+</div>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<input type="date" id="bil-costo-data" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+<input id="bil-costo-desc" placeholder="Descrizione" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+<select id="bil-costo-cat" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;min-width:160px">
+<option value="">— Categoria —</option>
+<option value="AREE DI SOSTA">AREE DI SOSTA</option>
+<option value="BENZINA GENERATORE">BENZINA GENERATORE</option>
+<option value="EXTRA">EXTRA</option>
+<option value="FARMACIA">FARMACIA</option>
+<option value="FAI DA TE">FAI DA TE</option>
+<option value="GASOLIO">GASOLIO</option>
+<option value="HOTEL/APPARTAMENTI">HOTEL/APPARTAMENTI</option>
+<option value="LAVANDERIA">LAVANDERIA</option>
+<option value="NOLEGGIO FURGONE">NOLEGGIO FURGONE</option>
+<option value="PEDAGGI">PEDAGGI</option>
+<option value="RIPARAZIONI">RIPARAZIONI</option>
+<option value="SPEDIZIONI">SPEDIZIONI</option>
+<option value="STAND">STAND</option>
+<option value="TRASPORTO PUBBLICO">TRASPORTO PUBBLICO</option>
+<option value="VITTO">VITTO</option>
+<option value="VOLI">VOLI</option>
+</select>
+<input type="number" step="0.01" id="bil-costo-imp" placeholder="€" style="width:90px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+<button class="btn btn-sm btn-primary" onclick="aggiuntaVoceCosto()">+ Aggiungi</button>
+</div>
+
+<!-- RICAVI EXTRA -->
+<div class="card-title">Ricavi extra</div>
+<div style="overflow-x:auto;margin-bottom:8px">
+<table id="tab-bil-ricavi" style="width:100%;border-collapse:collapse;font-size:13px">
+<thead><tr>
+<th style="padding:6px;text-align:left;color:var(--text3);font-size:11px">Data</th>
+<th style="padding:6px;text-align:left;color:var(--text3);font-size:11px">Descrizione</th>
+<th style="padding:6px;text-align:left;color:var(--text3);font-size:11px">Categoria</th>
+<th style="padding:6px;text-align:right;color:var(--text3);font-size:11px">Importo €</th>
+<th></th>
+</tr></thead>
+<tbody id="tbody-bil-ricavi"></tbody>
+<tfoot><tr>
+<td colspan="3" style="padding:8px 6px;font-weight:700;font-size:13px">TOTALE RICAVI EXTRA</td>
+<td class="mono" style="padding:8px 6px;text-align:right;font-weight:700;color:var(--green)" id="bil-tot-ricavi">—</td>
+<td></td>
+</tr></tfoot>
+</table>
+</div>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<input type="date" id="bil-ricavo-data" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+<input id="bil-ricavo-desc" placeholder="Descrizione" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+<select id="bil-ricavo-cat" style="padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;min-width:160px">
+<option value="">— Categoria —</option>
+<option value="VENDITA PASS">VENDITA PASS</option>
+<option value="ALTRO">ALTRO</option>
+</select>
+<input type="number" step="0.01" id="bil-ricavo-imp" placeholder="€" style="width:90px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+<button class="btn btn-sm" style="background:var(--green);color:#fff;border:none" onclick="aggiuntaVoceRicavo()">+ Aggiungi</button>
+</div>
+
+<!-- RIEPILOGO BILANCIO -->
+<div style="background:var(--surface2);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px">
+<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text2)">RIEPILOGO</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:13px">
+<span>Incasso vendite (€)</span><span class="mono" style="text-align:right;font-weight:600;color:var(--green)" id="bil-incasso">—</span>
+<span>+ Ricavi extra</span><span class="mono" style="text-align:right" id="bil-sum-ricavi">—</span>
+<span>− Costo merce venduta</span><span class="mono" style="text-align:right;color:var(--text3)" id="bil-costo-merce">—</span>
+<span>− Costi evento (totale)</span><span class="mono" style="text-align:right;color:var(--text3)" id="bil-sum-costi">—</span>
+<span id="bil-gothicat-label" style="color:var(--accent)">+ Rimborso Gothicat (50%)</span><span class="mono" style="text-align:right;color:var(--accent);font-weight:600" id="bil-rim-gothicat">—</span>
+<div style="border-top:2px solid var(--border);margin:6px 0;grid-column:1/-1"></div>
+<span style="font-weight:700;font-size:15px">UTILE NETTO</span><span class="mono" style="text-align:right;font-weight:700;font-size:15px" id="bil-utile">—</span>
+<span style="font-size:11px;color:var(--text3)">Margine %</span><span class="mono" style="text-align:right;font-size:11px;color:var(--text3)" id="bil-margine-pct">—</span>
+</div>
+</div>
+
+<div class="modal-actions">
+<button class="btn btn-primary" onclick="salvaBilancio()">💾 Salva bilancio</button>
+<button class="btn" onclick="closeModal('modal-bilancio-evento')">Chiudi</button>
+</div>
+</div>
+</div>
 </body>
 </html>
