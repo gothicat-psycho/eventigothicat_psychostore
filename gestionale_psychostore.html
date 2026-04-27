@@ -191,6 +191,23 @@
     </div>
     <div class="form-group"><label>Descrizione</label><input id="ep-descrizione"></div>
     <div class="form-row">
+      <div class="form-group"><label>Categoria</label>
+        <select id="ep-categoria" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+          <option value="">— Nessuna —</option>
+          <option value="PANTALONI UOMO">PANTALONI UOMO</option>
+<option value="PANTALONI DONNA">PANTALONI DONNA</option>
+<option value="GONNE">GONNE</option>
+<option value="TOP UOMO">TOP UOMO</option>
+<option value="TOP DONNA">TOP DONNA</option>
+<option value="GIACCHE UOMO">GIACCHE UOMO</option>
+<option value="GIACCHE DONNA">GIACCHE DONNA</option>
+<option value="SPOLVERINI UOMO">SPOLVERINI UOMO</option>
+<option value="SPOLVERINI DONNA">SPOLVERINI DONNA</option>
+<option value="DEADLY TAROTS">DEADLY TAROTS</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label>Costo acquisto (€)</label><input id="ep-costo" type="number" min="0" step="0.01"></div>
       <div class="form-group"><label>Prezzo CZK</label><input id="ep-prezzo-czk" type="number" min="0" step="1" placeholder="0"></div>
     </div>
@@ -271,7 +288,7 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Costo</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
+            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Categoria</th><th>Costo</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
             <tbody id="tab-catalogo"></tbody></table>
           </div>
           <div id="cat-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -294,7 +311,7 @@
             </select>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th style="text-align:center">Stock</th><th>Costo unit.</th><th>Valore mag.</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
+            <table><thead><tr><th>Barcode</th><th>Fornitore</th><th>Descrizione</th><th>Taglia</th><th>Categoria</th><th style="text-align:center">Stock</th><th>Costo unit.</th><th>Valore mag.</th><th>Prezzo €</th><th>Prezzo CZK</th><th></th></tr></thead>
             <tbody id="tab-stock"></tbody></table>
           </div>
           <div id="stock-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
@@ -1322,6 +1339,7 @@ function renderCatalogo() {
       <td>${fornBadge(p.fornitore)}</td>
       <td style="font-size:12px;max-width:200px">${getNomeProdotto(p)||p.descrizione}</td>
       <td class="mono" style="font-size:11px;color:var(--text3)">${getTagliaProdotto(p)||'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${p.categoria||'—'}</td>
       <td class="mono">${fmt(p.costo)}</td>
       <td class="mono">${fmt(p.prezzo)}</td>
       <td class="mono">${p.prezzoCzk||'-'}</td>
@@ -1329,7 +1347,7 @@ function renderCatalogo() {
         <button class="btn btn-sm" onclick="apriEditProdotto('${p.barcode}')">Modifica</button>
         <button class="btn btn-sm btn-danger" onclick="confirmDel('prodotto','${p.barcode}', this.dataset.nome)" data-nome="${p.descrizione}">Elimina</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="8" class="empty">Nessun prodotto trovato</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="9" class="empty">Nessun prodotto trovato</td></tr>';
   renderPagination('cat-pagination', catPage, pages, p=>{ catPage=p; renderCatalogo(); });
 }
 window.renderCatalogo = renderCatalogo;
@@ -1436,6 +1454,7 @@ function renderStock() {
       <td>${fornBadge(p.fornitore)}</td>
       <td style="font-size:12px;max-width:180px">${getNomeProdotto(p)||p.descrizione}</td>
       <td class="mono" style="font-size:11px;color:var(--text3)">${getTagliaProdotto(p)||'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${p.categoria||'—'}</td>
       <td style="text-align:center">
         <div class="stock-cell ${getStockClass(p.stock)}" onclick="rettificaStock('${p.barcode}',this)">${p.stock}</div>
       </td>
@@ -1444,7 +1463,7 @@ function renderStock() {
       <td class="mono" style="font-size:12px">${p.prezzo?fmt(p.prezzo):'—'}</td>
       <td class="mono" style="font-size:12px">${p.prezzoCzk||'—'}</td>
       <td><button class="btn btn-sm" onclick="rettificaStock('${p.barcode}',null)">Rettifica</button></td>
-    </tr>`).join('') || '<tr><td colspan="10" class="empty">Nessun prodotto trovato</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="11" class="empty">Nessun prodotto trovato</td></tr>';
   renderPagination('stock-pagination', stockPage, pages, p=>{ stockPage=p; renderStock(); });
 }
 window.renderStock = renderStock;
