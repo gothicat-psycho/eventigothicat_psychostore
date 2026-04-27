@@ -5094,9 +5094,11 @@ window.aggiornaBilancio = aggiornaBilancio;
 async function aggiuntaVoceCosto() {
   const descEl = document.getElementById('bil-costo-desc');
   const impEl = document.getElementById('bil-costo-imp');
+  const catEl = document.getElementById('bil-costo-cat');
   const desc = descEl?.value?.trim()||'';
+  const cat = catEl?.value||'';
   const imp = parseFloat(impEl?.value)||0;
-  if(!desc) { showToast('Inserisci una descrizione','amber'); return; }
+  if(!desc && !cat) { showToast('Inserisci almeno la categoria','amber'); return; }
   if(!imp) { showToast('Inserisci un importo valido','amber'); return; }
   const ev = (db.eventi||[]).find(e=>e.id===bilancioEventoId);
   if(!ev) { showToast('Evento non trovato','red'); return; }
