@@ -360,13 +360,13 @@
           </div>
           <div id="stock-pagination" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center"></div>
         </div>
-      </div>
-      <div class="card" style="border-style:dashed;border-color:var(--border2);margin-top:0">
-        <div class="card-title" style="color:var(--amber)">⚙ Strumenti</div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="applicaPrezziCzk()">Applica prezzi CZK automatici a tutti i prodotti</button>
-          <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="cambiaFornitorePerPrefisso()">Cambia fornitore per prefisso</button>
-          <span style="font-size:11px;color:var(--text3)">Imposta il prezzo CZK per ogni prodotto in base al suo prezzo EUR</span>
+        <div class="card" style="border-style:dashed;border-color:var(--border2);margin-top:12px">
+          <div class="card-title" style="color:var(--amber)">⚙ Strumenti</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="applicaPrezziCzk()">Applica prezzi CZK automatici a tutti i prodotti</button>
+            <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="cambiaFornitorePerPrefisso()">Cambia fornitore per prefisso</button>
+            <span style="font-size:11px;color:var(--text3)">Imposta il prezzo CZK per ogni prodotto in base al suo prezzo EUR</span>
+          </div>
         </div>
       </div>
 
@@ -4865,6 +4865,91 @@ function stampaEtichetteOrdineINNOCENT(ordineId) {
   showToast('File etichette scaricato!');
 }
 window.stampaEtichetteOrdineINNOCENT = stampaEtichetteOrdineINNOCENT;
+
+// ── BULK SELECTION STOCK ──
+function getSelezionati() {
+  return [...document.querySelectorAll('.stock-sel-cb:checked')].map(cb=>cb.value);
+}
+function aggiornaBarraAzioni() {
+  const sel = getSelezionati();
+  const barra = document.getElementById('stock-barra-azioni');
+  const count = document.getElementById('stock-sel-count');
+  if(!barra) return;
+  barra.style.display = sel.length > 0 ? 'flex' : 'none';
+  if(count) count.textContent = sel.length + ' selezionat' + (sel.length===1?'o':'i');
+  const all = document.querySelectorAll('.stock-sel-cb');
+  const selAll = document.getElementById('stock-sel-all');
+  if(selAll) selAll.checked = all.length > 0 && sel.length === all.length;
+}
+function toggleSelezionaTutti(cb) {
+  document.querySelectorAll('.stock-sel-cb').forEach(el => el.checked = cb.checked);
+  aggiornaBarraAzioni();
+}
+function deselezionaTutti() {
+  document.querySelectorAll('.stock-sel-cb').forEach(el => el.checked = false);
+  const selAll = document.getElementById('stock-sel-all');
+  if(selAll) selAll.checked = false;
+  aggiornaBarraAzioni();
+}
+async function applicaBulkCat() {
+  const sel = getSelezionati();
+  const cat = document.getElementById('stock-bulk-cat').value;
+  if(!sel.length) return;
+  if(!cat) { showToast('Seleziona una categoria','amber'); return; }
+  sel.forEach(bc => { const p=getProdotto(bc); if(p) p.categoria=cat; });
+  await saveDB();
+  showToast(sel.length+' prodotti aggiornati ✓');
+  deselezionaTutti(); renderStock();
+}
+async function applicaBulkPrezzo() {
+  const sel = getSelezionati();
+  const prezzo = parseFloat(document.getElementById('stock-bulk-prezzo').value);
+  if(!sel.length) return;
+  if(!prezzo) { showToast('Inserisci un prezzo valido','amber'); return; }
+  sel.forEach(bc => { const p=getProdotto(bc); if(p) p.prezzo=prezzo; });
+  await saveDB();
+  showToast(sel.length+' prezzi aggiornati ✓');
+  deselezionaTutti(); renderStock();
+}
+async function applicaBulkCzk() {
+  const sel = getSelezionati();
+  const czk = parseFloat(document.getElementById('stock-bulk-czk').value);
+  if(!sel.length) return;
+  if(!czk) { showToast('Inserisci un prezzo CZK valido','amber'); return; }
+  sel.forEach(bc => { const p=getProdotto(bc); if(p) p.prezzoCzk=czk; });
+  await saveDB();
+  showToast(sel.length+' prezzi CZK aggiornati ✓');
+  deselezionaTutti(); renderStock();
+}
+async function applicaBulkForn() {
+  const sel = getSelezionati();
+  const forn = document.getElementById('stock-bulk-forn').value.trim();
+  if(!sel.length) return;
+  if(!forn) { showToast('Inserisci un fornitore','amber'); return; }
+  sel.forEach(bc => { const p=getProdotto(bc); if(p) p.fornitore=forn; });
+  await saveDB();
+  showToast(sel.length+' fornitori aggiornati ✓');
+  deselezionaTutti(); renderStock();
+}
+window.aggiornaBarraAzioni = aggiornaBarraAzioni;
+window.toggleSelezionaTutti = toggleSelezionaTutti;
+window.deselezionaTutti = deselezionaTutti;
+window.applicaBulkCat = applicaBulkCat;
+window.applicaBulkPrezzo = applicaBulkPrezzo;
+window.applicaBulkCzk = applicaBulkCzk;
+window.applicaBulkForn = applicaBulkForn;
+
+// ── COSTO MEDIO PONDERATO ──
+function aggiornaCostoMedioPonderato(prod, nuovoQty, nuovoCosto) {
+  const stockAttuale = prod.stock || 0;
+  const costoAttuale = prod.costo || 0;
+  if(stockAttuale > 0 && costoAttuale > 0) {
+    const cmp = ((stockAttuale * costoAttuale) + (nuovoQty * nuovoCosto)) / (stockAttuale + nuovoQty);
+    prod.costo = parseFloat(cmp.toFixed(2));
+  } else {
+    prod.costo = parseFloat(nuovoCosto.toFixed(2));
+  }
+}
 
 // ── AUTOFILL DESCRIZIONE ──
 function _autofillDesc(codice, descElId) {
