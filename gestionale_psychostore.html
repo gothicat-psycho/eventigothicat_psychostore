@@ -1745,6 +1745,8 @@ function renderEventi() {
 }
 window.renderEventi = renderEventi;
 
+let editingEventoId = null;
+
 async function aggiungiEvento() {
   const nome = document.getElementById('ev-nome').value.trim();
   if(!nome) { showToast('Nome evento obbligatorio','red'); return; }
@@ -1764,8 +1766,6 @@ async function aggiungiEvento() {
   showToast('Evento aggiunto');
 }
 window.aggiungiEvento = aggiungiEvento;
-
-let editingEventoId = null;
 
 function apriModificaEvento(id) {
   const ev = (db.eventi||[]).find(e=>e.id===id);
