@@ -2407,8 +2407,8 @@ function renderRBilancio(targetEl) {
   const thStyle = 'padding:8px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;background:var(--surface2)';
   const thEvStyle = 'padding:8px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;min-width:130px';
   const tdStyle = (color='') => `padding:6px 12px;text-align:right;font-size:12px;${color?'color:'+color:''}`;
-  const tdLabel = 'padding:6px 12px;font-size:12px;font-weight:500;white-space:nowrap;border-right:1px solid var(--border)';
-  const tdCat = 'padding:6px 12px;font-size:12px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border)';
+  const tdLabel = 'padding:6px 12px;font-size:12px;font-weight:500;white-space:nowrap;border-right:1px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:2';
+  const tdCat = 'padding:6px 12px;font-size:12px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:2';
   const sep = `<tr style="background:var(--border)"><td colspan="${eventi.length+2}" style="height:1px;padding:0"></td></tr>`;
   const fmtV = v => v ? fmt(v) : '—';
   const fmtColor = (v, good='var(--green)', bad='var(--red)') => `<span style="color:${v>=0?good:bad};font-weight:600">${fmt(v)}</span>`;
@@ -2429,7 +2429,7 @@ function renderRBilancio(targetEl) {
     <table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead>
         <tr style="background:var(--surface2)">
-          <th style="padding:8px 12px;text-align:left;font-size:12px;min-width:180px">VOCE</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:3">VOCE</th>
           ${evData.map(d=>`<th style="${thEvStyle}">${d.ev.nome}<br><span style="font-size:10px;font-weight:400;color:var(--text3)">${fmtDateShort(d.ev.inizio)}${d.ev.fine&&d.ev.fine!==d.ev.inizio?' → '+fmtDateShort(d.ev.fine):''}</span></th>`).join('')}
           <th style="${thStyle}">TOTALI</th>
         </tr>
