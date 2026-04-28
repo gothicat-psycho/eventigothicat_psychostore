@@ -5306,7 +5306,7 @@ function renderPepito() {
     return separator + `<tr>
     <td class="mono" style="white-space:nowrap">${v.data?fmtDate(v.data):'—'}</td>
     <td style="font-size:13px">${v.desc}</td>
-    <td class="mono" style="text-align:right">${fmt(v.costo)}</td>
+    <td class="mono" style="text-align:right;white-space:nowrap">${fmt(v.costo)}</td>
     <td style="display:flex;gap:4px">
       <button class="btn btn-sm" onclick="modificaCostoPepito(${i})">Modifica</button>
       <button onclick="rimuoviCostoPepito(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">✕</button>
