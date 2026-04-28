@@ -2429,7 +2429,7 @@ function renderRBilancio(targetEl) {
 
   el.innerHTML = `
   <div class="report-card" style="padding:0;overflow:hidden">
-    <div style="overflow-x:auto" id="bilancio-scroll-container">
+    <div style="overflow-x:auto" id="bilancio-scroll-container" onwheel="this.scrollLeft+=event.deltaX; if(Math.abs(event.deltaX)>Math.abs(event.deltaY)) event.preventDefault();">
     <table style="border-collapse:collapse;font-size:13px;table-layout:auto">
       <thead>
         <tr style="background:var(--surface2)">
