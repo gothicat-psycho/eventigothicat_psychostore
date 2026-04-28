@@ -1752,6 +1752,26 @@ async function aggiungiEvento() {
   if(!nome) { showToast('Nome evento obbligatorio','red'); return; }
   if(!db.eventi) db.eventi=[];
   if(!db.nextEvId) db.nextEvId=1;
+
+  // Modifica evento esistente
+  if(editingEventoId) {
+    const ev = db.eventi.find(e=>e.id===editingEventoId);
+    if(ev) {
+      ev.nome = nome;
+      ev.localita = document.getElementById('ev-localita').value.trim();
+      ev.nazione = document.getElementById('ev-nazione').value.trim();
+      ev.inizio = document.getElementById('ev-inizio').value;
+      ev.fine = document.getElementById('ev-fine').value;
+      ev.czkRate = parseFloat(document.getElementById('ev-czk').value)||null;
+      await saveDB();
+      showToast('Evento aggiornato ✓');
+      annullaModificaEvento();
+      renderEventi();
+    }
+    return;
+  }
+
+  // Nuovo evento
   db.eventi.push({
     id: db.nextEvId++, nome,
     localita: document.getElementById('ev-localita').value.trim(),
