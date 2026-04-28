@@ -2408,9 +2408,9 @@ function renderRBilancio(targetEl) {
   const thEvStyle = 'padding:8px 12px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap;min-width:130px';
   const tdStyle = (color='') => `padding:6px 12px;text-align:right;font-size:12px;${color?'color:'+color:''}`;
   const stickyBase = 'padding:6px 12px;font-size:12px;font-weight:500;white-space:nowrap;min-width:190px;position:sticky;left:0;z-index:2;box-shadow:2px 0 5px rgba(0,0,0,0.10)';
-  const tdLabel = stickyBase+';background:var(--surface)';
-  const tdLabelGreen = stickyBase+';background:var(--green-light)';
-  const tdLabelSurface2 = stickyBase+';background:var(--surface2)';
+  const tdLabel = stickyBase+';background:#1e3a5f;color:#fff';
+  const tdLabelGreen = stickyBase+';background:#1e3a5f;color:#fff';
+  const tdLabelSurface2 = stickyBase+';background:#162d4a;color:#fff';
   const tdCat = 'padding:6px 12px;font-size:12px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:2';
   const sep = `<tr style="background:var(--border)"><td colspan="${eventi.length+2}" style="height:1px;padding:0"></td></tr>`;
   const fmtV = v => v ? fmt(v) : '—';
@@ -2428,11 +2428,12 @@ function renderRBilancio(targetEl) {
   }).join('');
 
   el.innerHTML = `
-  <div class="report-card" style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
+  <div class="report-card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto" id="bilancio-scroll-container">
+    <table style="border-collapse:collapse;font-size:13px;table-layout:auto">
       <thead>
         <tr style="background:var(--surface2)">
-          <th style="padding:8px 12px;text-align:left;font-size:12px;min-width:180px;position:sticky;left:0;background:var(--surface2);z-index:3">VOCE</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;min-width:180px;position:sticky;left:0;background:#1e3a5f;color:#fff;z-index:3;box-shadow:2px 0 5px rgba(0,0,0,0.10)">VOCE</th>
           ${evData.map(d=>`<th style="${thEvStyle}">${d.ev.nome}<br><span style="font-size:10px;font-weight:400;color:var(--text3)">${fmtDateShort(d.ev.inizio)}${d.ev.fine&&d.ev.fine!==d.ev.inizio?' → '+fmtDateShort(d.ev.fine):''}</span></th>`).join('')}
           <th style="${thStyle}">TOTALI</th>
         </tr>
@@ -2444,12 +2445,12 @@ function renderRBilancio(targetEl) {
           <td style="${tdStyle('var(--green)')};font-weight:700">${fmt(totali.incasso)}</td>
         </tr>
         <tr>
-          <td style="${tdLabel};padding-left:20px;font-size:11px;color:var(--text3)">di cui 💳 POS</td>
+          <td style="${tdLabel};padding-left:20px;font-size:11px;color:#a8c4e0">di cui 💳 POS</td>
           ${evData.map(d=>`<td style="${tdStyle('var(--text3)')};font-size:11px">${d.pos>0?fmt(d.pos):'—'}</td>`).join('')}
           <td style="${tdStyle('var(--text3)')};font-size:11px">${totali.pos>0?fmt(totali.pos):'—'}</td>
         </tr>
         <tr>
-          <td style="${tdLabel};padding-left:20px;font-size:11px;color:var(--text3)">di cui 💵 Contanti</td>
+          <td style="${tdLabel};padding-left:20px;font-size:11px;color:#a8c4e0">di cui 💵 Contanti</td>
           ${evData.map(d=>`<td style="${tdStyle('var(--text3)')};font-size:11px">${d.cont>0?fmt(d.cont):'—'}</td>`).join('')}
           <td style="${tdStyle('var(--text3)')};font-size:11px">${totali.cont>0?fmt(totali.cont):'—'}</td>
         </tr>
@@ -2459,7 +2460,7 @@ function renderRBilancio(targetEl) {
           <td style="${tdStyle()}">${fmtV(totali.ricaviExtra)}</td>
         </tr>
         <tr>
-          <td style="${tdLabel};color:var(--accent)">+ Rimborso Gothicat (50%)</td>
+          <td style="${tdLabel};color:#7dd4fc">+ Rimborso Gothicat (50%)</td>
           ${evData.map(d=>`<td style="${tdStyle('var(--accent)')}">${d.quotaGothicat>0?fmt(d.quotaGothicat):'—'}</td>`).join('')}
           <td style="${tdStyle('var(--accent)')}">${totali.quotaGothicat>0?fmt(totali.quotaGothicat):'—'}</td>
         </tr>
@@ -2482,13 +2483,14 @@ function renderRBilancio(targetEl) {
           <td style="padding:8px 12px;text-align:right">${fmtColor(totali.utile)}</td>
         </tr>
         <tr>
-          <td style="${tdLabel};color:var(--text3)">Margine %</td>
+          <td style="${tdLabel};color:#a8c4e0">Margine %</td>
           ${evData.map(d=>`<td style="${tdStyle(d.margine>=0?'var(--green)':'var(--red)')}">${d.margine!==null?Math.round(d.margine)+'%':'—'}</td>`).join('')}
           <td style="${tdStyle(totali.incasso>0?(totali.utile/totali.incasso>=0?'var(--green)':'var(--red)'):'')}">${totali.incasso>0?Math.round(totali.utile/totali.incasso*100)+'%':'—'}</td>
         </tr>
       </tbody>
     </table>
-  </div>`;
+  </div>
+</div>`;
 }
 window.renderRBilancio = renderRBilancio;
 
