@@ -241,6 +241,7 @@
       <div class="nav-section">Analisi</div>
       <div class="nav-item" onclick="showSection('report',this)"><span class="nav-icon">▲</span> Report vendite</div>
       <div class="nav-item" onclick="showSection('bilancioeventi',this)"><span class="nav-icon">💰</span> Bilancio eventi</div>
+      <div class="nav-item" onclick="showSection('pepito',this)"><span class="nav-icon">🚛</span> Pepito</div>
     </nav>
   </aside>
 
@@ -1123,6 +1124,35 @@
         </div>
       </div>
 
+      <!-- PEPITO -->
+      <div class="section" id="sec-pepito">
+        <div class="card" style="max-width:700px">
+          <div class="card-title" style="color:#92400E">🚛 Pepito — Storico costi manutenzione</div>
+          <div style="display:grid;grid-template-columns:130px 1fr 110px auto;gap:8px;margin-bottom:16px;align-items:center">
+            <input type="date" id="pepito-data" style="padding:7px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+            <input id="pepito-desc" placeholder="Descrizione intervento" style="padding:7px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+            <input type="number" step="0.01" id="pepito-costo" placeholder="€" style="padding:7px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+            <button class="btn btn-primary" onclick="aggiungiCostoPepito()">+ Aggiungi</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Data</th>
+                <th>Intervento</th>
+                <th style="text-align:right">Costo</th>
+                <th></th>
+              </tr></thead>
+              <tbody id="tbody-pepito"></tbody>
+              <tfoot><tr>
+                <td colspan="2" style="padding:10px 12px;font-weight:700;font-size:14px">TOTALE COSTI</td>
+                <td class="mono" style="text-align:right;font-weight:700;font-size:14px;color:var(--accent)" id="pepito-totale">€ 0.00</td>
+                <td></td>
+              </tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- BILANCIO EVENTI -->
       <div class="section" id="sec-bilancioeventi">
         <div id="bilancioeventi-content"></div>
@@ -1442,7 +1472,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('sec-'+s).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi'};
+  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛'};
   document.getElementById('page-title').textContent = titles[s]||s;
   if(s==='dashboard') renderDashboard();
   if(s==='catalogo') { populateFornSelects(); renderCatalogo(); }
@@ -1453,6 +1483,7 @@ function showSection(s, el) {
   if(s==='ordini') initOrdini();
   if(s==='report') initReport();
   if(s==='bilancioeventi') renderBilancioEventiPage();
+  if(s==='pepito') renderPepito();
 }
 window.showSection = showSection;
 
@@ -5247,6 +5278,50 @@ function stampaEtichetteOrdineINNOCENT(ordineId) {
 }
 window.stampaEtichetteOrdineINNOCENT = stampaEtichetteOrdineINNOCENT;
 
+
+
+// ── PEPITO ──
+function renderPepito() {
+  const voci = [...(db.pepito||[])].sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  const tbody = document.getElementById('tbody-pepito');
+  const totEl = document.getElementById('pepito-totale');
+  if(!tbody) return;
+  const totale = voci.reduce((a,v)=>a+v.costo,0);
+  tbody.innerHTML = voci.length ? voci.map((v,i)=>`<tr>
+    <td class="mono" style="white-space:nowrap">${v.data?fmtDate(v.data):'—'}</td>
+    <td style="font-size:13px">${v.desc}</td>
+    <td class="mono" style="text-align:right">${fmt(v.costo)}</td>
+    <td><button onclick="rimuoviCostoPepito(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">✕</button></td>
+  </tr>`).join('') : '<tr><td colspan="4" class="empty">Nessun intervento registrato</td></tr>';
+  if(totEl) totEl.textContent = fmt(totale);
+}
+window.renderPepito = renderPepito;
+
+async function aggiungiCostoPepito() {
+  const desc = document.getElementById('pepito-desc').value.trim();
+  const costo = parseFloat(document.getElementById('pepito-costo').value)||0;
+  const data = document.getElementById('pepito-data').value;
+  if(!desc) { showToast('Inserisci una descrizione','amber'); return; }
+  if(!costo) { showToast('Inserisci un costo valido','amber'); return; }
+  if(!db.pepito) db.pepito=[];
+  db.pepito.push({data, desc, costo});
+  await saveDB();
+  document.getElementById('pepito-desc').value='';
+  document.getElementById('pepito-costo').value='';
+  document.getElementById('pepito-data').value='';
+  showToast('Intervento aggiunto ✓');
+  renderPepito();
+}
+window.aggiungiCostoPepito = aggiungiCostoPepito;
+
+async function rimuoviCostoPepito(idx) {
+  if(!confirm('Eliminare questo intervento?')) return;
+  (db.pepito||[]).splice(idx,1);
+  await saveDB();
+  showToast('Intervento eliminato');
+  renderPepito();
+}
+window.rimuoviCostoPepito = rimuoviCostoPepito;
 
 // ── BILANCIO EVENTO ──
 
