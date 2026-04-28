@@ -1145,7 +1145,7 @@
               <tbody id="tbody-pepito"></tbody>
               <tfoot><tr>
                 <td colspan="2" style="padding:10px 12px;font-weight:700;font-size:14px">TOTALE COSTI</td>
-                <td class="mono" style="text-align:right;font-weight:700;font-size:14px;color:var(--accent)" id="pepito-totale">€ 0.00</td>
+                <td class="mono" style="text-align:right;font-weight:700;font-size:14px;color:var(--accent);white-space:nowrap" id="pepito-totale">€ 0.00</td>
                 <td></td>
               </tr></tfoot>
             </table>
@@ -5298,7 +5298,7 @@ function renderPepito() {
     if(year && year !== lastYear) {
       separator = `<tr style="background:var(--accent)">
         <td colspan="2" style="padding:6px 12px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px">${year}</td>
-        <td style="padding:6px 12px;text-align:right;font-size:12px;font-weight:700;color:#fff">${fmt(totalePerAnno[year])}</td>
+        <td style="padding:6px 12px;text-align:right;font-size:12px;font-weight:700;color:#fff;white-space:nowrap">${fmt(totalePerAnno[year])}</td>
         <td></td>
       </tr>`;
       lastYear = year;
