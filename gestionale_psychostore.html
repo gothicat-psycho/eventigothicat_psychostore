@@ -5291,11 +5291,33 @@ function renderPepito() {
     <td class="mono" style="white-space:nowrap">${v.data?fmtDate(v.data):'—'}</td>
     <td style="font-size:13px">${v.desc}</td>
     <td class="mono" style="text-align:right">${fmt(v.costo)}</td>
-    <td><button onclick="rimuoviCostoPepito(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">✕</button></td>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-sm" onclick="modificaCostoPepito(${i})">Modifica</button>
+      <button onclick="rimuoviCostoPepito(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">✕</button>
+    </td>
   </tr>`).join('') : '<tr><td colspan="4" class="empty">Nessun intervento registrato</td></tr>';
   if(totEl) totEl.textContent = fmt(totale);
 }
 window.renderPepito = renderPepito;
+
+let editingPepitoIdx = null;
+
+function modificaCostoPepito(idx) {
+  const voci = [...(db.pepito||[])].sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  const v = voci[idx];
+  if(!v) return;
+  // Find real index in unsorted array
+  const realIdx = (db.pepito||[]).indexOf(v);
+  editingPepitoIdx = realIdx;
+  document.getElementById('pepito-data').value = v.data||'';
+  document.getElementById('pepito-desc').value = v.desc||'';
+  document.getElementById('pepito-costo').value = v.costo||'';
+  // Update button label
+  const btn = document.querySelector('[onclick="aggiungiCostoPepito()"]');
+  if(btn) btn.textContent = '💾 Salva';
+  document.getElementById('pepito-desc').focus();
+}
+window.modificaCostoPepito = modificaCostoPepito;
 
 async function aggiungiCostoPepito() {
   const desc = document.getElementById('pepito-desc').value.trim();
@@ -5304,12 +5326,20 @@ async function aggiungiCostoPepito() {
   if(!desc) { showToast('Inserisci una descrizione','amber'); return; }
   if(!costo) { showToast('Inserisci un costo valido','amber'); return; }
   if(!db.pepito) db.pepito=[];
-  db.pepito.push({data, desc, costo});
+  if(editingPepitoIdx !== null) {
+    db.pepito[editingPepitoIdx] = {data, desc, costo};
+    editingPepitoIdx = null;
+    const btn = document.querySelector('[onclick="aggiungiCostoPepito()"]');
+    if(btn) btn.textContent = '+ Aggiungi';
+    showToast('Intervento aggiornato ✓');
+  } else {
+    db.pepito.push({data, desc, costo});
+    showToast('Intervento aggiunto ✓');
+  }
   await saveDB();
   document.getElementById('pepito-desc').value='';
   document.getElementById('pepito-costo').value='';
   document.getElementById('pepito-data').value='';
-  showToast('Intervento aggiunto ✓');
   renderPepito();
 }
 window.aggiungiCostoPepito = aggiungiCostoPepito;
