@@ -5287,12 +5287,19 @@ function renderPepito() {
   if(!tbody) return;
   const totale = voci.reduce((a,v)=>a+v.costo,0);
   let lastYear = null;
+  const totalePerAnno = {};
+  voci.forEach(v => {
+    const y = v.data ? v.data.substring(0,4) : 'N/A';
+    totalePerAnno[y] = (totalePerAnno[y]||0) + v.costo;
+  });
   tbody.innerHTML = voci.length ? voci.map((v,i)=>{
     const year = v.data ? v.data.substring(0,4) : null;
     let separator = '';
     if(year && year !== lastYear) {
       separator = `<tr style="background:var(--accent)">
-        <td colspan="4" style="padding:6px 12px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px">${year}</td>
+        <td colspan="2" style="padding:6px 12px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px">${year}</td>
+        <td style="padding:6px 12px;text-align:right;font-size:12px;font-weight:700;color:#fff">${fmt(totalePerAnno[year])}</td>
+        <td></td>
       </tr>`;
       lastYear = year;
     }
