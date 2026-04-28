@@ -3341,7 +3341,6 @@ function stampaEtichetteOrdine(ordineId) {
     '</body></html>'
   ].join('');
 
-  // Build etichette array for template
   const etichetteLista = items.map(it => ({
     barcode: it.barcode,
     prezzo_eur: it.pEur,
@@ -5287,7 +5286,17 @@ function renderPepito() {
   const totEl = document.getElementById('pepito-totale');
   if(!tbody) return;
   const totale = voci.reduce((a,v)=>a+v.costo,0);
-  tbody.innerHTML = voci.length ? voci.map((v,i)=>`<tr>
+  let lastYear = null;
+  tbody.innerHTML = voci.length ? voci.map((v,i)=>{
+    const year = v.data ? v.data.substring(0,4) : null;
+    let separator = '';
+    if(year && year !== lastYear) {
+      separator = `<tr style="background:var(--accent)">
+        <td colspan="4" style="padding:6px 12px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px">${year}</td>
+      </tr>`;
+      lastYear = year;
+    }
+    return separator + `<tr>
     <td class="mono" style="white-space:nowrap">${v.data?fmtDate(v.data):'—'}</td>
     <td style="font-size:13px">${v.desc}</td>
     <td class="mono" style="text-align:right">${fmt(v.costo)}</td>
@@ -5295,7 +5304,8 @@ function renderPepito() {
       <button class="btn btn-sm" onclick="modificaCostoPepito(${i})">Modifica</button>
       <button onclick="rimuoviCostoPepito(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">✕</button>
     </td>
-  </tr>`).join('') : '<tr><td colspan="4" class="empty">Nessun intervento registrato</td></tr>';
+  </tr>`;
+  }).join('') : '<tr><td colspan="4" class="empty">Nessun intervento registrato</td></tr>';
   if(totEl) totEl.textContent = fmt(totale);
 }
 window.renderPepito = renderPepito;
@@ -5306,13 +5316,11 @@ function modificaCostoPepito(idx) {
   const voci = [...(db.pepito||[])].sort((a,b)=>(a.data||'').localeCompare(b.data||''));
   const v = voci[idx];
   if(!v) return;
-  // Find real index in unsorted array
   const realIdx = (db.pepito||[]).indexOf(v);
   editingPepitoIdx = realIdx;
   document.getElementById('pepito-data').value = v.data||'';
   document.getElementById('pepito-desc').value = v.desc||'';
   document.getElementById('pepito-costo').value = v.costo||'';
-  // Update button label
   const btn = document.querySelector('[onclick="aggiungiCostoPepito()"]');
   if(btn) btn.textContent = '💾 Salva';
   document.getElementById('pepito-desc').focus();
@@ -5992,11 +6000,13 @@ window.autofillDescDF  = autofillDescDF;
 window.autofillDescPR  = autofillDescPR;
 
 // ── INIT ──
+(async () => {
 setLogo();
 await loadDB();
 populateFornSelects();
 renderDashboard();
 showSection('dashboard', document.querySelector('.nav-item'));
+})();
 </script>
 
 <!-- MODAL BILANCIO EVENTO -->
