@@ -1350,6 +1350,7 @@ function eurToCzk(eur) {
 
 function fmt(n) { return '€ ' + parseFloat(n||0).toFixed(2); }
 function fmtDate(d) { if(!d) return '-'; return new Date(d+'T00:00:00').toLocaleDateString('it-IT'); }
+function fmtDateShort(d) { if(!d) return '-'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
 function today() { return new Date().toISOString().split('T')[0]; }
 function showToast(msg, type='green') {
   const el = document.getElementById('toast');
@@ -2300,11 +2301,13 @@ function renderRBilancio(targetEl) {
     const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
     const incasso = bil.incassoManuale > 0 ? bil.incassoManuale : incassoVendite;
     const costoMerce = bil.costoMerceManuale > 0 ? bil.costoMerceManuale : costoMerceVendite;
+    const pos = vend.filter(v=>v.pagamento==='pos'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+    const cont = vend.filter(v=>v.pagamento!=='pos'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
     const ricaviExtra = (bil.ricavi||[]).reduce((a,v)=>a+v.importo,0);
     const costiTot = (bil.voci||[]).reduce((a,v)=>a+v.importo,0);
     const quotaGothicat = bil.gothicat ? costiTot*0.5 : 0;
     const costiNetti = costiTot - quotaGothicat;
-    const utile = incasso + ricaviExtra - costoMerce - costiNetti;
+    const utile = incasso + ricaviExtra + quotaGothicat - costoMerce - costiTot;
     const margine = incasso>0 ? utile/incasso*100 : null;
 
     // Per categoria
@@ -2332,6 +2335,8 @@ function renderRBilancio(targetEl) {
   // Build table
   const totali = {
     incasso: evData.reduce((a,d)=>a+d.incasso,0),
+    pos: evData.reduce((a,d)=>a+d.pos,0),
+    cont: evData.reduce((a,d)=>a+d.cont,0),
     costoMerce: evData.reduce((a,d)=>a+d.costoMerce,0),
     ricaviExtra: evData.reduce((a,d)=>a+d.ricaviExtra,0),
     costiTot: evData.reduce((a,d)=>a+d.costiTot,0),
@@ -2366,7 +2371,7 @@ function renderRBilancio(targetEl) {
       <thead>
         <tr style="background:var(--surface2)">
           <th style="padding:8px 12px;text-align:left;font-size:12px;min-width:180px">VOCE</th>
-          ${evData.map(d=>`<th style="${thEvStyle}">${d.ev.nome}<br><span style="font-size:10px;font-weight:400;color:var(--text3)">${d.ev.inizio||''}</span></th>`).join('')}
+          ${evData.map(d=>`<th style="${thEvStyle}">${d.ev.nome}<br><span style="font-size:10px;font-weight:400;color:var(--text3)">${fmtDateShort(d.ev.inizio)}${d.ev.fine&&d.ev.fine!==d.ev.inizio?' → '+fmtDateShort(d.ev.fine):''}</span></th>`).join('')}
           <th style="${thStyle}">TOTALI</th>
         </tr>
       </thead>
@@ -2377,32 +2382,37 @@ function renderRBilancio(targetEl) {
           <td style="${tdStyle('var(--green)')};font-weight:700">${fmt(totali.incasso)}</td>
         </tr>
         <tr>
+          <td style="${tdLabel};padding-left:20px;font-size:11px;color:var(--text3)">di cui 💳 POS</td>
+          ${evData.map(d=>`<td style="${tdStyle('var(--text3)')};font-size:11px">${d.pos>0?fmt(d.pos):'—'}</td>`).join('')}
+          <td style="${tdStyle('var(--text3)')};font-size:11px">${totali.pos>0?fmt(totali.pos):'—'}</td>
+        </tr>
+        <tr>
+          <td style="${tdLabel};padding-left:20px;font-size:11px;color:var(--text3)">di cui 💵 Contanti</td>
+          ${evData.map(d=>`<td style="${tdStyle('var(--text3)')};font-size:11px">${d.cont>0?fmt(d.cont):'—'}</td>`).join('')}
+          <td style="${tdStyle('var(--text3)')};font-size:11px">${totali.cont>0?fmt(totali.cont):'—'}</td>
+        </tr>
+        <tr>
           <td style="${tdLabel}">+ Ricavi extra</td>
           ${evData.map(d=>`<td style="${tdStyle()}">${fmtV(d.ricaviExtra)}</td>`).join('')}
           <td style="${tdStyle()}">${fmtV(totali.ricaviExtra)}</td>
         </tr>
-        <tr>
-          <td style="${tdLabel}">− Costo merce venduta</td>
-          ${evData.map(d=>`<td style="${tdStyle('var(--text3)') }">${fmtV(d.costoMerce)}</td>`).join('')}
-          <td style="${tdStyle('var(--text3)')}">${fmtV(totali.costoMerce)}</td>
-        </tr>
-        ${sep}
-        <tr style="background:var(--surface2)">
-          <td style="${tdLabel};font-weight:700">COSTI EVENTO</td>
-          ${evData.map(d=>`<td style="${tdStyle()};font-weight:600">${fmtV(d.costiTot)}</td>`).join('')}
-          <td style="${tdStyle()};font-weight:700">${fmtV(totali.costiTot)}</td>
-        </tr>
-        ${catRows}
         <tr>
           <td style="${tdLabel};color:var(--accent)">+ Rimborso Gothicat (50%)</td>
           ${evData.map(d=>`<td style="${tdStyle('var(--accent)')}">${d.quotaGothicat>0?fmt(d.quotaGothicat):'—'}</td>`).join('')}
           <td style="${tdStyle('var(--accent)')}">${totali.quotaGothicat>0?fmt(totali.quotaGothicat):'—'}</td>
         </tr>
         <tr>
-          <td style="${tdLabel}">= Costi netti Psycho</td>
-          ${evData.map(d=>`<td style="${tdStyle()};font-weight:600">${fmt(d.costiNetti)}</td>`).join('')}
-          <td style="${tdStyle()};font-weight:700">${fmt(totali.costiNetti)}</td>
+          <td style="${tdLabel}">− Costo merce venduta</td>
+          ${evData.map(d=>`<td style="${tdStyle('var(--text3)')}">${fmtV(d.costoMerce)}</td>`).join('')}
+          <td style="${tdStyle('var(--text3)')}">${fmtV(totali.costoMerce)}</td>
         </tr>
+        ${sep}
+        <tr style="background:var(--surface2)">
+          <td style="${tdLabel};font-weight:700">− COSTI EVENTO</td>
+          ${evData.map(d=>`<td style="${tdStyle()};font-weight:600">${fmtV(d.costiTot)}</td>`).join('')}
+          <td style="${tdStyle()};font-weight:700">${fmtV(totali.costiTot)}</td>
+        </tr>
+        ${catRows}
         ${sep}
         <tr style="background:var(--surface2)">
           <td style="${tdLabel};font-size:14px;font-weight:700">UTILE NETTO</td>
