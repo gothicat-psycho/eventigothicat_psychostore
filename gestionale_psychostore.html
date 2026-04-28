@@ -1748,6 +1748,11 @@ window.renderEventi = renderEventi;
 let editingEventoId = null;
 
 async function aggiungiEvento() {
+  const btn = document.getElementById('ev-btn-salva');
+  if(btn && btn.disabled) return;
+  if(btn) btn.disabled = true;
+  setTimeout(() => { if(btn) btn.disabled = false; }, 1000);
+
   const nome = document.getElementById('ev-nome').value.trim();
   if(!nome) { showToast('Nome evento obbligatorio','red'); return; }
   if(!db.eventi) db.eventi=[];
