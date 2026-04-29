@@ -6351,22 +6351,39 @@ function renderToxico() {
 window.renderToxico = renderToxico;
 
 // ── CASSA: griglia prodotti ──
+// Colori per categoria Toxico
+const TX_CAT_COLORS = {
+  'Bandana':           { bg:'#FEF3C7', color:'#92400E', border:'#FCD34D' },
+  'Hoodie':            { bg:'#EDE9FE', color:'#5B21B6', border:'#C4B5FD' },
+  'Mesh Shorts':       { bg:'#ECFDF5', color:'#065F46', border:'#6EE7B7' },
+  'Mesh Tank':         { bg:'#E0F2FE', color:'#0C4A6E', border:'#7DD3FC' },
+  'New Mesh Tank':     { bg:'#F0FDF4', color:'#14532D', border:'#86EFAC' },
+  'Patches':           { bg:'#F3F4F6', color:'#374151', border:'#D1D5DB' },
+  'Retro Sweat Shorts':{ bg:'#FFF7ED', color:'#7C2D12', border:'#FDBA74' },
+  'Socks':             { bg:'#FDF4FF', color:'#701A75', border:'#E879F9' },
+  'Stickers':          { bg:'#FEF2F2', color:'#991B1B', border:'#FCA5A5' },
+  'T-Shirt':           { bg:'#EFF6FF', color:'#1E3A8A', border:'#93C5FD' },
+  'Trucker':           { bg:'#F0FDF4', color:'#166534', border:'#4ADE80' },
+};
+
 function renderTxProdotti() {
-  const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))];
+  // Categorie in ordine alfabetico
+  const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))].sort();
   let html = '';
   cats.forEach(cat => {
-    const prods = TOXICO_CATALOG.filter(p=>p.cat===cat);
-    html += `<div style="margin-bottom:16px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px">${cat}</div>
+    // Prodotti in ordine alfabetico per nome
+    const prods = TOXICO_CATALOG.filter(p=>p.cat===cat).sort((a,b)=>a.nome.localeCompare(b.nome));
+    const c = TX_CAT_COLORS[cat] || { bg:'#F3F4F6', color:'#374151', border:'#D1D5DB' };
+    html += `<div style="margin-bottom:16px;padding:12px;background:${c.bg};border:1px solid ${c.border};border-radius:var(--radius-lg)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${c.color};margin-bottom:8px">${cat}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px">`;
     prods.forEach(p => {
       const isSel = txCassaProdSel && txCassaProdSel.id===p.id;
-      html += `<button onclick="txSelProdotto('${p.id}')" style="padding:8px 14px;border:2px solid ${isSel?'var(--accent)':'var(--border)'};border-radius:var(--radius);background:${isSel?'var(--accent-light)':'var(--surface)'};cursor:pointer;font-size:13px;font-weight:${isSel?'600':'400'};color:${isSel?'var(--accent)':'var(--text)'};white-space:nowrap">
-        ${p.nome}<br><span style="font-size:11px;color:var(--text3)">€${p.prezzoEur} / £${p.prezzoGbp}</span>
+      html += `<button onclick="txSelProdotto('${p.id}')" style="padding:8px 14px;border:2px solid ${isSel?'var(--accent)':c.border};border-radius:var(--radius);background:${isSel?'var(--accent-light)':'white'};cursor:pointer;font-size:13px;font-weight:${isSel?'600':'400'};color:${isSel?'var(--accent)':c.color};white-space:nowrap">
+        ${p.nome}<br><span style="font-size:11px;opacity:0.7">€${p.prezzoEur} / £${p.prezzoGbp}</span>
       </button>`;
     });
     html += `</div>`;
-    // Se prodotto selezionato è in questa categoria, mostra taglie
     if(txCassaProdSel && txCassaProdSel.cat===cat) {
       html += renderTxTagliePicker();
     }
@@ -6450,16 +6467,27 @@ function renderTxScontrino() {
   txScontrino.forEach((r,i)=>{
     const eur=r.qta*r.prezzoEur, gbp=r.qta*r.prezzoGbp;
     totEur+=eur; totGbp+=gbp;
-    html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
-      <div>
-        <div style="font-weight:500">${r.nome}</div>
-        <div style="font-size:11px;color:var(--text3)">${r.taglia==='NO'?'':r.taglia+' · '}${r.qta} × €${r.prezzoEur}</div>
+    html+=`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:500;flex:1">${r.nome}${r.taglia!=='NO'?' — '+r.taglia:''}</div>
+        <button onclick="txRimuoviRiga(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:0 4px">×</button>
       </div>
-      <div style="text-align:right">
-        <div class="mono" style="font-weight:600">€${eur.toFixed(2)}</div>
-        <div style="font-size:11px;color:#7F1D1D" class="mono">£${gbp.toFixed(2)}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text3)">${r.qta} × </span>
+        <div style="display:flex;align-items:center;gap:3px">
+          <span style="font-size:11px;color:var(--text3)">€</span>
+          <input type="number" step="0.01" min="0" value="${r.prezzoEur}" onchange="txAggiornaPrezzoEur(${i},this.value)" style="width:60px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center;font-family:monospace">
+        </div>
+        <span style="font-size:11px;color:var(--text3)">/</span>
+        <div style="display:flex;align-items:center;gap:3px">
+          <span style="font-size:11px;color:#7F1D1D">£</span>
+          <input type="number" step="0.01" min="0" value="${r.prezzoGbp}" onchange="txAggiornaPrezzoGbp(${i},this.value)" style="width:60px;padding:2px 5px;border:1px solid #FCA5A5;border-radius:4px;font-size:12px;text-align:center;font-family:monospace;color:#7F1D1D">
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <span class="mono" style="font-weight:600">€${eur.toFixed(2)}</span>
+          <span style="font-size:11px;color:#7F1D1D;display:block" class="mono">£${gbp.toFixed(2)}</span>
+        </div>
       </div>
-      <button onclick="txRimuoviRiga(${i})" style="margin-left:8px;color:var(--red);background:none;border:none;cursor:pointer;font-size:16px">×</button>
     </div>`;
   });
   cont.innerHTML = html;
@@ -6473,6 +6501,18 @@ function txRimuoviRiga(i) {
   renderTxScontrino();
 }
 window.txRimuoviRiga = txRimuoviRiga;
+
+function txAggiornaPrezzoEur(i, val) {
+  const v = parseFloat(val);
+  if(!isNaN(v) && v>=0) { txScontrino[i].prezzoEur = v; renderTxScontrino(); }
+}
+window.txAggiornaPrezzoEur = txAggiornaPrezzoEur;
+
+function txAggiornaPrezzoGbp(i, val) {
+  const v = parseFloat(val);
+  if(!isNaN(v) && v>=0) { txScontrino[i].prezzoGbp = v; renderTxScontrino(); }
+}
+window.txAggiornaPrezzoGbp = txAggiornaPrezzoGbp;
 
 function txSvuotaScontrino() {
   txScontrino=[]; txCassaProdSel=null; txCassaTaglia=null;
@@ -6515,10 +6555,10 @@ window.txConfermaVendita = txConfermaVendita;
 // ── STOCK ──
 function renderTxStock() {
   if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
-  const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))];
+  const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))].sort();
   let html='';
   cats.forEach(cat=>{
-    const prods=TOXICO_CATALOG.filter(p=>p.cat===cat);
+    const prods=TOXICO_CATALOG.filter(p=>p.cat===cat).sort((a,b)=>a.nome.localeCompare(b.nome));
     html+=`<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat}</div>`;
     prods.forEach(p=>{
       const taglie=p.taglie;
