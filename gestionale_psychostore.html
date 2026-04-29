@@ -247,6 +247,8 @@
       <div class="nav-item" onclick="showSection('report',this)"><span class="nav-icon">▲</span> Report vendite</div>
       <div class="nav-item" onclick="showSection('bilancioeventi',this)"><span class="nav-icon">💰</span> Bilancio eventi</div>
       <div class="nav-item" onclick="showSection('pepito',this)"><span class="nav-icon">🚛</span> Pepito</div>
+      <div class="nav-section">Toxico</div>
+      <div class="nav-item" onclick="showSection('toxico',this)"><span class="nav-icon">🇬🇧</span> Toxico</div>
     </nav>
   </aside>
 
@@ -1298,6 +1300,153 @@
         </div>
       </div>
 
+      <!-- TOXICO -->
+      <div class="section" id="sec-toxico">
+        <!-- TAB BAR -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
+          <button class="btn btn-sm" id="tx-tab-cassa"   onclick="toxicoTab('cassa')"   style="border-bottom:2px solid var(--accent);border-radius:var(--radius) var(--radius) 0 0;font-weight:600">🛒 Cassa</button>
+          <button class="btn btn-sm" id="tx-tab-stock"   onclick="toxicoTab('stock')"   style="border-radius:var(--radius) var(--radius) 0 0">📦 Stock</button>
+          <button class="btn btn-sm" id="tx-tab-storico" onclick="toxicoTab('storico')" style="border-radius:var(--radius) var(--radius) 0 0">📋 Storico</button>
+          <button class="btn btn-sm" id="tx-tab-pagamenti" onclick="toxicoTab('pagamenti')" style="border-radius:var(--radius) var(--radius) 0 0">💸 Pagamenti</button>
+          <button class="btn btn-sm" id="tx-tab-email"   onclick="toxicoTab('email')"   style="border-radius:var(--radius) var(--radius) 0 0">✉️ Email</button>
+        </div>
+
+        <!-- CASSA TAB -->
+        <div id="tx-pane-cassa">
+          <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+            <!-- LEFT: prodotti buttons -->
+            <div>
+              <div class="card" style="margin-bottom:12px">
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                  <div>
+                    <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Evento</label>
+                    <select id="tx-cassa-evento" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;min-width:200px">
+                      <option value="">— Seleziona evento —</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Pagamento</label>
+                    <select id="tx-cassa-pay" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                      <option value="POS">💳 POS</option>
+                      <option value="Contanti">💵 Contanti</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Cambio £/€</label>
+                    <input type="number" step="0.01" id="tx-cambio" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:90px" oninput="saveTxCambio()" placeholder="1.18">
+                  </div>
+                </div>
+              </div>
+              <div id="tx-prodotti-grid"></div>
+            </div>
+            <!-- RIGHT: scontrino -->
+            <div style="position:sticky;top:60px">
+              <div class="card">
+                <div class="card-title">Scontrino</div>
+                <div id="tx-scontrino-righe" style="min-height:80px;margin-bottom:12px"></div>
+                <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px">
+                  <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:4px">
+                    <span>Totale €</span><span id="tx-sc-eur" class="mono" style="font-weight:700">€ 0.00</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2)">
+                    <span>Dovuto a Toxico £</span><span id="tx-sc-gbp" class="mono" style="font-weight:700;color:#7F1D1D">£ 0.00</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="txConfermaVendita()">✓ Conferma vendita</button>
+                <button class="btn btn-danger btn-sm" style="width:100%;margin-top:6px" onclick="txSvuotaScontrino()">✕ Svuota</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STOCK TAB -->
+        <div id="tx-pane-stock" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div class="card-title" style="margin-bottom:0">Stock Toxico attuale</div>
+              <button class="btn btn-sm btn-primary" onclick="txResetStock()">↺ Reset da catalogo</button>
+            </div>
+            <div id="tx-stock-table"></div>
+          </div>
+        </div>
+
+        <!-- STORICO TAB -->
+        <div id="tx-pane-storico" style="display:none">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+            <select id="tx-st-evento" onchange="renderTxStorico()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;min-width:220px">
+              <option value="">Tutti gli eventi</option>
+            </select>
+            <button class="btn btn-sm" onclick="document.getElementById('tx-st-evento').value='';renderTxStorico()">Reset</button>
+          </div>
+          <div id="tx-storico-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px"></div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Data/Ora</th><th>Evento</th><th>Prodotto</th><th>Taglia</th><th>Qta</th><th>Pag.</th><th style="text-align:right">€</th><th style="text-align:right">£</th><th></th>
+                </tr></thead>
+                <tbody id="tx-storico-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAGAMENTI TAB -->
+        <div id="tx-pane-pagamenti" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+            <div class="card">
+              <div class="card-title">Registra pagamento a Toxico</div>
+              <div class="form-group"><label>Data</label><input type="date" id="tx-pag-data"></div>
+              <div class="form-group"><label>Importo £</label><input type="number" step="0.01" id="tx-pag-gbp" placeholder="0.00"></div>
+              <div class="form-group"><label>Importo € (equivalente)</label><input type="number" step="0.01" id="tx-pag-eur" placeholder="0.00"></div>
+              <div class="form-group"><label>Note</label><input type="text" id="tx-pag-note" placeholder="es. Bonifico IBAN..."></div>
+              <button class="btn btn-primary" onclick="txAggiungiPagamento()">+ Aggiungi pagamento</button>
+            </div>
+            <div class="card">
+              <div class="card-title">Riepilogo</div>
+              <div id="tx-pag-metrics" style="display:grid;gap:10px;margin-bottom:16px"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Data</th><th>Note</th><th style="text-align:right">£</th><th style="text-align:right">€</th><th></th></tr></thead>
+                  <tbody id="tx-pag-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMAIL TAB -->
+        <div id="tx-pane-email" style="display:none">
+          <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start">
+            <div class="card">
+              <div class="card-title">Opzioni email</div>
+              <div class="form-group">
+                <label>Evento/i da includere</label>
+                <select id="tx-email-evento" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                  <option value="">Tutti gli eventi</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Firma (mittente)</label>
+                <input type="text" id="tx-email-firma" value="Carlotta" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div class="form-group">
+                <label>Testo libero aggiuntivo</label>
+                <textarea id="tx-email-extra" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px" placeholder="es. We came back home from the last 2 events..."></textarea>
+              </div>
+              <button class="btn btn-primary" style="width:100%" onclick="generaTxEmail()">📧 Genera email</button>
+            </div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div class="card-title" style="margin-bottom:0">Testo email</div>
+                <button class="btn btn-sm" onclick="copiaTxEmail()">📋 Copia</button>
+              </div>
+              <textarea id="tx-email-output" rows="22" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'IBM Plex Mono',monospace;resize:vertical;background:var(--surface2)"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -1330,6 +1479,13 @@ let db = {
   nextMovId: 1,
   nextVendId: 1,
   nextEvId: 1,
+  toxico: {
+    stock: {},
+    vendite: [],
+    pagamenti: [],
+    cambio: 1.18,
+    nextVendId: 1,
+  },
 };
 
 let scontrino = [];
@@ -1478,7 +1634,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('sec-'+s).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛'};
+  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧'};
   document.getElementById('page-title').textContent = titles[s]||s;
   if(s==='dashboard') renderDashboard();
   if(s==='catalogo') { populateFornSelects(); renderCatalogo(); }
@@ -1490,6 +1646,7 @@ function showSection(s, el) {
   if(s==='report') initReport();
   if(s==='bilancioeventi') renderBilancioEventiPage();
   if(s==='pepito') renderPepito();
+  if(s==='toxico') renderToxico();
 }
 window.showSection = showSection;
 
@@ -2083,7 +2240,7 @@ function renderStorico() {
     <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${list.length}</div><div class="metric-sub">${nArt} articoli</div></div>
     <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div></div>
     ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
-    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:16px;font-weight:600;color:var(--text)">${fmt(pos)}</span></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text3)">💵 Contanti</span><span style="font-size:16px;font-weight:600;color:var(--text)">${fmt(cont)}</span></div></div></div>
+    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div class="metric-value" style="font-size:16px">${fmt(pos)} / ${fmt(cont)}</div></div>
     <div class="metric"><div class="metric-label">Costo merce venduta</div><div class="metric-value" style="color:var(--text2)">${costoMerceTot>0?fmt(costoMerceTot):'—'}</div></div>
     ${margTot!==null?`<div class="metric"><div class="metric-label">Margine lordo</div><div class="metric-value" style="color:${margTot>=50?'var(--green)':'var(--amber)'}">${Math.round(margTot)}%</div></div>`:''}
   `;
@@ -2330,7 +2487,7 @@ function renderREvento() {
       <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${vend.length}</div><div class="metric-sub">${nArt} articoli</div></div>
       <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(eur)}</div></div>
       ${czk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(czk).toLocaleString('it')} CZK</div></div>`:''}
-      <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:16px;font-weight:600;color:var(--text)">${fmt(pos)}</span></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text3)">💵 Contanti</span><span style="font-size:16px;font-weight:600;color:var(--text)">${fmt(cont)}</span></div></div></div>
+      <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div class="metric-value" style="font-size:16px">${fmt(pos)} / ${fmt(cont)}</div></div>
     </div>
     <div class="report-card">
       <div class="report-card-title">Top 10 prodotti venduti</div>
@@ -6030,6 +6187,551 @@ populateFornSelects();
 renderDashboard();
 showSection('dashboard', document.querySelector('.nav-item'));
 })();
+
+// ══════════════════════════════════════════
+// TOXICO
+// ══════════════════════════════════════════
+
+// Catalogo prodotti Toxico con prezzi
+const TOXICO_CATALOG = [
+  // T-Shirts
+  { id:'DOLLY-TSHIRT',              nome:'DOLLY T-shirt',              cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'WORMS-TSHIRT',              nome:'WORMS T-shirt',              cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'ANTISOCIAL-TSHIRT',         nome:'ANTISOCIAL ALIENATION T-shirt', cat:'T-Shirt',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'WARPIG-TSHIRT',             nome:'WAR PIG T-shirt',            cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'PESTPROBLEM-TSHIRT',        nome:'PEST PROBLEM T-shirt RED',   cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'MUMMYSAID-TSHIRT',          nome:'MUMMY SAID T-shirt WHITE',   cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'AASYMBOLS-TSHIRT',          nome:'AA SYMBOLS T-shirt',         cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'HILLBILLY-TSHIRT',          nome:'HILLBILLY WOODS T-shirt',    cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'TIMEWILL-TSHIRT',           nome:'TIME WILL COME T-shirt',     cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'STOPPEDKILLIN-TSHIRT',      nome:'STOPPED KILLIN\' T-shirt',   cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'PSYCHOPIG-TSHIRT',          nome:'PSYCHO PIG T-shirt WHITE',   cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'CHURCHBURNER-TSHIRT',       nome:'CHURCH BURNER T-shirt',      cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'WISHYOUWERE-TSHIRT',        nome:'WISH YOU WERE HERE T-shirt', cat:'T-Shirt',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  // Hoodies
+  { id:'ANTISOCIAL-HOODIE',         nome:'ANTISOCIAL ALIENATION Hoodie', cat:'Hoodie',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
+  { id:'SKULLY-HOODIE',             nome:'SKULLY Hoodie GREY',         cat:'Hoodie',         taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
+  { id:'WARPIG-HOODIE',             nome:'WARPIG Hoodie',              cat:'Hoodie',         taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
+  { id:'GRAFSKULLY-HOODIE',         nome:'GRAF SKULLY Hoodie GREEN',   cat:'Hoodie',         taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
+  // Mesh Shorts
+  { id:'DFB-SHORTS',                nome:'DFB Mesh Shorts',            cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16 },
+  { id:'GASMASK-SHORTS',            nome:'GAS MASK Mesh Shorts',       cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16 },
+  // Bandane
+  { id:'SUERTE-BANDANA',            nome:'SUERTE Bandana GREY',        cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
+  { id:'FTW-BANDANA',               nome:'FTW Bandana RED',            cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
+  { id:'ROTTINGSKULL-BANDANA',      nome:'ROTTING SKULL Bandana',      cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
+  // Mesh Tank
+  { id:'METALSKULL-TANK',           nome:'METAL SKULL Mesh Tank',      cat:'Mesh Tank',      taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
+  { id:'DFB-TANK',                  nome:'DFB Mesh Tank',              cat:'Mesh Tank',      taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
+  { id:'BOLTSKULL-TANK',            nome:'BOLT SKULL Mesh Tank',       cat:'Mesh Tank',      taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
+  { id:'GASMASK-TANK',              nome:'GAS MASK Mesh Tank',         cat:'Mesh Tank',      taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
+  // New Mesh Tank
+  { id:'DETHSQUAD-NEWTANK',         nome:'DETH SQUAD New Mesh Tank',   cat:'New Mesh Tank',  taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
+  { id:'VOMIT13-NEWTANK',           nome:'VOMIT 13 New Mesh Tank',     cat:'New Mesh Tank',  taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
+  { id:'BURN25-NEWTANK',            nome:'BURN 25 New Mesh Tank',      cat:'New Mesh Tank',  taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
+  // Trucker
+  { id:'TRUCKER',                   nome:'Trucker Hat',                cat:'Trucker',        taglie:['NO'], prezzoEur:25, prezzoGbp:9 },
+  // Retro Sweat Shorts
+  { id:'SKULLY-RETROSHORTS',        nome:'SKULLY RETRO SWEAT SHORTS',  cat:'Retro Sweat Shorts', taglie:['XS','S','M','L','XL'], prezzoEur:29, prezzoGbp:12.5 },
+  // Socks
+  { id:'DUSTER-SOCKS',              nome:'DUSTER Socks',               cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
+  { id:'LOGOBLACK-SOCKS',           nome:'LOGO Socks Black',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
+  { id:'LOGOWHITE-SOCKS',           nome:'LOGO Socks White',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
+  { id:'BOLTSKULLFWTBLACK-SOCKS',   nome:'BOLT SKULL FWT Socks Black', cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
+  { id:'BOLTSKULLFWTGREEN-SOCKS',   nome:'BOLT SKULL FWT Socks Green', cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
+  // Patches & Stickers
+  { id:'PATCHES',                   nome:'Patches',                    cat:'Patches',        taglie:['NO'], prezzoEur:5,  prezzoGbp:2.5 },
+  { id:'STICKERS',                  nome:'Stickers',                   cat:'Stickers',       taglie:['NO'], prezzoEur:3,  prezzoGbp:1 },
+];
+
+// Stock iniziale dal file Excel
+const TOXICO_STOCK_INIT = {
+  'DOLLY-TSHIRT':         {XS:1,S:2,M:2,L:1,'XL':1,'2XL':1,'3XL':0},
+  'WORMS-TSHIRT':         {XS:1,S:3,M:5,L:4,'XL':2,'2XL':2,'3XL':0},
+  'ANTISOCIAL-TSHIRT':    {XS:3,S:5,M:5,L:5,'XL':3,'2XL':2,'3XL':0},
+  'WARPIG-TSHIRT':        {XS:2,S:0,M:2,L:0,'XL':0,'2XL':0,'3XL':0},
+  'PESTPROBLEM-TSHIRT':   {XS:3,S:5,M:5,L:6,'XL':3,'2XL':2,'3XL':0},
+  'MUMMYSAID-TSHIRT':     {XS:2,S:2,M:1,L:3,'XL':0,'2XL':1,'3XL':0},
+  'AASYMBOLS-TSHIRT':     {XS:3,S:1,M:2,L:2,'XL':0,'2XL':0,'3XL':0},
+  'HILLBILLY-TSHIRT':     {XS:3,S:5,M:5,L:5,'XL':3,'2XL':2,'3XL':0},
+  'TIMEWILL-TSHIRT':      {XS:2,S:3,M:6,L:5,'XL':4,'2XL':3,'3XL':0},
+  'STOPPEDKILLIN-TSHIRT': {XS:1,S:0,M:1,L:2,'XL':1,'2XL':1,'3XL':0},
+  'PSYCHOPIG-TSHIRT':     {XS:2,S:3,M:5,L:6,'XL':5,'2XL':0,'3XL':0},
+  'CHURCHBURNER-TSHIRT':  {XS:1,S:4,M:6,L:6,'XL':3,'2XL':2,'3XL':0},
+  'WISHYOUWERE-TSHIRT':   {XS:3,S:5,M:5,L:5,'XL':3,'2XL':2,'3XL':0},
+  'ANTISOCIAL-HOODIE':    {XS:4,S:3,M:2,L:3,'XL':3,'2XL':1,'3XL':0},
+  'SKULLY-HOODIE':        {XS:5,S:4,M:4,L:4,'XL':1,'2XL':1,'3XL':0},
+  'WARPIG-HOODIE':        {XS:4,S:3,M:1,L:3,'XL':2,'2XL':0,'3XL':0},
+  'GRAFSKULLY-HOODIE':    {XS:0,S:0,M:0,L:0,'XL':0,'2XL':0,'3XL':0},
+  'DFB-SHORTS':           {XS:3,S:5,M:5,L:5,'XL':3,'2XL':0,'3XL':0},
+  'GASMASK-SHORTS':       {XS:3,S:3,M:3,L:0,'XL':0,'2XL':0,'3XL':0},
+  'SUERTE-BANDANA':       {NO:10},
+  'FTW-BANDANA':          {NO:9},
+  'ROTTINGSKULL-BANDANA': {NO:18},
+  'METALSKULL-TANK':      {XS:3,S:5,M:6,L:5,'XL':0,'2XL':1,'3XL':0},
+  'DFB-TANK':             {XS:0,S:5,M:0,L:0,'XL':0,'2XL':0,'3XL':0},
+  'BOLTSKULL-TANK':       {XS:2,S:4,M:1,L:2,'XL':1,'2XL':1,'3XL':0},
+  'GASMASK-TANK':         {XS:1,S:3,M:4,L:3,'XL':0,'2XL':0,'3XL':0},
+  'DETHSQUAD-NEWTANK':    {XS:2,S:5,M:7,L:5,'XL':3,'2XL':2,'3XL':0},
+  'VOMIT13-NEWTANK':      {XS:0,S:5,M:7,L:5,'XL':3,'2XL':2,'3XL':0},
+  'BURN25-NEWTANK':       {XS:0,S:4,M:6,L:5,'XL':3,'2XL':2,'3XL':0},
+  'TRUCKER':              {NO:115},
+  'SKULLY-RETROSHORTS':   {XS:1,S:2,M:2,L:2,'XL':1},
+  'DUSTER-SOCKS':         {'S/M':3,'M/L':3,'L/XL':3},
+  'LOGOBLACK-SOCKS':      {'S/M':3,'M/L':3,'L/XL':3},
+  'LOGOWHITE-SOCKS':      {'S/M':3,'M/L':3,'L/XL':3},
+  'BOLTSKULLFWTBLACK-SOCKS': {'S/M':3,'M/L':3,'L/XL':3},
+  'BOLTSKULLFWTGREEN-SOCKS': {'S/M':3,'M/L':3,'L/XL':3},
+  'PATCHES':              {NO:53},
+  'STICKERS':             {NO:73},
+};
+
+// Stato scontrino Toxico
+let txScontrino = []; // [{prodId, taglia, qta, prezzoEur, prezzoGbp}]
+let txCassaProdSel = null; // prodotto selezionato per taglia
+let txCassaTaglia = null;
+
+function getTxCambio() {
+  if(!db.toxico) db.toxico = {stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  return parseFloat(db.toxico.cambio) || 1.18;
+}
+
+function saveTxCambio() {
+  if(!db.toxico) db.toxico = {stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  const val = parseFloat(document.getElementById('tx-cambio').value);
+  if(!isNaN(val) && val>0) { db.toxico.cambio = val; saveDB(); }
+}
+
+function fmtGbp(n) { return '£ ' + parseFloat(n||0).toFixed(2); }
+
+function getTxStock(prodId, taglia) {
+  if(!db.toxico) db.toxico = {stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  const k = prodId+'|'+taglia;
+  // Stock = iniziale - venduto
+  const init = (TOXICO_STOCK_INIT[prodId]||{})[taglia] || 0;
+  const venduto = (db.toxico.vendite||[]).reduce((a,v)=>
+    v.prodId===prodId && v.taglia===taglia ? a+v.qta : a, 0);
+  const adj = (db.toxico.stock||{})[k] || 0; // aggiustamenti manuali
+  return init - venduto + adj;
+}
+
+// ── TABS ──
+function toxicoTab(tab) {
+  ['cassa','stock','storico','pagamenti','email'].forEach(t => {
+    document.getElementById('tx-pane-'+t).style.display = t===tab?'':'none';
+    const btn = document.getElementById('tx-tab-'+t);
+    if(btn) {
+      btn.style.borderBottom = t===tab ? '2px solid var(--accent)' : '';
+      btn.style.fontWeight = t===tab ? '600' : '';
+    }
+  });
+  if(tab==='stock') renderTxStock();
+  if(tab==='storico') renderTxStorico();
+  if(tab==='pagamenti') renderTxPagamenti();
+  if(tab==='email') renderTxEmailOpts();
+}
+window.toxicoTab = toxicoTab;
+
+// ── RENDER TOXICO (entry point) ──
+function renderToxico() {
+  if(!db.toxico) db.toxico = {stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  // Popola cambio
+  document.getElementById('tx-cambio').value = db.toxico.cambio || 1.18;
+  // Popola eventi
+  const evOpts = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
+    .map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+  ['tx-cassa-evento','tx-st-evento','tx-email-evento'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = '<option value="">Tutti gli eventi</option>' + evOpts;
+  });
+  // Default tab
+  toxicoTab('cassa');
+  renderTxProdotti();
+}
+window.renderToxico = renderToxico;
+
+// ── CASSA: griglia prodotti ──
+function renderTxProdotti() {
+  const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))];
+  let html = '';
+  cats.forEach(cat => {
+    const prods = TOXICO_CATALOG.filter(p=>p.cat===cat);
+    html += `<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px">${cat}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">`;
+    prods.forEach(p => {
+      const isSel = txCassaProdSel && txCassaProdSel.id===p.id;
+      html += `<button onclick="txSelProdotto('${p.id}')" style="padding:8px 14px;border:2px solid ${isSel?'var(--accent)':'var(--border)'};border-radius:var(--radius);background:${isSel?'var(--accent-light)':'var(--surface)'};cursor:pointer;font-size:13px;font-weight:${isSel?'600':'400'};color:${isSel?'var(--accent)':'var(--text)'};white-space:nowrap">
+        ${p.nome}<br><span style="font-size:11px;color:var(--text3)">€${p.prezzoEur} / £${p.prezzoGbp}</span>
+      </button>`;
+    });
+    html += `</div>`;
+    // Se prodotto selezionato è in questa categoria, mostra taglie
+    if(txCassaProdSel && txCassaProdSel.cat===cat) {
+      html += renderTxTagliePicker();
+    }
+    html += `</div>`;
+  });
+  document.getElementById('tx-prodotti-grid').innerHTML = html;
+}
+
+function renderTxTagliePicker() {
+  const p = txCassaProdSel;
+  let html = `<div style="margin-top:10px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg)">
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Seleziona taglia per <strong>${p.nome}</strong>:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+  p.taglie.forEach(t => {
+    const stock = getTxStock(p.id, t);
+    const isSel = txCassaTaglia===t;
+    const stockClass = stock<=0?'#B02020':stock<=2?'#8A5C00':'#1A7A4A';
+    html += `<button onclick="txSelTaglia('${t}')" style="padding:6px 14px;border:2px solid ${isSel?'var(--accent)':'var(--border)'};border-radius:var(--radius);background:${isSel?'var(--accent-light)':'var(--surface)'};cursor:pointer;font-size:13px;font-weight:${isSel?'700':'400'};color:${isSel?'var(--accent)':'var(--text)'}${stock<=0?';opacity:0.5':''}" ${stock<=0?'disabled':''}>
+      ${t==='NO'?'Unica':'Taglia '+t}<br><span style="font-size:11px;color:${stockClass}">Stock: ${stock}</span>
+    </button>`;
+  });
+  html += `</div>`;
+  if(txCassaTaglia) {
+    html += `<div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+      <label style="font-size:13px;font-weight:500">Quantità:</label>
+      <input type="number" min="1" value="1" id="tx-qta-input" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;text-align:center">
+      <button class="btn btn-primary" onclick="txAggiungiScontrino()">+ Aggiungi</button>
+    </div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function txSelProdotto(id) {
+  txCassaProdSel = TOXICO_CATALOG.find(p=>p.id===id) || null;
+  txCassaTaglia = null;
+  renderTxProdotti();
+}
+window.txSelProdotto = txSelProdotto;
+
+function txSelTaglia(t) {
+  txCassaTaglia = t;
+  renderTxProdotti();
+}
+window.txSelTaglia = txSelTaglia;
+
+function txAggiungiScontrino() {
+  if(!txCassaProdSel || !txCassaTaglia) return;
+  const qta = parseInt(document.getElementById('tx-qta-input').value)||1;
+  const stock = getTxStock(txCassaProdSel.id, txCassaTaglia);
+  if(qta > stock) { showToast('Stock insufficiente!','red'); return; }
+  // Cerca se esiste già nel scontrino
+  const exist = txScontrino.find(r=>r.prodId===txCassaProdSel.id && r.taglia===txCassaTaglia);
+  if(exist) { exist.qta += qta; }
+  else {
+    txScontrino.push({
+      prodId: txCassaProdSel.id,
+      taglia: txCassaTaglia,
+      qta,
+      prezzoEur: txCassaProdSel.prezzoEur,
+      prezzoGbp: txCassaProdSel.prezzoGbp,
+      nome: txCassaProdSel.nome,
+    });
+  }
+  txCassaProdSel = null; txCassaTaglia = null;
+  renderTxProdotti();
+  renderTxScontrino();
+}
+window.txAggiungiScontrino = txAggiungiScontrino;
+
+function renderTxScontrino() {
+  const cont = document.getElementById('tx-scontrino-righe');
+  if(!txScontrino.length) {
+    cont.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Scontrino vuoto</div>';
+    document.getElementById('tx-sc-eur').textContent = '€ 0.00';
+    document.getElementById('tx-sc-gbp').textContent = '£ 0.00';
+    return;
+  }
+  let totEur=0, totGbp=0;
+  let html='';
+  txScontrino.forEach((r,i)=>{
+    const eur=r.qta*r.prezzoEur, gbp=r.qta*r.prezzoGbp;
+    totEur+=eur; totGbp+=gbp;
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <div>
+        <div style="font-weight:500">${r.nome}</div>
+        <div style="font-size:11px;color:var(--text3)">${r.taglia==='NO'?'':r.taglia+' · '}${r.qta} × €${r.prezzoEur}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="mono" style="font-weight:600">€${eur.toFixed(2)}</div>
+        <div style="font-size:11px;color:#7F1D1D" class="mono">£${gbp.toFixed(2)}</div>
+      </div>
+      <button onclick="txRimuoviRiga(${i})" style="margin-left:8px;color:var(--red);background:none;border:none;cursor:pointer;font-size:16px">×</button>
+    </div>`;
+  });
+  cont.innerHTML = html;
+  document.getElementById('tx-sc-eur').textContent = '€ '+totEur.toFixed(2);
+  document.getElementById('tx-sc-gbp').textContent = '£ '+totGbp.toFixed(2);
+}
+window.renderTxScontrino = renderTxScontrino;
+
+function txRimuoviRiga(i) {
+  txScontrino.splice(i,1);
+  renderTxScontrino();
+}
+window.txRimuoviRiga = txRimuoviRiga;
+
+function txSvuotaScontrino() {
+  txScontrino=[]; txCassaProdSel=null; txCassaTaglia=null;
+  renderTxProdotti(); renderTxScontrino();
+}
+window.txSvuotaScontrino = txSvuotaScontrino;
+
+async function txConfermaVendita() {
+  if(!txScontrino.length) { showToast('Scontrino vuoto','amber'); return; }
+  const evId = document.getElementById('tx-cassa-evento').value;
+  if(!evId) { showToast('Seleziona un evento','amber'); return; }
+  const pay = document.getElementById('tx-cassa-pay').value;
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  if(!db.toxico.vendite) db.toxico.vendite=[];
+  if(!db.toxico.nextVendId) db.toxico.nextVendId=1;
+  const now = new Date().toISOString();
+  txScontrino.forEach(r=>{
+    db.toxico.vendite.push({
+      id: db.toxico.nextVendId++,
+      eventoId: evId,
+      prodId: r.prodId,
+      nome: r.nome,
+      taglia: r.taglia,
+      qta: r.qta,
+      prezzoEur: r.prezzoEur,
+      prezzoGbp: r.prezzoGbp,
+      totEur: r.qta*r.prezzoEur,
+      totGbp: r.qta*r.prezzoGbp,
+      pagamento: pay,
+      ts: now,
+    });
+  });
+  await saveDB();
+  showToast('Vendita registrata!');
+  txScontrino=[]; txCassaProdSel=null; txCassaTaglia=null;
+  renderTxProdotti(); renderTxScontrino();
+}
+window.txConfermaVendita = txConfermaVendita;
+
+// ── STOCK ──
+function renderTxStock() {
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))];
+  let html='';
+  cats.forEach(cat=>{
+    const prods=TOXICO_CATALOG.filter(p=>p.cat===cat);
+    html+=`<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat}</div>`;
+    prods.forEach(p=>{
+      const taglie=p.taglie;
+      const hasTaglie=!(taglie.length===1&&taglie[0]==='NO');
+      html+=`<div style="margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
+        <div style="font-weight:500;font-size:13px;margin-bottom:6px">${p.nome} <span style="font-size:11px;color:var(--text3)">€${p.prezzoEur} / £${p.prezzoGbp}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      taglie.forEach(t=>{
+        const st=getTxStock(p.id,t);
+        const cls=st<=0?'color:#B02020':st<=2?'color:#8A5C00':'color:#1A7A4A';
+        html+=`<div style="text-align:center;min-width:50px">
+          <div style="font-size:10px;color:var(--text3);font-weight:600">${t==='NO'?'Unica':t}</div>
+          <div style="font-size:16px;font-weight:700;font-family:monospace;${cls}">${st}</div>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    });
+    html+=`</div>`;
+  });
+  document.getElementById('tx-stock-table').innerHTML = html;
+}
+
+function txResetStock() {
+  if(!confirm('Resetta tutto lo stock Toxico ai valori iniziali dell\'Excel?')) return;
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  db.toxico.stock={};
+  db.toxico.vendite=[];
+  saveDB();
+  renderTxStock();
+  showToast('Stock resettato');
+}
+window.txResetStock = txResetStock;
+
+// ── STORICO ──
+function renderTxStorico() {
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  const evId = document.getElementById('tx-st-evento').value;
+  const vendite = (db.toxico.vendite||[]).filter(v=>!evId||v.eventoId===evId);
+  
+  // Metrics
+  const totEur = vendite.reduce((a,v)=>a+v.totEur,0);
+  const totGbp = vendite.reduce((a,v)=>a+v.totGbp,0);
+  const pos = vendite.filter(v=>v.pagamento==='POS').reduce((a,v)=>a+v.totEur,0);
+  const cont = vendite.filter(v=>v.pagamento==='Contanti').reduce((a,v)=>a+v.totEur,0);
+  const nPezzi = vendite.reduce((a,v)=>a+v.qta,0);
+  document.getElementById('tx-storico-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Pezzi venduti</div><div class="metric-value">${nPezzi}</div></div>
+    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:16px;font-weight:600">€ ${pos.toFixed(2)}</span></div><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti</span><span style="font-size:16px;font-weight:600">€ ${cont.toFixed(2)}</span></div></div></div>
+    <div class="metric"><div class="metric-label">Dovuto a Toxico £</div><div class="metric-value" style="color:#7F1D1D">£ ${totGbp.toFixed(2)}</div></div>
+  `;
+
+  // Table
+  const sorted=[...vendite].sort((a,b)=>b.ts.localeCompare(a.ts));
+  const tbody=document.getElementById('tx-storico-tbody');
+  if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
+  tbody.innerHTML=sorted.map(v=>{
+    const ev=(db.eventi||[]).find(e=>e.id===v.eventoId);
+    const dt=new Date(v.ts);
+    return `<tr>
+      <td class="mono" style="font-size:12px;white-space:nowrap">${dt.toLocaleDateString('it-IT')} ${dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="font-weight:500">${ev?ev.nome:'—'}</td>
+      <td>${v.nome}</td>
+      <td>${v.taglia==='NO'?'—':v.taglia}</td>
+      <td class="mono">${v.qta}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:${v.pagamento==='POS'?'#DBEAFE':'#D1FAE5'};color:${v.pagamento==='POS'?'#1E40AF':'#065F46'}">${v.pagamento}</span></td>
+      <td class="mono" style="text-align:right;font-weight:600">€ ${v.totEur.toFixed(2)}</td>
+      <td class="mono" style="text-align:right;color:#7F1D1D;font-weight:600">£ ${v.totGbp.toFixed(2)}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="txElimVendita(${v.id})">Elimina</button></td>
+    </tr>`;
+  }).join('');
+}
+window.renderTxStorico = renderTxStorico;
+
+async function txElimVendita(id) {
+  if(!confirm('Eliminare questa vendita?')) return;
+  db.toxico.vendite = db.toxico.vendite.filter(v=>v.id!==id);
+  await saveDB();
+  renderTxStorico();
+  showToast('Vendita eliminata');
+}
+window.txElimVendita = txElimVendita;
+
+// ── PAGAMENTI ──
+function renderTxPagamenti() {
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  const totGbpVenduto = (db.toxico.vendite||[]).reduce((a,v)=>a+v.totGbp,0);
+  const totPagatoGbp  = (db.toxico.pagamenti||[]).reduce((a,p)=>a+(p.gbp||0),0);
+  const totPagatoEur  = (db.toxico.pagamenti||[]).reduce((a,p)=>a+(p.eur||0),0);
+  const saldoGbp      = totGbpVenduto - totPagatoGbp;
+  document.getElementById('tx-pag-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Totale venduto (dovuto) £</div><div class="metric-value" style="color:#7F1D1D">£ ${totGbpVenduto.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">Totale pagato £</div><div class="metric-value green">£ ${totPagatoGbp.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">Saldo da pagare £</div><div class="metric-value ${saldoGbp>0?'red':'green'}">£ ${saldoGbp.toFixed(2)}</div></div>
+  `;
+  const pag=[...( db.toxico.pagamenti||[])].sort((a,b)=>b.data.localeCompare(a.data));
+  const tbody=document.getElementById('tx-pag-tbody');
+  if(!pag.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Nessun pagamento</td></tr>`; return; }
+  tbody.innerHTML=pag.map(p=>`<tr>
+    <td>${fmtDate(p.data)}</td>
+    <td>${p.note||'—'}</td>
+    <td class="mono" style="text-align:right;color:#7F1D1D">£ ${(p.gbp||0).toFixed(2)}</td>
+    <td class="mono" style="text-align:right">€ ${(p.eur||0).toFixed(2)}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="txElimPagamento(${p.id})">Elimina</button></td>
+  </tr>`).join('');
+}
+
+async function txAggiungiPagamento() {
+  const data=document.getElementById('tx-pag-data').value;
+  const gbp=parseFloat(document.getElementById('tx-pag-gbp').value)||0;
+  const eur=parseFloat(document.getElementById('tx-pag-eur').value)||0;
+  const note=document.getElementById('tx-pag-note').value.trim();
+  if(!data||gbp<=0){ showToast('Inserisci data e importo £','amber'); return; }
+  if(!db.toxico.pagamenti) db.toxico.pagamenti=[];
+  const nextId=(db.toxico.pagamenti.reduce((a,p)=>Math.max(a,p.id||0),0))+1;
+  db.toxico.pagamenti.push({id:nextId,data,gbp,eur,note});
+  await saveDB();
+  document.getElementById('tx-pag-data').value='';
+  document.getElementById('tx-pag-gbp').value='';
+  document.getElementById('tx-pag-eur').value='';
+  document.getElementById('tx-pag-note').value='';
+  renderTxPagamenti();
+  showToast('Pagamento aggiunto');
+}
+window.txAggiungiPagamento = txAggiungiPagamento;
+
+async function txElimPagamento(id) {
+  if(!confirm('Eliminare questo pagamento?')) return;
+  db.toxico.pagamenti=db.toxico.pagamenti.filter(p=>p.id!==id);
+  await saveDB();
+  renderTxPagamenti();
+  showToast('Pagamento eliminato');
+}
+window.txElimPagamento = txElimPagamento;
+
+// ── EMAIL ──
+function renderTxEmailOpts() {
+  const evOpts=[...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
+    .map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+  document.getElementById('tx-email-evento').innerHTML='<option value="">Tutti gli eventi</option>'+evOpts;
+}
+
+function generaTxEmail() {
+  if(!db.toxico) { showToast('Nessun dato','amber'); return; }
+  const evId=document.getElementById('tx-email-evento').value;
+  const firma=document.getElementById('tx-email-firma').value||'Carlotta';
+  const extra=document.getElementById('tx-email-extra').value.trim();
+  const vendite=(db.toxico.vendite||[]).filter(v=>!evId||v.eventoId===evId);
+  if(!vendite.length){ showToast('Nessuna vendita da includere','amber'); return; }
+
+  // Raggruppa per categoria (cat => {qta, totGbp, gbpUnit})
+  const cats={};
+  vendite.forEach(v=>{
+    const prod=TOXICO_CATALOG.find(p=>p.id===v.prodId);
+    const cat=prod?prod.cat:'Altro';
+    if(!cats[cat]) cats[cat]={qta:0,totGbp:0,gbpUnit:v.prezzoGbp};
+    cats[cat].qta+=v.qta;
+    cats[cat].totGbp+=v.totGbp;
+  });
+  const grandTotal=vendite.reduce((a,v)=>a+v.totGbp,0);
+
+  // Pagamenti
+  const pag=(db.toxico.pagamenti||[]).sort((a,b)=>a.data.localeCompare(b.data));
+  const totPagatoGbp=pag.reduce((a,p)=>a+(p.gbp||0),0);
+  const saldoGbp=grandTotal-totPagatoGbp;
+
+  // Nome eventi
+  let evNomi='';
+  if(evId) {
+    const ev=(db.eventi||[]).find(e=>e.id===evId);
+    evNomi=ev?ev.nome:'';
+  } else {
+    const ids=[...new Set(vendite.map(v=>v.eventoId))];
+    const nomi=ids.map(id=>(db.eventi||[]).find(e=>e.id===id)?.nome).filter(Boolean);
+    evNomi=nomi.join(' and ');
+  }
+
+  // Categoria → label email (stile Carlotta)
+  const catLabel={
+    'T-Shirt':'T-shirts','Hoodie':'Ziphoods','Mesh Shorts':'Mesh Shorts',
+    'Mesh Tank':'Mesh Tank','New Mesh Tank':'New Mesh Tank','Bandana':'Bandana',
+    'Trucker':'Trucker hats','Retro Sweat Shorts':'Retro Sweat Shorts',
+    'Socks':'Socks','Patches':'Patches','Stickers':'Stickers',
+  };
+
+  let righe='';
+  Object.entries(cats).forEach(([cat,d])=>{
+    const label=catLabel[cat]||cat;
+    righe+=`${label} = ${d.qta} x ${d.gbpUnit.toFixed(2)} GBP = ${d.totGbp.toFixed(2)} GBP\n`;
+  });
+  righe+=`GRAND TOTAL = ${grandTotal.toFixed(2)} GBP`;
+
+  let pagSection='';
+  if(pag.length){
+    pagSection='\n\nPayments made so far:\n';
+    pag.forEach(p=>{ pagSection+=`${fmtDate(p.data)} — £${p.gbp.toFixed(2)}${p.note?' ('+p.note+')':''}\n`; });
+    pagSection+=`\nOutstanding balance: £ ${saldoGbp.toFixed(2)}`;
+  }
+
+  const email=`Dear Gez,\nhow are you doing? Hope all good!\n\n${extra?extra+'\n\n':''}This is the total resume of the sales at ${evNomi}:\n${righe}${pagSection}\n\n${pag.length?'Please find, in attachment, copy of our bank transfer we just did.\n':''}Thanks a lot and ciao,\n${firma}`;
+
+  document.getElementById('tx-email-output').value=email;
+}
+window.generaTxEmail = generaTxEmail;
+
+function copiaTxEmail() {
+  const ta=document.getElementById('tx-email-output');
+  ta.select();
+  document.execCommand('copy');
+  showToast('Email copiata!');
+}
+window.copiaTxEmail = copiaTxEmail;
+
 </script>
 
 <!-- MODAL BILANCIO EVENTO -->
