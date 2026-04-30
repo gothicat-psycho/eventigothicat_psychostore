@@ -2805,7 +2805,7 @@ function renderOrdiniLista() {
     const totEur = o._tipo==='ADRIANO' ? totRmb : (o._tipo==='OD'||o._tipo==='INNOCENT') ? (o.gbpEur>0?totRmb*o.gbpEur:0) : (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
     const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto'}[o.stato||'bozza'];
     return `<tr>
-      <td class="mono" style="font-size:12px">${o.data||'-'}</td>
+      <td class="mono" style="font-size:12px">${fmtDate(o.data)}</td>
       <td style="font-weight:600">${o.riferimento||'-'} <span class="badge" style="font-size:10px;background:${o._tipo==='DF'?'#EDE9FE':o._tipo==='PR'?'#FEF3C7':o._tipo==='OD'?'#D1FAE5':o._tipo==='INNOCENT'?'#DBEAFE':o._tipo==='ADRIANO'?'#FEF3C7':'#FCE7F3'};color:${o._tipo==='DF'?'#5B21B6':o._tipo==='PR'?'#92400E':o._tipo==='OD'?'#065F46':o._tipo==='INNOCENT'?'#1E40AF':o._tipo==='ADRIANO'?'#92400E':'#9D174D'}">${o._tipo==='DF'?'DEVIL FASHION':o._tipo==='PR'?'PUNK RAVE':o._tipo==='OD'?'ONE DIRECTION':o._tipo==='INNOCENT'?'INNOCENT':o._tipo==='ADRIANO'?'ADRIANO':'DARK IN LOVE'}</span></td>
       <td class="mono">${nArt} articoli</td>
       <td class="mono">${o._tipo==='OD' ? '—' : Math.round(totRmb).toLocaleString('it')+' ¥'}</td>
