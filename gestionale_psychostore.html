@@ -529,12 +529,12 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
-              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+              <div class="card" id="doc-modifica-section-DIL" style="margin-top:12px;display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                   <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
-                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn-DIL">+ Aggiungi</button>
                 </div>
-                <div id="doc-modifica-list"></div>
+                <div id="doc-modifica-list-DIL"></div>
               </div>
 
               <!-- TABELLA BARCODE -->
@@ -659,12 +659,12 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
-              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+              <div class="card" id="doc-modifica-section-DF" style="margin-top:12px;display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                   <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
-                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn-DF">+ Aggiungi</button>
                 </div>
-                <div id="doc-modifica-list"></div>
+                <div id="doc-modifica-list-DF"></div>
               </div>
 
               <div class="card" style="margin-top:12px">
@@ -787,12 +787,12 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
-              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+              <div class="card" id="doc-modifica-section-PR" style="margin-top:12px;display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                   <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
-                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn-PR">+ Aggiungi</button>
                 </div>
-                <div id="doc-modifica-list"></div>
+                <div id="doc-modifica-list-PR"></div>
               </div>
 
               <div class="card" style="margin-top:12px">
@@ -915,12 +915,12 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
-              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+              <div class="card" id="doc-modifica-section-OD" style="margin-top:12px;display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                   <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
-                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn-OD">+ Aggiungi</button>
                 </div>
-                <div id="doc-modifica-list"></div>
+                <div id="doc-modifica-list-OD"></div>
               </div>
 
               <div class="card" style="margin-top:12px">
@@ -1034,12 +1034,12 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
-              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+              <div class="card" id="doc-modifica-section-INNOCENT" style="margin-top:12px;display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                   <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
-                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn-INNOCENT">+ Aggiungi</button>
                 </div>
-                <div id="doc-modifica-list"></div>
+                <div id="doc-modifica-list-INNOCENT"></div>
               </div>
 
               <div class="card" style="margin-top:12px">
@@ -1117,12 +1117,12 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
-              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+              <div class="card" id="doc-modifica-section-ADRIANO" style="margin-top:12px;display:none">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                   <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
-                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn-ADRIANO">+ Aggiungi</button>
                 </div>
-                <div id="doc-modifica-list"></div>
+                <div id="doc-modifica-list-ADRIANO"></div>
               </div>
               <div class="card" style="margin-top:12px">
                 <div class="card-title" style="color:#92400E">🔖 Associazione barcode catalogo</div>
@@ -6364,11 +6364,10 @@ showSection('dashboard', document.querySelector('.nav-item'));
 })();
 
 function showDocModifica(tipo, ordineId) {
-  const sec = document.getElementById('doc-modifica-section');
+  const sec = document.getElementById(`doc-modifica-section-${tipo}`);
   if(!sec) return;
   sec.style.display = '';
-  // Popola la lista
-  const listEl = document.getElementById('doc-modifica-list');
+  const listEl = document.getElementById(`doc-modifica-list-${tipo}`);
   const docs = getDocOrdine(tipo, ordineId);
   if(!docs.length) {
     listEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nessun documento allegato</div>';
@@ -6383,12 +6382,8 @@ function showDocModifica(tipo, ordineId) {
         <button class="btn btn-sm btn-danger" onclick="docEliminaModifica('${tipo}',${ordineId},${i})">✕</button>
       </div>`).join('');
   }
-  // Bottone aggiungi
-  const addBtn = document.getElementById('doc-modifica-add-btn');
-  if(addBtn) {
-    addBtn.onclick = () => docApriForm(tipo, ordineId);
-  }
-  // Dopo salvataggio da docSalva, aggiorna anche questa lista
+  const addBtn = document.getElementById(`doc-modifica-add-btn-${tipo}`);
+  if(addBtn) addBtn.onclick = () => docApriForm(tipo, ordineId);
   window._docModificaTipo = tipo;
   window._docModificaId = ordineId;
 }
