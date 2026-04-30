@@ -262,15 +262,7 @@
 
       <!-- DASHBOARD -->
       <div class="section active" id="sec-dashboard">
-        <!-- FIX TEMPORANEO -->
-        <div id="fix-prova-banner" style="background:#FEF3C7;border:2px solid #F59E0B;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
-          <div>
-            <div style="font-weight:700;color:#92400E">⚠️ Correzione richiesta: carico stock errato</div>
-            <div style="font-size:13px;color:#78350F;margin-top:2px">L'ordine ADRIANO_GEN2026 (PROVA) è stato caricato per errore. Clicca per annullare il carico e ripristinare lo stock corretto.</div>
-          </div>
-          <button class="btn btn-primary" style="white-space:nowrap;background:#D97706;border-color:#D97706" onclick="fixAnnullaCaricoPROVA()">🔧 Annulla carico errato</button>
-        </div>
-        <!-- FINE FIX -->
+
         <div class="grid4" id="dash-metrics" style="margin-bottom:16px"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="card">
@@ -6398,80 +6390,6 @@ async function docEliminaModifica(tipo, ordineId, idx) {
   showToast('Documento eliminato');
 }
 window.docEliminaModifica = docEliminaModifica;
-
-async function fixAnnullaCaricoPROVA() {
-  if(!confirm('Annullare il carico in stock di ADRIANO_GEN2026 (PROVA)?\nVerranno creati movimenti di scarico correttivi per tutti i 209 pezzi e l\'ordine tornerà a "confermato".')) return;
-
-  const scarichi = [
-    // DEATH
-    {bc:'DT.DEATH.S',  qty:3},  {bc:'DT.DEATH.M',  qty:6},  {bc:'DT.DEATH.L',  qty:12},
-    {bc:'DT.DEATH.XL', qty:6},  {bc:'DT.DEATH.XXL', qty:2},
-    // DEVIL
-    {bc:'DT.THEDEVIL.S', qty:3}, {bc:'DT.THEDEVIL.M', qty:6}, {bc:'DT.THEDEVIL.L', qty:12},
-    {bc:'DT.THEDEVIL.XL', qty:6}, {bc:'DT.THEDEVIL.XXL', qty:3},
-    // FAMILIAR
-    {bc:'DT.THEFAMILIAR.S', qty:10}, {bc:'DT.THEFAMILIAR.M', qty:10}, {bc:'DT.THEFAMILIAR.L', qty:10},
-    // FOOL
-    {bc:'DT.THEFOOL.S', qty:3}, {bc:'DT.THEFOOL.M', qty:6}, {bc:'DT.THEFOOL.L', qty:12},
-    {bc:'DT.THEFOOL.XL', qty:6}, {bc:'DT.THEFOOL.XXL', qty:3},
-    // MAGICIAN
-    {bc:'DT.THEMAGICIAN.S', qty:3}, {bc:'DT.THEMAGICIAN.M', qty:6}, {bc:'DT.THEMAGICIAN.L', qty:12},
-    {bc:'DT.THEMAGICIAN.XL', qty:6}, {bc:'DT.THEMAGICIAN.XXL', qty:3},
-    // MOON
-    {bc:'DT.THEMOON.S', qty:5}, {bc:'DT.THEMOON.M', qty:8}, {bc:'DT.THEMOON.L', qty:12},
-    {bc:'DT.THEMOON.XL', qty:2}, {bc:'DT.THEMOON.XXL', qty:3},
-    // VAMPYRE
-    {bc:'DT.THEVAMPYRE.S', qty:7}, {bc:'DT.THEVAMPYRE.M', qty:10}, {bc:'DT.THEVAMPYRE.L', qty:8},
-    {bc:'DT.THEVAMPYRE.XL', qty:2}, {bc:'DT.THEVAMPYRE.XXL', qty:3},
-  ];
-
-  const oggi = new Date().toISOString().split('T')[0];
-  let trovati = 0, nonTrovati = [];
-
-  scarichi.forEach(({bc, qty}) => {
-    // Prova il barcode esatto, poi varianti con punto o senza
-    const variants = [bc, bc.replace(/\./g,'.').toUpperCase(),
-      bc.replace('DT.DEATH','DT.DEATH').replace('DT.THE','DT.THE')];
-    // Cerca nel catalogo
-    const prod = (db.prodotti||[]).find(p =>
-      p.barcode === bc ||
-      p.barcode === bc.replace(/\./g,'') ||
-      p.barcode.toUpperCase() === bc.toUpperCase()
-    );
-    if(prod) {
-      db.movimenti.push({
-        id: db.nextMovId++,
-        barcode: prod.barcode,
-        qty,
-        tipo: 'scarico',
-        data: oggi,
-        note: 'CORREZIONE: annullo carico errato ADRIANO_GEN2026 (PROVA)'
-      });
-      trovati++;
-    } else {
-      nonTrovati.push(bc);
-    }
-  });
-
-  // Riporta ordine a "confermato"
-  const ordine = (db.ordiniADRIANO||[]).find(o=>o.riferimento==='ADRIANO_GEN2026 (PROVA)' || (o.riferimento||'').includes('GEN2026'));
-  if(ordine) ordine.stato = 'confermato';
-
-  await saveDB();
-  renderStock(); renderStockMetrics(); renderOrdiniLista();
-  const banner = document.getElementById('fix-prova-banner');
-  if(banner) banner.remove();
-
-  let msg = `✓ ${trovati} varianti scaricate correttamente.`;
-  if(nonTrovati.length) msg += `\n⚠ Barcode non trovati (verifica manualmente): ${nonTrovati.join(', ')}`;
-  if(ordine) msg += '\n✓ Ordine riportato a "Confermato".';
-  alert(msg);
-  showToast('Correzione applicata!');
-}
-window.fixAnnullaCaricoPROVA = fixAnnullaCaricoPROVA;
-// ── FINE FIX ──
-
-
 
 function getDocKey(tipo, ordineId) { return `doc_${tipo}_${ordineId}`; }
 
