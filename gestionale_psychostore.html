@@ -262,6 +262,15 @@
 
       <!-- DASHBOARD -->
       <div class="section active" id="sec-dashboard">
+        <!-- FIX TEMPORANEO -->
+        <div id="fix-prova-banner" style="background:#FEF3C7;border:2px solid #F59E0B;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-weight:700;color:#92400E">⚠️ Correzione richiesta: carico stock errato</div>
+            <div style="font-size:13px;color:#78350F;margin-top:2px">L'ordine ADRIANO_GEN2026 (PROVA) è stato caricato per errore. Clicca per annullare il carico e ripristinare lo stock corretto.</div>
+          </div>
+          <button class="btn btn-primary" style="white-space:nowrap;background:#D97706;border-color:#D97706" onclick="fixAnnullaCaricoPROVA()">🔧 Annulla carico errato</button>
+        </div>
+        <!-- FINE FIX -->
         <div class="grid4" id="dash-metrics" style="margin-bottom:16px"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="card">
@@ -1202,6 +1211,12 @@
             <div class="card" style="flex:1;overflow-y:auto;max-height:calc(100vh - 280px)">
               <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:10px">Scontrino</div>
               <div id="scontrino-items"><p style="color:var(--text3);font-size:13px">Nessun articolo</p></div>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--border)">
+                <label style="font-size:12px;color:var(--text2);white-space:nowrap">Sconto %</label>
+                <input type="number" id="sconto-perc" min="0" max="100" step="1" value="0" oninput="aggiornaSconto()" style="width:65px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;text-align:center;font-family:monospace">
+                <span style="font-size:12px;color:var(--text3)">Sconto €</span>
+                <input type="number" id="sconto-eur" min="0" step="0.01" value="0" oninput="aggiornaSconto()" style="width:75px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;text-align:center;font-family:monospace">
+              </div>
               <div class="scontrino-totale">
                 <span class="label">Totale</span>
                 <span class="value" id="scontrino-totale">€ 0.00</span>
@@ -1329,13 +1344,6 @@
               <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                   <div>
-                    <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Pagamento</label>
-                    <select id="tx-cassa-pay" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
-                      <option value="POS">💳 POS</option>
-                      <option value="Contanti">💵 Contanti</option>
-                    </select>
-                  </div>
-                  <div>
                     <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Cambio £/€</label>
                     <input type="number" step="0.01" id="tx-cambio" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:90px" oninput="saveTxCambio()" placeholder="1.18">
                   </div>
@@ -1355,6 +1363,13 @@
                   <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2)">
                     <span>Dovuto a Toxico £</span><span id="tx-sc-gbp" class="mono" style="font-weight:700;color:#7F1D1D">£ 0.00</span>
                   </div>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                  <label style="font-size:12px;color:var(--text2);white-space:nowrap">Pagamento:</label>
+                  <select id="tx-cassa-pay" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                    <option value="POS">💳 POS</option>
+                    <option value="Contanti">💵 Contanti</option>
+                  </select>
                 </div>
                 <div style="margin-bottom:10px">
                   <label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Note</label>
@@ -1492,6 +1507,7 @@ let db = {
   nextMovId: 1,
   nextVendId: 1,
   nextEvId: 1,
+  documentiDoganali: {},
   toxico: {
     stock: {},
     vendite: [],
@@ -2077,6 +2093,11 @@ function getPrezzoBarcode(barcode) {
 
 let barcodeTimer = null;
 function onBarcodeInput(val) {
+  if(!cassaEventoId) {
+    showToast('⚠ Nessun evento attivo — attiva un evento dalla sezione Eventi','red');
+    document.getElementById('barcode-input').value='';
+    return;
+  }
   clearTimeout(barcodeTimer);
   if(val.length>=4) {
     const p = getProdotto(val.trim());
@@ -2141,6 +2162,25 @@ function aggiungiAlScontrino(p) {
 }
 window.aggiungiAlScontrino = aggiungiAlScontrino;
 
+function aggiornaSconto() {
+  const subtot = scontrino.reduce((a,i)=>a+i.prezzo, 0);
+  let perc = parseFloat(document.getElementById('sconto-perc').value)||0;
+  let eur  = parseFloat(document.getElementById('sconto-eur').value)||0;
+  // L'ultimo campo modificato ha priorità — calcola l'altro
+  // Usiamo i valori così come sono, entrambi applicati separatamente
+  const sconto = Math.min(subtot, (subtot * perc / 100) + eur);
+  const tot = Math.max(0, subtot - sconto);
+  document.getElementById('scontrino-totale').textContent = fmtValuta(tot);
+}
+window.aggiornaSconto = aggiornaSconto;
+
+function getScontoTot() {
+  const subtot = scontrino.reduce((a,i)=>a+i.prezzo, 0);
+  const perc = parseFloat(document.getElementById('sconto-perc').value)||0;
+  const eur  = parseFloat(document.getElementById('sconto-eur').value)||0;
+  return Math.min(subtot, (subtot * perc / 100) + eur);
+}
+
 function renderScontrino() {
   const el = document.getElementById('scontrino-items');
   if(!scontrino.length) {
@@ -2164,7 +2204,7 @@ function renderScontrino() {
       <button onclick="rimuoviItem(${it.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:4px">✕</button>
     </div>`).join('');
   const tot = scontrino.reduce((a,i)=>a+i.prezzo,0);
-  document.getElementById('scontrino-totale').textContent=fmtValuta(tot);
+  aggiornaSconto();
   document.getElementById('btn-concludi').disabled=false;
 }
 
@@ -2194,9 +2234,13 @@ window.svuotaScontrino = svuotaScontrino;
 
 async function concludiVendita() {
   if(!scontrino.length) return;
+  if(!cassaEventoId) { showToast('⚠ Nessun evento attivo — attiva un evento prima di vendere','red'); return; }
   const pagamento = document.getElementById('pagamento-tipo').value;
   const nota = document.getElementById('cassa-note').value.trim();
-  const totale = scontrino.reduce((a,i)=>a+i.prezzo,0);
+  const sconto = getScontoTot();
+  const scontoPerc = parseFloat(document.getElementById('sconto-perc').value)||0;
+  const subtotale = scontrino.reduce((a,i)=>a+i.prezzo,0);
+  const totale = Math.max(0, subtotale - sconto);
   const now = new Date();
   if(!db.vendite) db.vendite=[];
   if(!db.nextVendId) db.nextVendId=1;
@@ -2207,6 +2251,8 @@ async function concludiVendita() {
     valuta: cassaValuta,
     pagamento,
     totale: parseFloat(totale.toFixed(2)),
+    sconto: parseFloat(sconto.toFixed(2)),
+    scontoPerc,
     nota,
     items: scontrino.map(it=>({ barcode:it.barcode, descrizione:it.descrizione, qty:it.qty, prezzoUnit:it.prezzoUnit, prezzo:it.prezzo })),
   });
@@ -2217,6 +2263,8 @@ async function concludiVendita() {
   await saveDB();
   svuotaScontrino();
   document.getElementById('cassa-note').value='';
+  document.getElementById('sconto-perc').value='0';
+  document.getElementById('sconto-eur').value='0';
   showToast('Vendita registrata ✓');
   document.getElementById('barcode-input').focus();
 }
@@ -3235,7 +3283,15 @@ function apriDettaglioOrdine(id) {
           ` : `<div style="font-size:13px;color:var(--text3)">Da concordare col fornitore</div>`}
         </div>
       </div>
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)">📎 Documenti doganali</div>
+          <button class="btn btn-sm btn-primary" onclick="docApriForm('DIL',${o.id})">+ Aggiungi</button>
+        </div>
+        <div id="doc-list-DIL-${o.id}"></div>
+      </div>
     </div>`;
+  renderDocList('DIL', o.id);
 }
 window.apriDettaglioOrdine = apriDettaglioOrdine;
 
@@ -3249,6 +3305,7 @@ async function caricaAMagazzino(ordineId) {
   const o = (db.ordiniDIL||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto') { showToast('Ordine già caricato in stock','amber'); return; }
+  if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
 
   const taglieCampi = [
     {t:'xs', bc:'bcXs'}, {t:'s', bc:'bcS'}, {t:'m', bc:'bcM'}, {t:'l', bc:'bcL'},
@@ -3889,7 +3946,16 @@ function apriDettaglioOrdineDF(id) {
         <div class="costo-row"><span>Commissioni</span><span class="mono">${o.commissioni?fmt(o.commissioni):'—'}</span></div>
         <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span class="mono">${rmbEur?fmt(totCostiMerce):'—'}</span></div>
       </div>
+
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)">📎 Documenti doganali</div>
+          <button class="btn btn-sm btn-primary" onclick="docApriForm('DF',${o.id})">+ Aggiungi</button>
+        </div>
+        <div id="doc-list-DF-${o.id}"></div>
+      </div>
     </div>`;
+  renderDocList('DF', o.id);
 }
 window.apriDettaglioOrdineDF = apriDettaglioOrdineDF;
 
@@ -3926,6 +3992,7 @@ async function caricaAMagazzinoDF(ordineId) {
   const o = (db.ordiniDF||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto') { showToast('Ordine già caricato in stock','amber'); return; }
+  if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const taglieCampi = [
     {t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},
     {t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}
@@ -4353,7 +4420,16 @@ function apriDettaglioOrdinePR(id) {
         <div class="costo-row"><span>Commissioni</span><span class="mono">${o.commissioni?fmt(o.commissioni):'—'}</span></div>
         <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span class="mono">${rmbEur?fmt(totCostiMerce):'—'}</span></div>
       </div>
+
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)">📎 Documenti doganali</div>
+          <button class="btn btn-sm btn-primary" onclick="docApriForm('PR',${o.id})">+ Aggiungi</button>
+        </div>
+        <div id="doc-list-PR-${o.id}"></div>
+      </div>
     </div>`;
+  renderDocList('PR', o.id);
 }
 window.apriDettaglioOrdinePR = apriDettaglioOrdinePR;
 
@@ -4367,6 +4443,7 @@ async function caricaAMazzinoPR(ordineId) {
   const o=(db.ordiniPR||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
+  if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const taglieCampi=[{t:'acc',bc:'bcAcc'},{t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},{t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}];
   let caricati=0,nonTrovati=[];
   (o.articoli||[]).forEach(r=>{
@@ -4890,7 +4967,16 @@ function apriDettaglioOrdineOD(id) {
         <div class="costo-row"><span>Diritti</span><span class="mono">${fmt(diritti)}</span></div>
         <div class="costo-row totale"><span>Totale importazione</span><span class="mono">${fmt(totImportazione)}</span></div>
       </div>`:''}
+
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)">📎 Documenti doganali</div>
+          <button class="btn btn-sm btn-primary" onclick="docApriForm('OD',${o.id})">+ Aggiungi</button>
+        </div>
+        <div id="doc-list-OD-${o.id}"></div>
+      </div>
     </div>`;
+  renderDocList('OD', o.id);
 }
 window.apriDettaglioOrdineOD = apriDettaglioOrdineOD;
 
@@ -4904,6 +4990,7 @@ async function caricaAMagazzinoOD(ordineId) {
   const o=(db.ordiniOD||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
+  if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const valuta=o.valuta||'GBP', gbpEur=o.gbpEur||0;
   const toEur = v => valuta==='EUR'?v:(gbpEur>0?v*gbpEur:0);
   const totPezzi=(o.articoli||[]).reduce((a,r)=>a+r.qty,0);
@@ -5366,7 +5453,16 @@ function apriDettaglioOrdineINNOCENT(id) {
         <div class="costo-row"><span>Diritti</span><span class="mono">${fmt(diritti)}</span></div>
         <div class="costo-row totale"><span>Totale importazione</span><span class="mono">${fmt(totImportazione)}</span></div>
       </div>`:''}
+
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)">📎 Documenti doganali</div>
+          <button class="btn btn-sm btn-primary" onclick="docApriForm('INNOCENT',${o.id})">+ Aggiungi</button>
+        </div>
+        <div id="doc-list-INNOCENT-${o.id}"></div>
+      </div>
     </div>`;
+  renderDocList('INNOCENT', o.id);
 }
 window.apriDettaglioOrdineINNOCENT = apriDettaglioOrdineINNOCENT;
 
@@ -5380,6 +5476,7 @@ async function caricaAMagazzinoINNOCENT(ordineId) {
   const o=(db.ordiniINNOCENT||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
+  if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const gbpEur=o.gbpEur||0;
   const toEur = v => gbpEur>0?v*gbpEur:0;
   const isUK=o.magazzino==='uk';
@@ -5961,7 +6058,16 @@ function apriDettaglioOrdineADRIANO(id) {
           </tr>`;
         }).join('')}</tbody>
       </table></div>
+
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)">📎 Documenti doganali</div>
+          <button class="btn btn-sm btn-primary" onclick="docApriForm('ADRIANO',${o.id})">+ Aggiungi</button>
+        </div>
+        <div id="doc-list-ADRIANO-${o.id}"></div>
+      </div>
     </div>`;
+  renderDocList('ADRIANO', o.id);
 }
 window.apriDettaglioOrdineADRIANO = apriDettaglioOrdineADRIANO;
 
@@ -5975,6 +6081,7 @@ async function caricaAMagazzinoADRIANO(ordineId) {
   const o=(db.ordiniADRIANO||[]).find(x=>x.id===ordineId);
   if(!o) return;
   if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
+  if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const totPezzi=(o.articoli||[]).reduce((a,r)=>a+r.qty,0);
   const trasPz=totPezzi>0?(o.trasporto||0)/totPezzi:0;
   let caricati=0, nonTrovati=[];
@@ -6208,9 +6315,180 @@ renderDashboard();
 showSection('dashboard', document.querySelector('.nav-item'));
 })();
 
-// ══════════════════════════════════════════
-// TOXICO
-// ══════════════════════════════════════════
+// ── FIX TEMPORANEO: annulla carico ADRIANO_GEN2026 (PROVA) ──
+async function fixAnnullaCaricoPROVA() {
+  if(!confirm('Annullare il carico in stock di ADRIANO_GEN2026 (PROVA)?\nVerranno creati movimenti di scarico correttivi per tutti i 209 pezzi e l\'ordine tornerà a "confermato".')) return;
+
+  const scarichi = [
+    // DEATH
+    {bc:'DT.DEATH.S',  qty:3},  {bc:'DT.DEATH.M',  qty:6},  {bc:'DT.DEATH.L',  qty:12},
+    {bc:'DT.DEATH.XL', qty:6},  {bc:'DT.DEATH.XXL', qty:2},
+    // DEVIL
+    {bc:'DT.THEDEVIL.S', qty:3}, {bc:'DT.THEDEVIL.M', qty:6}, {bc:'DT.THEDEVIL.L', qty:12},
+    {bc:'DT.THEDEVIL.XL', qty:6}, {bc:'DT.THEDEVIL.XXL', qty:3},
+    // FAMILIAR
+    {bc:'DT.THEFAMILIAR.S', qty:10}, {bc:'DT.THEFAMILIAR.M', qty:10}, {bc:'DT.THEFAMILIAR.L', qty:10},
+    // FOOL
+    {bc:'DT.THEFOOL.S', qty:3}, {bc:'DT.THEFOOL.M', qty:6}, {bc:'DT.THEFOOL.L', qty:12},
+    {bc:'DT.THEFOOL.XL', qty:6}, {bc:'DT.THEFOOL.XXL', qty:3},
+    // MAGICIAN
+    {bc:'DT.THEMAGICIAN.S', qty:3}, {bc:'DT.THEMAGICIAN.M', qty:6}, {bc:'DT.THEMAGICIAN.L', qty:12},
+    {bc:'DT.THEMAGICIAN.XL', qty:6}, {bc:'DT.THEMAGICIAN.XXL', qty:3},
+    // MOON
+    {bc:'DT.THEMOON.S', qty:5}, {bc:'DT.THEMOON.M', qty:8}, {bc:'DT.THEMOON.L', qty:12},
+    {bc:'DT.THEMOON.XL', qty:2}, {bc:'DT.THEMOON.XXL', qty:3},
+    // VAMPYRE
+    {bc:'DT.THEVAMPYRE.S', qty:7}, {bc:'DT.THEVAMPYRE.M', qty:10}, {bc:'DT.THEVAMPYRE.L', qty:8},
+    {bc:'DT.THEVAMPYRE.XL', qty:2}, {bc:'DT.THEVAMPYRE.XXL', qty:3},
+  ];
+
+  const oggi = new Date().toISOString().split('T')[0];
+  let trovati = 0, nonTrovati = [];
+
+  scarichi.forEach(({bc, qty}) => {
+    // Prova il barcode esatto, poi varianti con punto o senza
+    const variants = [bc, bc.replace(/\./g,'.').toUpperCase(),
+      bc.replace('DT.DEATH','DT.DEATH').replace('DT.THE','DT.THE')];
+    // Cerca nel catalogo
+    const prod = (db.prodotti||[]).find(p =>
+      p.barcode === bc ||
+      p.barcode === bc.replace(/\./g,'') ||
+      p.barcode.toUpperCase() === bc.toUpperCase()
+    );
+    if(prod) {
+      db.movimenti.push({
+        id: db.nextMovId++,
+        barcode: prod.barcode,
+        qty,
+        tipo: 'scarico',
+        data: oggi,
+        note: 'CORREZIONE: annullo carico errato ADRIANO_GEN2026 (PROVA)'
+      });
+      trovati++;
+    } else {
+      nonTrovati.push(bc);
+    }
+  });
+
+  // Riporta ordine a "confermato"
+  const ordine = (db.ordiniADRIANO||[]).find(o=>o.riferimento==='ADRIANO_GEN2026 (PROVA)' || (o.riferimento||'').includes('GEN2026'));
+  if(ordine) ordine.stato = 'confermato';
+
+  await saveDB();
+  renderStock(); renderStockMetrics(); renderOrdiniLista();
+  const banner = document.getElementById('fix-prova-banner');
+  if(banner) banner.remove();
+
+  let msg = `✓ ${trovati} varianti scaricate correttamente.`;
+  if(nonTrovati.length) msg += `\n⚠ Barcode non trovati (verifica manualmente): ${nonTrovati.join(', ')}`;
+  if(ordine) msg += '\n✓ Ordine riportato a "Confermato".';
+  alert(msg);
+  showToast('Correzione applicata!');
+}
+window.fixAnnullaCaricoPROVA = fixAnnullaCaricoPROVA;
+// ── FINE FIX ──
+
+
+
+function getDocKey(tipo, ordineId) { return `doc_${tipo}_${ordineId}`; }
+
+function getDocOrdine(tipo, ordineId) {
+  if(!db.documentiDoganali) db.documentiDoganali = {};
+  const k = getDocKey(tipo, ordineId);
+  if(!db.documentiDoganali[k]) db.documentiDoganali[k] = [];
+  return db.documentiDoganali[k];
+}
+
+function renderDocList(tipo, ordineId) {
+  const el = document.getElementById(`doc-list-${tipo}-${ordineId}`);
+  if(!el) return;
+  const docs = getDocOrdine(tipo, ordineId);
+  if(!docs.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nessun documento allegato</div>';
+    return;
+  }
+  el.innerHTML = docs.map((d,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${d.nome}</div>
+        <div style="font-size:11px;color:var(--text3)">${d.data ? fmtDate(d.data) : ''}${d.note ? ' · '+d.note : ''}</div>
+      </div>
+      <a href="${d.link}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="white-space:nowrap;text-decoration:none">🔗 Apri</a>
+      <button class="btn btn-sm btn-danger" onclick="docElimina('${tipo}',${ordineId},${i})">✕</button>
+    </div>`).join('');
+}
+window.renderDocList = renderDocList;
+
+// Modal form per aggiungere documento
+function docApriForm(tipo, ordineId) {
+  const existing = document.getElementById('doc-modal');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'doc-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px">📎 Aggiungi documento doganale</div>
+      <div class="form-group">
+        <label>Nome documento *</label>
+        <input id="doc-nome" type="text" placeholder="es. Fattura doganale, Bill of lading, Packing list..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+      </div>
+      <div class="form-group">
+        <label>Data documento</label>
+        <input id="doc-data" type="date" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+      </div>
+      <div class="form-group">
+        <label>Link Google Drive *</label>
+        <input id="doc-link" type="url" placeholder="https://drive.google.com/..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <input id="doc-note" type="text" placeholder="Descrizione aggiuntiva..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1" onclick="docSalva('${tipo}',${ordineId})">💾 Salva</button>
+        <button class="btn" onclick="document.getElementById('doc-modal').remove()">Annulla</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  document.getElementById('doc-nome').focus();
+}
+window.docApriForm = docApriForm;
+
+async function docSalva(tipo, ordineId) {
+  const nome = document.getElementById('doc-nome').value.trim();
+  const link = document.getElementById('doc-link').value.trim();
+  if(!nome) { showToast('Inserisci il nome del documento','amber'); return; }
+  if(!link) { showToast('Inserisci il link Google Drive','amber'); return; }
+  if(!db.documentiDoganali) db.documentiDoganali = {};
+  const k = getDocKey(tipo, ordineId);
+  if(!db.documentiDoganali[k]) db.documentiDoganali[k] = [];
+  db.documentiDoganali[k].push({
+    nome,
+    data: document.getElementById('doc-data').value,
+    link,
+    note: document.getElementById('doc-note').value.trim(),
+    ts: new Date().toISOString(),
+  });
+  await saveDB();
+  document.getElementById('doc-modal').remove();
+  renderDocList(tipo, ordineId);
+  showToast('Documento salvato ✓');
+}
+window.docSalva = docSalva;
+
+async function docElimina(tipo, ordineId, idx) {
+  if(!confirm('Eliminare questo documento?')) return;
+  const k = getDocKey(tipo, ordineId);
+  db.documentiDoganali[k].splice(idx, 1);
+  await saveDB();
+  renderDocList(tipo, ordineId);
+  showToast('Documento eliminato');
+}
+window.docElimina = docElimina;
+
 
 // Catalogo prodotti Toxico con prezzi
 const TOXICO_CATALOG = [
