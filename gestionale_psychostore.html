@@ -529,6 +529,13 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
+              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                </div>
+                <div id="doc-modifica-list"></div>
+              </div>
 
               <!-- TABELLA BARCODE -->
               <div class="card" style="margin-top:12px">
@@ -652,6 +659,13 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
+              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                </div>
+                <div id="doc-modifica-list"></div>
+              </div>
 
               <div class="card" style="margin-top:12px">
                 <div class="card-title" style="color:var(--green)">🔖 Associazione barcode catalogo</div>
@@ -772,6 +786,13 @@
                   <button class="btn btn-primary" onclick="salvaOrdinePR()">💾 Salva ordine</button>
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
+              </div>
+              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                </div>
+                <div id="doc-modifica-list"></div>
               </div>
 
               <div class="card" style="margin-top:12px">
@@ -894,6 +915,13 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
+              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                </div>
+                <div id="doc-modifica-list"></div>
+              </div>
 
               <div class="card" style="margin-top:12px">
                 <div class="card-title" style="color:var(--green)">🔖 Associazione barcode catalogo</div>
@@ -1006,6 +1034,13 @@
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
               </div>
+              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                </div>
+                <div id="doc-modifica-list"></div>
+              </div>
 
               <div class="card" style="margin-top:12px">
                 <div class="card-title" style="color:#1E40AF">🔖 Associazione barcode catalogo</div>
@@ -1081,6 +1116,13 @@
                   <button class="btn" onclick="generaEmailADRIANO()">📧 Genera email</button>
                   <button class="btn" onclick="switchOrdiniTab('lista')">Annulla</button>
                 </div>
+              </div>
+              <div class="card" id="doc-modifica-section" style="margin-top:12px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <div class="card-title" style="margin-bottom:0">📎 Documenti doganali</div>
+                  <button class="btn btn-sm btn-primary" id="doc-modifica-add-btn">+ Aggiungi</button>
+                </div>
+                <div id="doc-modifica-list"></div>
               </div>
               <div class="card" style="margin-top:12px">
                 <div class="card-title" style="color:#92400E">🔖 Associazione barcode catalogo</div>
@@ -3178,6 +3220,7 @@ function modificaOrdineDIL(id) {
     dilRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaDIL(a));
     ricalcolaDIL();
+    showDocModifica('DIL', id);
   }, 50);
 }
 window.modificaOrdineDIL = modificaOrdineDIL;
@@ -3984,6 +4027,7 @@ function modificaOrdineDF(id) {
     dfRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaDF(a));
     ricalcolaDF();
+    showDocModifica('DF', id);
   }, 50);
 }
 window.modificaOrdineDF = modificaOrdineDF;
@@ -4334,6 +4378,7 @@ function modificaOrdinePR(id) {
     prRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaPR(a));
     ricalcolaPR();
+    showDocModifica('PR', id);
   },50);
 }
 window.modificaOrdinePR = modificaOrdinePR;
@@ -4887,6 +4932,7 @@ function modificaOrdineOD(id) {
     odRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaOD(a));
     ricalcolaOD();
+    showDocModifica('OD', id);
   },50);
 }
 window.modificaOrdineOD = modificaOrdineOD;
@@ -5376,6 +5422,7 @@ function modificaOrdineINNOCENT(id) {
     innRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaINNOCENT(a));
     ricalcolaINNOCENT();
+    showDocModifica('INNOCENT', id);
   },50);
 }
 window.modificaOrdineINNOCENT = modificaOrdineINNOCENT;
@@ -6003,6 +6050,7 @@ function modificaOrdineADRIANO(id) {
     adrRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaADRIANO(a));
     ricalcolaADRIANO();
+    showDocModifica('ADRIANO', id);
   },50);
 }
 window.modificaOrdineADRIANO = modificaOrdineADRIANO;
@@ -6315,7 +6363,47 @@ renderDashboard();
 showSection('dashboard', document.querySelector('.nav-item'));
 })();
 
-// ── FIX TEMPORANEO: annulla carico ADRIANO_GEN2026 (PROVA) ──
+function showDocModifica(tipo, ordineId) {
+  const sec = document.getElementById('doc-modifica-section');
+  if(!sec) return;
+  sec.style.display = '';
+  // Popola la lista
+  const listEl = document.getElementById('doc-modifica-list');
+  const docs = getDocOrdine(tipo, ordineId);
+  if(!docs.length) {
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nessun documento allegato</div>';
+  } else {
+    listEl.innerHTML = docs.map((d,i) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius)">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px">${d.nome}</div>
+          <div style="font-size:11px;color:var(--text3)">${d.data?fmtDate(d.data):''}${d.note?' · '+d.note:''}</div>
+        </div>
+        <a href="${d.link}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="white-space:nowrap;text-decoration:none">🔗 Apri</a>
+        <button class="btn btn-sm btn-danger" onclick="docEliminaModifica('${tipo}',${ordineId},${i})">✕</button>
+      </div>`).join('');
+  }
+  // Bottone aggiungi
+  const addBtn = document.getElementById('doc-modifica-add-btn');
+  if(addBtn) {
+    addBtn.onclick = () => docApriForm(tipo, ordineId);
+  }
+  // Dopo salvataggio da docSalva, aggiorna anche questa lista
+  window._docModificaTipo = tipo;
+  window._docModificaId = ordineId;
+}
+window.showDocModifica = showDocModifica;
+
+async function docEliminaModifica(tipo, ordineId, idx) {
+  if(!confirm('Eliminare questo documento?')) return;
+  const k = getDocKey(tipo, ordineId);
+  db.documentiDoganali[k].splice(idx, 1);
+  await saveDB();
+  showDocModifica(tipo, ordineId);
+  showToast('Documento eliminato');
+}
+window.docEliminaModifica = docEliminaModifica;
+
 async function fixAnnullaCaricoPROVA() {
   if(!confirm('Annullare il carico in stock di ADRIANO_GEN2026 (PROVA)?\nVerranno creati movimenti di scarico correttivi per tutti i 209 pezzi e l\'ordine tornerà a "confermato".')) return;
 
@@ -6475,6 +6563,10 @@ async function docSalva(tipo, ordineId) {
   await saveDB();
   document.getElementById('doc-modal').remove();
   renderDocList(tipo, ordineId);
+  // Aggiorna anche la lista nel form modifica se aperta
+  if(window._docModificaTipo===tipo && window._docModificaId===ordineId) {
+    showDocModifica(tipo, ordineId);
+  }
   showToast('Documento salvato ✓');
 }
 window.docSalva = docSalva;
