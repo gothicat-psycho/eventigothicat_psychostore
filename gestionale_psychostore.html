@@ -1213,6 +1213,10 @@
                   <option value="pos">💳 POS</option>
                 </select>
               </div>
+              <div style="margin-top:8px">
+                <label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Note</label>
+                <textarea id="cassa-note" rows="2" placeholder="Es: sconto applicato, regalo, cliente VIP..." style="width:100%;margin-top:4px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;resize:none;font-family:inherit;color:var(--text);background:var(--surface2)"></textarea>
+              </div>
             </div>
             <button class="btn-cassa btn-cassa-ok" id="btn-concludi" onclick="concludiVendita()" disabled>✓ Concludi vendita</button>
             <button class="btn-cassa btn-cassa-del" onclick="svuotaScontrino()">✕ Svuota scontrino</button>
@@ -1238,7 +1242,7 @@
         <div class="card">
           <div class="card-title">Scontrini</div>
           <div class="table-wrap">
-            <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Articoli</th><th>Pagamento</th><th>Valuta</th><th>Totale</th><th>Costo merce</th><th>Margine</th><th></th></tr></thead>
+            <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Articoli</th><th>Pagamento</th><th>Valuta</th><th>Totale</th><th>Costo merce</th><th>Margine</th><th>Note</th><th></th></tr></thead>
             <tbody id="tab-storico"></tbody></table>
           </div>
         </div>
@@ -1313,17 +1317,17 @@
 
         <!-- CASSA TAB -->
         <div id="tx-pane-cassa">
+          <!-- Evento bar (stesso comportamento cassa principale) -->
+          <div class="evento-bar" id="tx-cassa-ev-bar" style="margin-bottom:12px">
+            <span>🇬🇧</span>
+            <span class="evento-bar-nome" id="tx-cassa-ev-nome">Nessun evento attivo</span>
+            <button class="btn btn-sm" onclick="showSection('eventi',document.querySelector('.nav-item:nth-child(8)'))">Cambia evento</button>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
             <!-- LEFT: prodotti buttons -->
             <div>
               <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                  <div>
-                    <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Evento</label>
-                    <select id="tx-cassa-evento" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;min-width:200px">
-                      <option value="">— Seleziona evento —</option>
-                    </select>
-                  </div>
                   <div>
                     <label style="font-size:11px;color:var(--text3);margin-bottom:2px">Pagamento</label>
                     <select id="tx-cassa-pay" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
@@ -1351,6 +1355,10 @@
                   <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2)">
                     <span>Dovuto a Toxico £</span><span id="tx-sc-gbp" class="mono" style="font-weight:700;color:#7F1D1D">£ 0.00</span>
                   </div>
+                </div>
+                <div style="margin-bottom:10px">
+                  <label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Note</label>
+                  <textarea id="tx-sc-note" rows="2" placeholder="Es: sconto applicato, regalo, cliente VIP..." style="width:100%;margin-top:4px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;resize:none;font-family:inherit;color:var(--text);background:var(--surface2)"></textarea>
                 </div>
                 <button class="btn btn-primary" style="width:100%" onclick="txConfermaVendita()">✓ Conferma vendita</button>
                 <button class="btn btn-danger btn-sm" style="width:100%;margin-top:6px" onclick="txSvuotaScontrino()">✕ Svuota</button>
@@ -1383,7 +1391,7 @@
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Data/Ora</th><th>Evento</th><th>Prodotto</th><th>Taglia</th><th>Qta</th><th>Pag.</th><th style="text-align:right">€</th><th style="text-align:right">£</th><th></th>
+                  <th>Data/Ora</th><th>Evento</th><th>Prodotto</th><th>Taglia</th><th>Qta</th><th>Pag.</th><th style="text-align:right">€</th><th style="text-align:right">£</th><th>Note</th><th></th>
                 </tr></thead>
                 <tbody id="tx-storico-tbody"></tbody>
               </table>
@@ -2016,6 +2024,9 @@ window.annullaModificaEvento = annullaModificaEvento;
 
 function attivaEvento(id) {
   cassaEventoId = id;
+  // Aggiorna anche la barra evento Toxico se visibile
+  const txNome = document.getElementById('tx-cassa-ev-nome');
+  if(txNome) { const ev=getEvento(id); txNome.textContent=ev?ev.nome:'Nessun evento attivo'; }
   showSection('cassa', document.querySelector('.nav-item:nth-child(8)'));
 }
 window.attivaEvento = attivaEvento;
@@ -2179,6 +2190,7 @@ window.svuotaScontrino = svuotaScontrino;
 async function concludiVendita() {
   if(!scontrino.length) return;
   const pagamento = document.getElementById('pagamento-tipo').value;
+  const nota = document.getElementById('cassa-note').value.trim();
   const totale = scontrino.reduce((a,i)=>a+i.prezzo,0);
   const now = new Date();
   if(!db.vendite) db.vendite=[];
@@ -2190,6 +2202,7 @@ async function concludiVendita() {
     valuta: cassaValuta,
     pagamento,
     totale: parseFloat(totale.toFixed(2)),
+    nota,
     items: scontrino.map(it=>({ barcode:it.barcode, descrizione:it.descrizione, qty:it.qty, prezzoUnit:it.prezzoUnit, prezzo:it.prezzo })),
   });
   // Scarica stock
@@ -2198,6 +2211,7 @@ async function concludiVendita() {
   });
   await saveDB();
   svuotaScontrino();
+  document.getElementById('cassa-note').value='';
   showToast('Vendita registrata ✓');
   document.getElementById('barcode-input').focus();
 }
@@ -2268,9 +2282,10 @@ function renderStorico() {
       <td class="mono" style="font-weight:500">${totFmt}</td>
       <td class="mono" style="font-size:12px;color:var(--text3)">${costoMerce>0?fmt(costoMerce):'—'}</td>
       <td class="mono" style="font-size:12px;${margineClass}">${margine!==null?Math.round(margine)+'%':'—'}</td>
+      <td style="font-size:12px;color:var(--text3);max-width:130px">${v.nota?'<span title="'+v.nota+'" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 '+v.nota+'</span>':'—'}</td>
       <td><button class="btn btn-sm" onclick="modificaVendita(${v.id})">Modifica</button> <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dtFmt}')">Elimina</button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="9" class="empty">Nessuna vendita trovata</td></tr>';
+  }).join('') : '<tr><td colspan="10" class="empty">Nessuna vendita trovata</td></tr>';
 }
 
 function modificaVendita(id) {
@@ -6334,12 +6349,15 @@ window.toxicoTab = toxicoTab;
 // ── RENDER TOXICO (entry point) ──
 function renderToxico() {
   if(!db.toxico) db.toxico = {stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  // Mostra evento attivo (stesso di Psycho-Store)
+  const evAttivo = getEvento(cassaEventoId);
+  document.getElementById('tx-cassa-ev-nome').textContent = evAttivo ? evAttivo.nome : 'Nessun evento attivo';
   // Popola cambio
   document.getElementById('tx-cambio').value = db.toxico.cambio || 1.18;
-  // Popola eventi
+  // Popola filtri storico/email con lista eventi
   const evOpts = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
     .map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
-  ['tx-cassa-evento','tx-st-evento','tx-email-evento'].forEach(id=>{
+  ['tx-st-evento','tx-email-evento'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.innerHTML = '<option value="">Tutti gli eventi</option>' + evOpts;
   });
@@ -6521,9 +6539,9 @@ window.txSvuotaScontrino = txSvuotaScontrino;
 
 async function txConfermaVendita() {
   if(!txScontrino.length) { showToast('Scontrino vuoto','amber'); return; }
-  const evId = document.getElementById('tx-cassa-evento').value;
-  if(!evId) { showToast('Seleziona un evento','amber'); return; }
+  if(!cassaEventoId) { showToast('Nessun evento attivo — attivalo dalla sezione Eventi','amber'); return; }
   const pay = document.getElementById('tx-cassa-pay').value;
+  const nota = document.getElementById('tx-sc-note').value.trim();
   if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
   if(!db.toxico.vendite) db.toxico.vendite=[];
   if(!db.toxico.nextVendId) db.toxico.nextVendId=1;
@@ -6531,7 +6549,7 @@ async function txConfermaVendita() {
   txScontrino.forEach(r=>{
     db.toxico.vendite.push({
       id: db.toxico.nextVendId++,
-      eventoId: evId,
+      eventoId: cassaEventoId,
       prodId: r.prodId,
       nome: r.nome,
       taglia: r.taglia,
@@ -6541,12 +6559,14 @@ async function txConfermaVendita() {
       totEur: r.qta*r.prezzoEur,
       totGbp: r.qta*r.prezzoGbp,
       pagamento: pay,
+      nota: nota,
       ts: now,
     });
   });
   await saveDB();
   showToast('Vendita registrata!');
   txScontrino=[]; txCassaProdSel=null; txCassaTaglia=null;
+  document.getElementById('tx-sc-note').value='';
   renderTxProdotti(); renderTxScontrino();
 }
 window.txConfermaVendita = txConfermaVendita;
@@ -6613,7 +6633,7 @@ function renderTxStorico() {
   // Table
   const sorted=[...vendite].sort((a,b)=>b.ts.localeCompare(a.ts));
   const tbody=document.getElementById('tx-storico-tbody');
-  if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
+  if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
   tbody.innerHTML=sorted.map(v=>{
     const ev=(db.eventi||[]).find(e=>e.id===v.eventoId);
     const dt=new Date(v.ts);
@@ -6626,6 +6646,7 @@ function renderTxStorico() {
       <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:${v.pagamento==='POS'?'#DBEAFE':'#D1FAE5'};color:${v.pagamento==='POS'?'#1E40AF':'#065F46'}">${v.pagamento}</span></td>
       <td class="mono" style="text-align:right;font-weight:600">€ ${v.totEur.toFixed(2)}</td>
       <td class="mono" style="text-align:right;color:#7F1D1D;font-weight:600">£ ${v.totGbp.toFixed(2)}</td>
+      <td style="font-size:12px;color:var(--text3);max-width:140px">${v.nota?`<span title="${v.nota}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${v.nota}</span>`:'—'}</td>
       <td><button class="btn btn-sm btn-danger" onclick="txElimVendita(${v.id})">Elimina</button></td>
     </tr>`;
   }).join('');
