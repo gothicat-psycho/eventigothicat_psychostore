@@ -6581,19 +6581,20 @@ function renderTxStock() {
   let html='';
   cats.forEach(cat=>{
     const prods=TOXICO_CATALOG.filter(p=>p.cat===cat).sort((a,b)=>a.nome.localeCompare(b.nome));
-    html+=`<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat}</div>`;
+    const c = TX_CAT_COLORS[cat] || { bg:'#F3F4F6', color:'#374151', border:'#D1D5DB' };
+    html+=`<div style="margin-bottom:24px;padding:14px 16px;background:${c.bg};border:1px solid ${c.border};border-radius:var(--radius-lg)">
+      <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${c.color};margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid ${c.border}">${cat}</div>`;
     prods.forEach(p=>{
       const taglie=p.taglie;
-      const hasTaglie=!(taglie.length===1&&taglie[0]==='NO');
-      html+=`<div style="margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
-        <div style="font-weight:500;font-size:13px;margin-bottom:6px">${p.nome} <span style="font-size:11px;color:var(--text3)">€${p.prezzoEur} / £${p.prezzoGbp}</span></div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      html+=`<div style="margin-bottom:10px;padding:12px 14px;background:white;border-radius:var(--radius);border:1px solid ${c.border}">
+        <div style="font-weight:600;font-size:16px;margin-bottom:10px;color:${c.color}">${p.nome} <span style="font-size:13px;color:var(--text3);font-weight:400">€${p.prezzoEur} / £${p.prezzoGbp}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">`;
       taglie.forEach(t=>{
         const st=getTxStock(p.id,t);
         const cls=st<=0?'color:#B02020':st<=2?'color:#8A5C00':'color:#1A7A4A';
-        html+=`<div style="text-align:center;min-width:50px">
-          <div style="font-size:10px;color:var(--text3);font-weight:600">${t==='NO'?'Unica':t}</div>
-          <div style="font-size:16px;font-weight:700;font-family:monospace;${cls}">${st}</div>
+        html+=`<div style="text-align:center;min-width:54px">
+          <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:2px">${t==='NO'?'Unica':t}</div>
+          <div style="font-size:26px;font-weight:700;font-family:monospace;${cls};line-height:1">${st}</div>
         </div>`;
       });
       html+=`</div></div>`;
