@@ -1425,31 +1425,36 @@
 
         <!-- EMAIL TAB -->
         <div id="tx-pane-email" style="display:none">
-          <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start">
+          <div style="display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start">
             <div class="card">
               <div class="card-title">Opzioni email</div>
               <div class="form-group">
-                <label>Evento/i da includere</label>
-                <select id="tx-email-evento" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
-                  <option value="">Tutti gli eventi</option>
+                <label>Periodo (es. July/August/September)</label>
+                <input type="text" id="tx-email-periodo" placeholder="es. July/August" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div class="form-group">
+                <label>Eventi da includere</label>
+                <div id="tx-email-eventi-list" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px 6px;background:var(--surface)"></div>
+              </div>
+              <div class="form-group">
+                <label>Includi pagamenti effettuati</label>
+                <select id="tx-email-inclpag" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                  <option value="si">✅ Sì — includi riepilogo pagamenti</option>
+                  <option value="no">❌ No — solo vendite</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Firma (mittente)</label>
                 <input type="text" id="tx-email-firma" value="Carlotta" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
               </div>
-              <div class="form-group">
-                <label>Testo libero aggiuntivo</label>
-                <textarea id="tx-email-extra" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px" placeholder="es. We came back home from the last 2 events..."></textarea>
-              </div>
-              <button class="btn btn-primary" style="width:100%" onclick="generaTxEmail()">📧 Genera email</button>
+              <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="generaTxEmail()">📧 Genera email</button>
             </div>
             <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <div class="card-title" style="margin-bottom:0">Testo email</div>
                 <button class="btn btn-sm" onclick="copiaTxEmail()">📋 Copia</button>
               </div>
-              <textarea id="tx-email-output" rows="22" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'IBM Plex Mono',monospace;resize:vertical;background:var(--surface2)"></textarea>
+              <textarea id="tx-email-output" rows="30" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'IBM Plex Mono',monospace;resize:vertical;background:var(--surface2)"></textarea>
             </div>
           </div>
         </div>
@@ -6354,13 +6359,11 @@ function renderToxico() {
   document.getElementById('tx-cassa-ev-nome').textContent = evAttivo ? evAttivo.nome : 'Nessun evento attivo';
   // Popola cambio
   document.getElementById('tx-cambio').value = db.toxico.cambio || 1.18;
-  // Popola filtri storico/email con lista eventi
+  // Popola filtri storico
   const evOpts = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
     .map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
-  ['tx-st-evento','tx-email-evento'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.innerHTML = '<option value="">Tutti gli eventi</option>' + evOpts;
-  });
+  const stEl = document.getElementById('tx-st-evento');
+  if(stEl) stEl.innerHTML = '<option value="">Tutti gli eventi</option>' + evOpts;
   // Default tab
   toxicoTab('cassa');
   renderTxProdotti();
@@ -6716,71 +6719,115 @@ window.txElimPagamento = txElimPagamento;
 
 // ── EMAIL ──
 function renderTxEmailOpts() {
-  const evOpts=[...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
-    .map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
-  document.getElementById('tx-email-evento').innerHTML='<option value="">Tutti gli eventi</option>'+evOpts;
+  const eventi = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''));
+  // Checkbox list
+  const list = document.getElementById('tx-email-eventi-list');
+  if(list) {
+    list.innerHTML = eventi.length ? eventi.map(e=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;font-size:13px;color:#1a1a1a;border-radius:4px;user-select:none" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background=''">
+        <input type="checkbox" class="tx-email-ev-cb" value="${e.id}" style="cursor:pointer;width:15px;height:15px;flex-shrink:0">
+        <span>${e.nome}</span>
+      </label>`).join('') : '<span style="color:#999;font-size:12px;padding:4px">Nessun evento disponibile</span>';
+  }
+  // Update also the storico select (still used there)
+  const evOpts = eventi.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+  const stEl = document.getElementById('tx-st-evento');
+  if(stEl) stEl.innerHTML = '<option value="">Tutti gli eventi</option>' + evOpts;
+}
+
+function getTxSelectedEventi() {
+  return [...document.querySelectorAll('.tx-email-ev-cb:checked')].map(cb=>cb.value);
 }
 
 function generaTxEmail() {
   if(!db.toxico) { showToast('Nessun dato','amber'); return; }
-  const evId=document.getElementById('tx-email-evento').value;
-  const firma=document.getElementById('tx-email-firma').value||'Carlotta';
-  const extra=document.getElementById('tx-email-extra').value.trim();
-  const vendite=(db.toxico.vendite||[]).filter(v=>!evId||v.eventoId===evId);
-  if(!vendite.length){ showToast('Nessuna vendita da includere','amber'); return; }
+  const selIds = getTxSelectedEventi();
+  const firma = document.getElementById('tx-email-firma').value || 'Carlotta';
+  const periodo = document.getElementById('tx-email-periodo').value.trim();
+  const inclPag = document.getElementById('tx-email-inclpag').value === 'si';
 
-  // Raggruppa per categoria (cat => {qta, totGbp, gbpUnit})
-  const cats={};
-  vendite.forEach(v=>{
-    const prod=TOXICO_CATALOG.find(p=>p.id===v.prodId);
-    const cat=prod?prod.cat:'Altro';
-    if(!cats[cat]) cats[cat]={qta:0,totGbp:0,gbpUnit:v.prezzoGbp};
-    cats[cat].qta+=v.qta;
-    cats[cat].totGbp+=v.totGbp;
-  });
-  const grandTotal=vendite.reduce((a,v)=>a+v.totGbp,0);
+  const vendite = (db.toxico.vendite||[]).filter(v => !selIds.length || selIds.includes(String(v.eventoId)));
+  if(!vendite.length) { showToast('Nessuna vendita da includere','amber'); return; }
 
-  // Pagamenti
-  const pag=(db.toxico.pagamenti||[]).sort((a,b)=>a.data.localeCompare(b.data));
-  const totPagatoGbp=pag.reduce((a,p)=>a+(p.gbp||0),0);
-  const saldoGbp=grandTotal-totPagatoGbp;
-
-  // Nome eventi
-  let evNomi='';
-  if(evId) {
-    const ev=(db.eventi||[]).find(e=>e.id===evId);
-    evNomi=ev?ev.nome:'';
-  } else {
-    const ids=[...new Set(vendite.map(v=>v.eventoId))];
-    const nomi=ids.map(id=>(db.eventi||[]).find(e=>e.id===id)?.nome).filter(Boolean);
-    evNomi=nomi.join(' and ');
-  }
-
-  // Categoria → label email (stile Carlotta)
-  const catLabel={
-    'T-Shirts':'T-shirts','Hoodies':'Ziphoods','Mesh Shorts':'Mesh Shorts',
-    'Mesh Tanks':'Mesh Tank','New Mesh Tanks':'New Mesh Tank','Bandana':'Bandana',
-    'Truckers':'Trucker hats','Retro Sweat Shorts':'Retro Sweat Shorts',
-    'Socks':'Socks','Patches':'Patches','Stickers':'Stickers',
+  const catLabel = {
+    'T-Shirts':'T-shirts', 'Hoodies':'Ziphoods', 'Mesh Shorts':'Mesh shorts',
+    'Mesh Tanks':'Mesh tanks', 'New Mesh Tanks':'New mesh tanks', 'Bandana':'Bandana',
+    'Truckers':'Trucker hats', 'Retro Sweat Shorts':'Retro shorts',
+    'Socks':'Socks', 'Patches':'Patches', 'Stickers':'Stickers',
   };
 
-  let righe='';
-  Object.entries(cats).forEach(([cat,d])=>{
-    const label=catLabel[cat]||cat;
-    righe+=`${label} = ${d.qta} x ${d.gbpUnit.toFixed(2)} GBP = ${d.totGbp.toFixed(2)} GBP\n`;
+  // ── Per-event block ──
+  const eventiIds = selIds.length ? selIds : [...new Set(vendite.map(v=>String(v.eventoId)))];
+  let eventiBlock = '';
+  eventiIds.forEach(evId => {
+    const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
+    const evVendite = vendite.filter(v=>String(v.eventoId)===String(evId));
+    if(!evVendite.length) return;
+    // Raggruppa per categoria
+    const cats = {};
+    evVendite.forEach(v => {
+      const prod = TOXICO_CATALOG.find(p=>p.id===v.prodId);
+      const cat = prod ? prod.cat : 'Altro';
+      cats[cat] = (cats[cat]||0) + v.qta;
+    });
+    const evNome = ev ? ev.nome.toUpperCase() : 'EVENTO SCONOSCIUTO';
+    // Nazione evento (se disponibile)
+    const nazione = ev && ev.nazione ? ' ('+ev.nazione+')' : '';
+    eventiBlock += `\n${evNome}${nazione}\n`;
+    Object.entries(cats).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,qta])=>{
+      const label = catLabel[cat]||cat;
+      eventiBlock += `${label} = ${qta}\n`;
+    });
   });
-  righe+=`GRAND TOTAL = ${grandTotal.toFixed(2)} GBP`;
 
-  let pagSection='';
-  if(pag.length){
-    pagSection='\n\nPayments made so far:\n';
-    pag.forEach(p=>{ pagSection+=`${fmtDate(p.data)} — £${p.gbp.toFixed(2)}${p.note?' ('+p.note+')':''}\n`; });
-    pagSection+=`\nOutstanding balance: £ ${saldoGbp.toFixed(2)}`;
+  // ── TOTAL SALES ──
+  const totalCats = {};
+  vendite.forEach(v => {
+    const prod = TOXICO_CATALOG.find(p=>p.id===v.prodId);
+    const cat = prod ? prod.cat : 'Altro';
+    if(!totalCats[cat]) totalCats[cat] = {qta:0, totGbp:0, gbpUnit:v.prezzoGbp};
+    totalCats[cat].qta += v.qta;
+    totalCats[cat].totGbp += v.totGbp;
+  });
+  const grandTotal = vendite.reduce((a,v)=>a+v.totGbp, 0);
+  const nEv = eventiIds.filter(id=>(db.toxico.vendite||[]).some(v=>String(v.eventoId)===String(id))).length;
+
+  let totaleBlock = `\nTOTAL SALES (${nEv} event${nEv!==1?'s':''})\n`;
+  Object.entries(totalCats).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,d])=>{
+    const label = catLabel[cat]||cat;
+    const unitStr = d.gbpUnit.toFixed(2).replace('.',',');
+    const totStr = d.totGbp.toFixed(2).replace('.',',');
+    totaleBlock += `${label} = ${d.qta} x ${unitStr} GBP = ${totStr} GBP\n`;
+  });
+  totaleBlock += `GRAND TOTAL = ${grandTotal.toFixed(2).replace('.',',')} GBP`;
+
+  // ── Pagamenti ──
+  let pagSection = '';
+  if(inclPag) {
+    const pag = (db.toxico.pagamenti||[]).sort((a,b)=>a.data.localeCompare(b.data));
+    const totPagato = pag.reduce((a,p)=>a+(p.gbp||0),0);
+    const saldo = grandTotal - totPagato;
+    if(pag.length) {
+      pagSection = '\n\nPayments made so far:\n';
+      pag.forEach(p=>{ pagSection+=`${fmtDate(p.data)} — £${p.gbp.toFixed(2)}${p.note?' ('+p.note+')':''}\n`; });
+      pagSection += `\nOutstanding balance: £ ${saldo.toFixed(2).replace('.',',')} GBP`;
+    }
   }
 
-  const email=`Dear Gez,\nhow are you doing? Hope all good!\n\n${extra?extra+'\n\n':''}This is the total resume of the sales at ${evNomi}:\n${righe}${pagSection}\n\n${pag.length?'Please find, in attachment, copy of our bank transfer we just did.\n':''}Thanks a lot and ciao,\n${firma}`;
+  const periodoStr = periodo ? ` in ${periodo}` : '';
+  const transferLine = inclPag ? '\nPlease find, in attachment, copy of our bank transfer we just did.\n' : '';
 
-  document.getElementById('tx-email-output').value=email;
+  const email =
+`Dear Gez,
+how you doing? Hope all good!
+
+This is the total resume of the sales${periodoStr}:${eventiBlock}${totaleBlock}${pagSection}
+${transferLine}
+Thanks a lot and ciao,
+${firma}`;
+
+  document.getElementById('tx-email-output').value = email;
+  // Auto-aggiorna ad ogni cambio
 }
 window.generaTxEmail = generaTxEmail;
 
