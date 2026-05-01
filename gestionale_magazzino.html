@@ -824,13 +824,33 @@
           </div>
           <!-- Scontrino -->
           <div class="cassa-sidebar">
-            <div class="card" style="flex:1;overflow-y:auto;max-height:calc(100vh - 280px)">
+            <div class="card" style="flex:1;overflow-y:auto;max-height:calc(100vh - 360px)">
               <div class="cassa-step">Scontrino</div>
               <div id="scontrino-items"><p style="color:var(--text3);font-size:13px">Nessun articolo</p></div>
               <div class="scontrino-totale">
                 <span class="label">Totale</span>
                 <span class="value" id="scontrino-totale">€ 0.00</span>
               </div>
+            </div>
+            <!-- Metodo pagamento -->
+            <div class="card" style="padding:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Metodo di pagamento</div>
+              <select id="metodo-pagamento" onchange="aggiornaPagamento()" style="width:100%;padding:8px 10px;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;margin-bottom:8px">
+                <option value="contanti">💵 Contanti</option>
+                <option value="pos">💳 POS</option>
+                <option value="misto">💵+💳 Misto</option>
+              </select>
+              <div id="misto-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Contanti</div>
+                  <input type="number" id="misto-contanti" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px" oninput="aggiornaMisto()">
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text3);margin-bottom:3px">POS</div>
+                  <input type="number" id="misto-pos" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px" oninput="aggiornaMisto()">
+                </div>
+              </div>
+              <div id="misto-avviso" style="display:none;font-size:11px;color:var(--amber);margin-top:4px"></div>
             </div>
             <button class="btn-cassa btn-cassa-ok" id="btn-concludi" onclick="concludiVendita()" disabled>
               ✓ Concludi vendita
@@ -858,7 +878,7 @@
       <div class="card">
         <div class="card-title">Scontrini</div>
         <div class="table-wrap">
-          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Valuta</th><th>Articoli</th><th>Totale</th><th></th></tr></thead>
+          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Valuta</th><th>Articoli</th><th>Totale</th><th>Pagamento</th><th></th></tr></thead>
           <tbody id="tab-vendite"></tbody>
         </table></div>
       </div>
@@ -2842,6 +2862,37 @@ function svuotaScontrino() {
   buildLoghiGrid();
 }
 
+function aggiornaPagamento() {
+  const metodo = (document.getElementById('metodo-pagamento')||{}).value;
+  const mistoFields = document.getElementById('misto-fields');
+  const mistoAvviso = document.getElementById('misto-avviso');
+  if (mistoFields) {
+    if (metodo === 'misto') {
+      mistoFields.style.display = 'grid';
+    } else {
+      mistoFields.style.display = 'none';
+      if (mistoAvviso) mistoAvviso.style.display = 'none';
+    }
+  }
+}
+
+function aggiornaMisto() {
+  const totaleEl = document.getElementById('scontrino-totale');
+  const avviso = document.getElementById('misto-avviso');
+  if (!totaleEl || !avviso) return;
+  const totStr = totaleEl.textContent.replace(/[^\d.,]/g,'').replace(',','.');
+  const tot = parseFloat(totStr) || 0;
+  const c = parseFloat(document.getElementById('misto-contanti').value) || 0;
+  const p = parseFloat(document.getElementById('misto-pos').value) || 0;
+  const diff = Math.round((c + p - tot) * 100) / 100;
+  if (Math.abs(diff) > 0.01) {
+    avviso.style.display = 'block';
+    avviso.textContent = diff > 0 ? `Eccesso: ${diff.toFixed(2)} (riduci gli importi)` : `Mancano: ${Math.abs(diff).toFixed(2)}`;
+  } else {
+    avviso.style.display = 'none';
+  }
+}
+
 async function concludiVendita() {
   if (!scontrino.length || !cassaEventoId) return;
   const ev = getEvento(cassaEventoId);
@@ -2851,12 +2902,18 @@ async function concludiVendita() {
   if (!db.vendite) db.vendite = [];
   if (!db.nextVendId) db.nextVendId = 1;
   // Save vendita
+  const metodoPag = (document.getElementById('metodo-pagamento')||{value:'contanti'}).value || 'contanti';
+  const pagContanti = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-contanti').value)||0) : (metodoPag === 'contanti' ? totale : 0);
+  const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : (metodoPag === 'pos' ? totale : 0);
   db.vendite.push({
     id: db.nextVendId++,
     eventoId: cassaEventoId,
     dataOra,
     valuta: cassaValuta,
     totale: parseFloat(totale.toFixed(2)),
+    metodoPagamento: metodoPag,
+    pagContanti: parseFloat(pagContanti.toFixed(2)),
+    pagPos: parseFloat(pagPos.toFixed(2)),
     items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, prezzoUnit: it.prezzoUnit||it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
   });
   // Scarica magazzino
@@ -2871,6 +2928,17 @@ async function concludiVendita() {
   });
   await saveDB();
   svuotaScontrino();
+  // Reset metodo pagamento
+  const mpEl = document.getElementById('metodo-pagamento');
+  if (mpEl) mpEl.value = 'contanti';
+  const mf = document.getElementById('misto-fields');
+  if (mf) mf.style.display = 'none';
+  const mc = document.getElementById('misto-contanti');
+  const mp2 = document.getElementById('misto-pos');
+  if (mc) mc.value = '';
+  if (mp2) mp2.value = '';
+  const av = document.getElementById('misto-avviso');
+  if (av) av.style.display = 'none';
   showToast('Vendita registrata ✓');
 }
 
@@ -2921,6 +2989,11 @@ function renderVendite() {
   const mediaCzk = listCzk.length > 0 ? totCzk / listCzk.length : 0;
   const hasCzk = listCzk.length > 0;
   const hasEur = listEur.length > 0;
+  // Payment method breakdown (EUR only)
+  const totContanti = listEur.filter(v => (v.metodoPagamento||'contanti') === 'contanti').reduce((a,v) => a + v.totale, 0)
+    + listEur.filter(v => v.metodoPagamento === 'misto').reduce((a,v) => a + (v.pagContanti||0), 0);
+  const totPos = listEur.filter(v => v.metodoPagamento === 'pos').reduce((a,v) => a + v.totale, 0)
+    + listEur.filter(v => v.metodoPagamento === 'misto').reduce((a,v) => a + (v.pagPos||0), 0);
 
   document.getElementById('vendite-metrics').className = hasCzk && hasEur ? 'grid4' : 'grid4';
   document.getElementById('vendite-metrics').innerHTML = `
@@ -2928,6 +3001,7 @@ function renderVendite() {
     ${hasEur ? `<div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div><div class="metric-sub">media ${fmt(mediaEur)} / scontrino</div></div>` : ''}
     ${hasCzk ? `<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div><div class="metric-sub">media ${Math.round(mediaCzk).toLocaleString('it')} CZK / scontrino</div></div>` : ''}
     ${!hasEur && !hasCzk ? `<div class="metric"><div class="metric-label">Incasso totale</div><div class="metric-value green">${fmt(0)}</div></div>` : ''}
+    ${hasEur ? `<div class="metric"><div class="metric-label">💵 Contanti</div><div class="metric-value">${fmt(totContanti)}</div><div class="metric-sub">💳 POS: ${fmt(totPos)}</div></div>` : ''}
     ${hasEur && hasCzk ? (() => {
       // Show conversion hint if event has CZK rate
       const evId = parseInt((document.getElementById('filter-vend-evento')||{}).value)||0;
@@ -2951,15 +3025,20 @@ function renderVendite() {
         ? '<span class="badge badge-blue">CZK</span>'
         : '<span class="badge badge-gray">€ EUR</span>';
       const totFmt = v.valuta === 'CZK' ? Math.round(v.totale) + ' CZK' : fmt(v.totale);
+      const mp = v.metodoPagamento || 'contanti';
+      const mpLabel = mp === 'pos' ? '💳 POS' : mp === 'misto' ? '💵+💳 Misto' : '💵 Contanti';
+      const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
+        `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
         <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
         <td>${valBadge}</td>
         <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
         <td class="mono" style="font-weight:500">${totFmt}</td>
+        <td style="font-size:12px">${mpLabel}${mpDetail}</td>
         <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button></td>
       </tr>`;
-    }).join('') : '<tr><td colspan="5" class="empty">Nessuna vendita trovata</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">Nessuna vendita trovata</td></tr>';
 }
 
 // ─────────────────────────────────────────────
