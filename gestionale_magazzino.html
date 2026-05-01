@@ -411,10 +411,10 @@
           <div class="form-group"><label>Scorta minima per variante</label><input id="l-minimo" type="number" min="0" placeholder="3"></div>
           <div class="form-group"><label>URL immagine</label>
             <div style="display:flex;gap:8px;align-items:center">
-              <input type="url" id="l-immagine-url" placeholder="https://raw.githubusercontent.com/..." style="flex:1" oninput="previewUrl('l-immagine-url','l-img-preview')">
+              <input type="text" id="l-immagine-url" placeholder="https://drive.google.com/thumbnail?id=..." style="flex:1" oninput="previewUrl('l-immagine-url','l-img-preview')">
               <img id="l-img-preview" class="logo-img-preview" style="display:none">
             </div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link diretto da GitHub (raw.githubusercontent.com)</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link Google Drive (thumbnail?id=...) o qualsiasi URL immagine diretto</div>
           </div>
         </div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px">
@@ -1070,10 +1070,10 @@
     <div class="form-group" style="margin-bottom:12px">
       <label>URL immagine</label>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="url" id="el-immagine-url" placeholder="https://raw.githubusercontent.com/..." style="flex:1" oninput="previewUrl('el-immagine-url','el-img-preview')">
+        <input type="text" id="el-immagine-url" placeholder="https://drive.google.com/thumbnail?id=..." style="flex:1" oninput="previewUrl('el-immagine-url','el-img-preview')">
         <img id="el-img-preview" class="logo-img-preview" style="display:none">
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link diretto da GitHub</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link Google Drive (thumbnail?id=...) o qualsiasi URL immagine diretto</div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:8px">Prezzi per categoria</div>
@@ -1460,10 +1460,10 @@ function aggiungiLogo() {
     prezzi: {
       tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
       tshirt_donna:   { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
-      tshirt_bambino: { costo: parseFloat(document.getElementById('l-costo-tshirt-bambino').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
+      tshirt_bambino: { costo: parseFloat((document.getElementById('l-costo-tshirt-bambino')||{}).value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
       canotte:        { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
       shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
-      felpe:        { costo: parseFloat(document.getElementById('l-costo-felpe').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-felpe').value)||0 },
+      felpe:        { costo: parseFloat((document.getElementById('l-costo-felpe')||{}).value)||0, prezzo: parseFloat((document.getElementById('l-prezzo-felpe')||{}).value)||0 },
     },
     minimo: parseInt(document.getElementById('l-minimo').value) || 3,
     note: document.getElementById('l-note').value.trim(),
