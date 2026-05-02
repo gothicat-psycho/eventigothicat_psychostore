@@ -7016,11 +7016,98 @@ function renderTxStorico() {
       <td class="mono" style="text-align:right;font-weight:600">€ ${v.totEur.toFixed(2)}</td>
       <td class="mono" style="text-align:right;color:#7F1D1D;font-weight:600">£ ${v.totGbp.toFixed(2)}</td>
       <td style="font-size:12px;color:var(--text3);max-width:140px">${v.nota?`<span title="${v.nota}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${v.nota}</span>`:'—'}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="txElimVendita(${v.id})">Elimina</button></td>
+      <td><button class="btn btn-sm" onclick="txModificaVendita(${v.id})">Modifica</button> <button class="btn btn-sm btn-danger" onclick="txElimVendita(${v.id})">Elimina</button></td>
     </tr>`;
   }).join('');
 }
 window.renderTxStorico = renderTxStorico;
+
+function txModificaVendita(id) {
+  const v = (db.toxico.vendite||[]).find(x=>x.id===id);
+  if(!v) return;
+  const prod = TOXICO_CATALOG.find(p=>p.id===v.prodId);
+
+  const existing = document.getElementById('tx-modifica-modal');
+  if(existing) existing.remove();
+
+  const evOpts = (db.eventi||[]).sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
+    .map(e=>`<option value="${e.id}" ${String(e.id)===String(v.eventoId)?'selected':''}>${e.nome}</option>`).join('');
+
+  const taglieOpts = prod ? prod.taglie.map(t=>
+    `<option value="${t}" ${t===v.taglia?'selected':''}>${t==='NO'?'Unica':t}</option>`
+  ).join('') : `<option value="${v.taglia}">${v.taglia}</option>`;
+
+  const modal = document.createElement('div');
+  modal.id = 'tx-modifica-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">✏️ Modifica vendita Toxico</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">${v.nome}${v.taglia!=='NO'?' — '+v.taglia:''}</div>
+      <div class="form-group">
+        <label>Evento</label>
+        <select id="txm-evento" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">${evOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>Taglia</label>
+        <select id="txm-taglia" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">${taglieOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>Quantità</label>
+        <input type="number" id="txm-qta" min="1" value="${v.qta}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label>Prezzo € unitario</label>
+          <input type="number" id="txm-eur" step="0.01" value="${v.prezzoEur}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+        </div>
+        <div class="form-group">
+          <label>Prezzo £ unitario</label>
+          <input type="number" id="txm-gbp" step="0.01" value="${v.prezzoGbp}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Pagamento</label>
+        <select id="txm-pay" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+          <option value="POS" ${v.pagamento==='POS'?'selected':''}>💳 POS</option>
+          <option value="Contanti" ${v.pagamento==='Contanti'?'selected':''}>💵 Contanti</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="txm-nota" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;resize:none">${v.nota||''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary" style="flex:1" onclick="txSalvaModifica(${id})">💾 Salva</button>
+        <button class="btn" onclick="document.getElementById('tx-modifica-modal').remove()">Annulla</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+window.txModificaVendita = txModificaVendita;
+
+async function txSalvaModifica(id) {
+  const v = (db.toxico.vendite||[]).find(x=>x.id===id);
+  if(!v) return;
+  const qta   = parseInt(document.getElementById('txm-qta').value)||1;
+  const eur   = parseFloat(document.getElementById('txm-eur').value)||0;
+  const gbp   = parseFloat(document.getElementById('txm-gbp').value)||0;
+  v.eventoId  = document.getElementById('txm-evento').value;
+  v.taglia    = document.getElementById('txm-taglia').value;
+  v.pagamento = document.getElementById('txm-pay').value;
+  v.nota      = document.getElementById('txm-nota').value.trim();
+  v.qta       = qta;
+  v.prezzoEur = eur;
+  v.prezzoGbp = gbp;
+  v.totEur    = parseFloat((qta * eur).toFixed(2));
+  v.totGbp    = parseFloat((qta * gbp).toFixed(2));
+  await saveDB();
+  document.getElementById('tx-modifica-modal').remove();
+  renderTxStorico();
+  showToast('Vendita aggiornata ✓');
+}
+window.txSalvaModifica = txSalvaModifica;
 
 async function txElimVendita(id) {
   if(!confirm('Eliminare questa vendita?')) return;
