@@ -6870,7 +6870,10 @@ function renderTxStock() {
     prods.forEach(p=>{
       const taglie=p.taglie;
       html+=`<div style="margin-bottom:10px;padding:12px 14px;background:white;border-radius:var(--radius);border:1px solid ${c.border}">
-        <div style="font-weight:600;font-size:16px;margin-bottom:10px;color:${c.color}">${p.nome} <span style="font-size:13px;color:var(--text3);font-weight:400">€${p.prezzoEur} / £${p.prezzoGbp}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:600;font-size:16px;color:${c.color}">${p.nome} <span style="font-size:13px;color:var(--text3);font-weight:400">€${p.prezzoEur} / £${p.prezzoGbp}</span></div>
+          <button onclick="txRettificaStock('${p.id}')" style="padding:4px 10px;font-size:11px;border:1px solid ${c.border};border-radius:var(--radius);background:white;color:${c.color};cursor:pointer;font-weight:600">✏️ Rettifica</button>
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:12px">`;
       taglie.forEach(t=>{
         const st=getTxStock(p.id,t);
@@ -6886,6 +6889,85 @@ function renderTxStock() {
   });
   document.getElementById('tx-stock-table').innerHTML = html;
 }
+
+function txRettificaStock(prodId) {
+  const prod = TOXICO_CATALOG.find(p=>p.id===prodId);
+  if(!prod) return;
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  if(!db.toxico.stock) db.toxico.stock={};
+
+  const existing = document.getElementById('tx-rettifica-modal');
+  if(existing) existing.remove();
+
+  const righe = prod.taglie.map(t=>{
+    const st = getTxStock(prod.id, t);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="width:60px;font-weight:600;font-size:14px">${t==='NO'?'Unica':t}</div>
+      <div style="font-size:13px;color:var(--text3);width:80px">Attuale: <strong style="color:var(--text)">${st}</strong></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:12px;color:var(--text3)">Nuovo valore:</label>
+        <input type="number" min="0" value="${st}" data-taglia="${t}"
+          style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;text-align:center;font-family:monospace;font-weight:600">
+      </div>
+    </div>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'tx-rettifica-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">✏️ Rettifica stock</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">${prod.nome}</div>
+      <div style="margin-bottom:16px">${righe}</div>
+      <div class="form-group">
+        <label>Motivo rettifica (opzionale)</label>
+        <input type="text" id="tx-rett-motivo" placeholder="es. Errore inventario, merce danneggiata..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1" onclick="txSalvaRettifica('${prodId}')">💾 Salva rettifica</button>
+        <button class="btn" onclick="document.getElementById('tx-rettifica-modal').remove()">Annulla</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+window.txRettificaStock = txRettificaStock;
+
+async function txSalvaRettifica(prodId) {
+  const prod = TOXICO_CATALOG.find(p=>p.id===prodId);
+  if(!prod) return;
+  const modal = document.getElementById('tx-rettifica-modal');
+  const inputs = modal.querySelectorAll('input[data-taglia]');
+  const motivo = document.getElementById('tx-rett-motivo').value.trim();
+
+  inputs.forEach(inp=>{
+    const taglia = inp.dataset.taglia;
+    const nuovoVal = parseInt(inp.value);
+    if(isNaN(nuovoVal) || nuovoVal < 0) return;
+    const stockAttuale = getTxStock(prodId, taglia);
+    // L'aggiustamento è: nuovo - attuale corrente
+    // Salviamo come aggiustamento assoluto rispetto all'iniziale
+    const init = (TOXICO_STOCK_INIT[prodId]||{})[taglia] || 0;
+    const venduto = (db.toxico.vendite||[]).reduce((a,v)=>
+      v.prodId===prodId && v.taglia===taglia ? a+v.qta : a, 0);
+    // adj = nuovo - (init - venduto)  =>  nuovo = init - venduto + adj
+    const adj = nuovoVal - (init - venduto);
+    const k = prodId+'|'+taglia;
+    if(adj === 0) {
+      delete db.toxico.stock[k];
+    } else {
+      db.toxico.stock[k] = adj;
+    }
+  });
+
+  await saveDB();
+  modal.remove();
+  renderTxStock();
+  showToast('Stock aggiornato ✓');
+}
+window.txSalvaRettifica = txSalvaRettifica;
+
 
 function txResetStock() {
   if(!confirm('Resetta tutto lo stock Toxico ai valori iniziali dell\'Excel?')) return;
