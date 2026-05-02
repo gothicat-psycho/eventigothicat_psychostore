@@ -249,6 +249,8 @@
       <div class="nav-item" onclick="showSection('pepito',this)"><span class="nav-icon">🚛</span> Pepito</div>
       <div class="nav-section">Toxico</div>
       <div class="nav-item" onclick="showSection('toxico',this)"><span class="nav-icon">🇬🇧</span> Toxico</div>
+      <div class="nav-section">Strumenti</div>
+      <div class="nav-item" onclick="showSection('etichette',this)"><span class="nav-icon">🏷️</span> Stampa etichette</div>
     </nav>
   </aside>
 
@@ -1509,6 +1511,44 @@
         </div>
       </div>
 
+      <!-- STAMPA ETICHETTE -->
+      <div class="section" id="sec-etichette">
+        <div style="max-width:560px;margin:0 auto">
+          <div class="card">
+            <div class="card-title">🏷️ Stampa etichetta extra</div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label>Codice articolo (barcode)</label>
+              <div style="display:flex;gap:8px">
+                <input type="text" id="et-barcode" placeholder="es. T317SM" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')cercaProdottoEtichetta()">
+                <button class="btn btn-primary" onclick="cercaProdottoEtichetta()">🔍 Cerca</button>
+              </div>
+            </div>
+
+            <!-- Risultato ricerca -->
+            <div id="et-risultato" style="display:none;margin-top:16px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg)">
+              <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+                <div>
+                  <div id="et-nome" style="font-size:15px;font-weight:700;color:var(--text)"></div>
+                  <div id="et-barcode-show" style="font-size:12px;color:var(--text3);font-family:monospace;margin-top:2px"></div>
+                </div>
+                <div style="text-align:right">
+                  <div id="et-eur" style="font-size:20px;font-weight:700;color:var(--green)"></div>
+                  <div id="et-czk" style="font-size:16px;font-weight:600;color:var(--accent)"></div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding-top:12px;border-top:1px solid var(--border)">
+                <label style="font-size:13px;font-weight:500;white-space:nowrap">Numero di copie:</label>
+                <input type="number" id="et-copie" min="1" max="100" value="1" style="width:80px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:16px;text-align:center;font-family:monospace;font-weight:700">
+                <button class="btn btn-primary" style="flex:1" onclick="stampaEtichetteExtra()">🖨️ Stampa etichetta</button>
+              </div>
+            </div>
+
+            <!-- Errore -->
+            <div id="et-errore" style="display:none;margin-top:12px;padding:12px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:var(--radius);color:#991B1B;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -1697,7 +1737,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('sec-'+s).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧'};
+  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧',etichette:'Stampa etichette 🏷️'};
   document.getElementById('page-title').textContent = titles[s]||s;
   if(s==='dashboard') renderDashboard();
   if(s==='catalogo') { populateFornSelects(); renderCatalogo(); }
@@ -1710,6 +1750,7 @@ function showSection(s, el) {
   if(s==='bilancioeventi') renderBilancioEventiPage();
   if(s==='pepito') renderPepito();
   if(s==='toxico') renderToxico();
+  if(s==='etichette') initEtichette();
 }
 window.showSection = showSection;
 
@@ -6493,6 +6534,93 @@ async function docElimina(tipo, ordineId, idx) {
   showToast('Documento eliminato');
 }
 window.docElimina = docElimina;
+
+
+// ══════════════════════════════════════════
+// STAMPA ETICHETTE EXTRA
+// ══════════════════════════════════════════
+
+function initEtichette() {
+  document.getElementById('et-barcode').value = '';
+  document.getElementById('et-risultato').style.display = 'none';
+  document.getElementById('et-errore').style.display = 'none';
+  document.getElementById('et-copie').value = '1';
+  setTimeout(() => document.getElementById('et-barcode').focus(), 100);
+}
+window.initEtichette = initEtichette;
+
+function cercaProdottoEtichetta() {
+  const bc = document.getElementById('et-barcode').value.trim().toUpperCase();
+  const errEl = document.getElementById('et-errore');
+  const risEl = document.getElementById('et-risultato');
+  errEl.style.display = 'none';
+  risEl.style.display = 'none';
+
+  if(!bc) { errEl.textContent = 'Inserisci un codice articolo.'; errEl.style.display = ''; return; }
+
+  const prod = getProdotto(bc);
+  if(!prod) {
+    errEl.textContent = `Articolo "${bc}" non trovato nel catalogo.`;
+    errEl.style.display = '';
+    return;
+  }
+
+  const pEur = Math.round(parseFloat(prod.prezzo)||0);
+  const pCzk = Math.round(parseFloat(prod.prezzoCzk)||0);
+
+  document.getElementById('et-nome').textContent = prod.descrizione || bc;
+  document.getElementById('et-barcode-show').textContent = bc;
+  document.getElementById('et-eur').textContent = pEur + ' EURO';
+  document.getElementById('et-czk').textContent = pCzk > 0 ? pCzk + ' CZK' : '—';
+  document.getElementById('et-copie').value = '1';
+  risEl.style.display = '';
+}
+window.cercaProdottoEtichetta = cercaProdottoEtichetta;
+
+function stampaEtichetteExtra() {
+  const bc = document.getElementById('et-barcode').value.trim().toUpperCase();
+  const copie = parseInt(document.getElementById('et-copie').value) || 1;
+  const prod = getProdotto(bc);
+  if(!prod) { showToast('Prodotto non trovato','red'); return; }
+
+  const pEur = Math.round(parseFloat(prod.prezzo)||0) + ' EURO';
+  const pCzk = Math.round(parseFloat(prod.prezzoCzk)||0);
+  const pCzkStr = pCzk > 0 ? pCzk + ' CZK' : '—';
+
+  const items = [];
+  for(let i = 0; i < copie; i++) {
+    const c = document.createElement('canvas');
+    c.width = 500; c.height = 80;
+    disegnaBarcode128(bc, c);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = 'rgba(255,255,255,0.01)';
+    ctx.fillRect(i % 100, 79, 1, 1);
+    items.push({ barcode: bc, pEur, pCzk: pCzkStr, img: c.toDataURL() });
+  }
+
+  const etichetteLista = items.map(it => ({
+    barcode: it.barcode,
+    prezzo_eur: it.pEur,
+    prezzo_czk: it.pCzk,
+    quantita: 1,
+  }));
+
+  const logoSrc = document.getElementById('logo-img')?.src || '';
+  const dataJS = 'const etichette = ' + JSON.stringify(etichetteLista) + '; window.PSYCHO_LOGO = ' + JSON.stringify(logoSrc) + ';';
+  const finalHtml = getEtichetteTemplate().replace('ETICHETTE_DATA_PLACEHOLDER', dataJS);
+
+  const blob = new Blob([finalHtml], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'etichette_' + bc + '_x' + copie + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`File etichette scaricato! (${copie} cop${copie===1?'ia':'ie'})`);
+}
+window.stampaEtichetteExtra = stampaEtichetteExtra;
 
 
 // Catalogo prodotti Toxico con prezzi
