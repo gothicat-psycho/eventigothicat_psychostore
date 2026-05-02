@@ -2582,9 +2582,12 @@ function buildLoghiGrid() {
   const accHtml = ACC_CATS.map(c => {
     const s = getAccStock(c.id, mag);
     const icons = { toppe:'◈', badge:'◉', adesivi:'★' };
+    const imgHtml = c.immagine
+      ? `<img src="${c.immagine}" class="logo-btn-img" alt="${c.label}" style="object-fit:cover">`
+      : `<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:40px">${icons[c.id]||'◆'}</div>`;
     return `<button class="logo-btn ${s===0?'esaurito':''}" onclick="cassaSelAccessorio('${c.id}', this)" ${s===0?'disabled':''}
       style="border-color:#C5D3F5">
-      <div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:40px">${icons[c.id]||'◆'}</div>
+      ${imgHtml}
       ${c.label}
       <div style="font-size:11px;font-weight:400;margin-top:4px;opacity:.7">${s} pz</div>
     </button>`;
@@ -3066,15 +3069,15 @@ function renderVendite() {
 // ACCESSORI
 // ─────────────────────────────────────────────
 const ACC_CATS = [
-  { id: 'toppe',     label: 'Toppe' },
-  { id: 'badge',     label: 'Badge' },
-  { id: 'adesivi',   label: 'Adesivi' },
-  { id: 'cappelli',  label: 'Cappelli' },
-  { id: 'telimare',  label: 'Teli Mare' },
-  { id: 'ventagli',  label: 'Ventagli' },
-  { id: 'ombrelli',  label: 'Ombrelli' },
-  { id: 'tappeti',   label: 'Tappeti' },
-  { id: 'mousepad',  label: 'Mouse Pad' },
+  { id: 'toppe',     label: 'Toppe',     immagine: null },
+  { id: 'badge',     label: 'Badge',     immagine: 'https://drive.google.com/thumbnail?id=11G8zPXTo3PyfKdw48n4oAo_NZqLnZiyx&sz=w400' },
+  { id: 'adesivi',   label: 'Adesivi',   immagine: null },
+  { id: 'cappelli',  label: 'Cappelli',  immagine: 'https://drive.google.com/thumbnail?id=1wPNHk1IN36UCBpZoF1-5-h87t93iyTey&sz=w400' },
+  { id: 'telimare',  label: 'Teli Mare', immagine: 'https://drive.google.com/thumbnail?id=1GpnLVjaNmbv7jssqxHV4N_4uwlSVgpDY&sz=w400' },
+  { id: 'ventagli',  label: 'Ventagli',  immagine: 'https://drive.google.com/thumbnail?id=1lzUs7Os-6oVNnqOJ8ROLByQ27517ridK&sz=w400' },
+  { id: 'ombrelli',  label: 'Ombrelli',  immagine: 'https://drive.google.com/thumbnail?id=1JucWyUw2dqM1EuHrMd8RHIGyv51sRUT8&sz=w400' },
+  { id: 'tappeti',   label: 'Tappeti',   immagine: 'https://drive.google.com/thumbnail?id=1jf7HDZDhMo68W_iWZYkrc-r6nbeeBGk0&sz=w400' },
+  { id: 'mousepad',  label: 'Mouse Pad', immagine: 'https://drive.google.com/thumbnail?id=1bA5CLPyAs4dF942Ol0vMHWeoF3yRIuP2&sz=w400' },
 ];
 
 function getAccPrezzi() {
