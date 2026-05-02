@@ -298,7 +298,7 @@
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app" style="display:none">
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
@@ -3417,6 +3417,7 @@ function verificaLoginAdmin() {
     isAdmin = true;
     venditeUnlocked = true;
     document.getElementById('modal-login').classList.remove('open');
+    document.getElementById('app').style.display = 'flex';
     document.getElementById('ruolo-label').textContent = '🔑 Amministratore';
     document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'block');
   } else {
