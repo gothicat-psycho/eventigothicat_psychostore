@@ -4330,7 +4330,7 @@ function ricalcolaPR() {
 
   righe.forEach(r => {
     const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
-    const prezzoEur=rmbEur>0?r.prezzoRmb/rmbEur:0;
+    const prezzoEur=rmbEur>0?(r.prezzoRmb*0.95)/rmbEur:0;
     const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
     const costoRiga=r.pz>0?prezzoEur+costoAdd:0;
     const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
@@ -4477,7 +4477,7 @@ function apriDettaglioOrdinePR(id) {
         <thead><tr><th>Articolo</th><th>Descrizione</th><th>¥ unit</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>XXXL</th><th>Pz</th><th>Tot ¥</th><th>%</th><th>Costo €</th><th>Vendita €</th><th>Ric%</th></tr></thead>
         <tbody>${(o.articoli||[]).map(r=>{
           const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
-          const prezzoEur=rmbEur>0?r.prezzoRmb/rmbEur:0;
+          const prezzoEur=rmbEur>0?(r.prezzoRmb*0.95)/rmbEur:0;
           const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
           const costoRiga=r.pz>0?prezzoEur+costoAdd:0;
           const ricarico=prezzoEur>0&&r.vendita>0?((r.vendita-costoAdd)/prezzoEur)*100:null;
