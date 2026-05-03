@@ -310,32 +310,32 @@
     <div onclick="mostraLoginModal()" id="ruolo-badge" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);margin-bottom:4px;cursor:pointer;background:var(--accent-light);border-radius:var(--radius)">
       <span id="ruolo-label" style="font-size:12px;font-weight:600;color:var(--accent)">👤 Tocca per accedere</span>
     </div>
-    <div class="nav-section nav-admin-only">Panoramica</div>
-    <div class="nav-item nav-admin-only active" onclick="showSection('dashboard',this)">
+    <div class="nav-section">Panoramica</div>
+    <div class="nav-item active" onclick="showSection('dashboard',this)">
       <span class="nav-icon">◈</span> Dashboard
     </div>
-    <div class="nav-section nav-admin-only">Anagrafiche</div>
-    <div class="nav-item nav-admin-only" onclick="showSection('fornitori',this)">
+    <div class="nav-section">Anagrafiche</div>
+    <div class="nav-item" onclick="showSection('fornitori',this)">
       <span class="nav-icon">◉</span> Fornitori
     </div>
-    <div class="nav-item nav-admin-only" onclick="showSection('loghi',this)">
+    <div class="nav-item" onclick="showSection('loghi',this)">
       <span class="nav-icon">▦</span> Loghi
     </div>
-    <div class="nav-section nav-admin-only">Magazzino</div>
-    <div class="nav-item nav-admin-only" onclick="showSection('ordini',this)">
+    <div class="nav-section">Magazzino</div>
+    <div class="nav-item" onclick="showSection('ordini',this)">
       <span class="nav-icon">◎</span> Ordini fornitori
     </div>
-    <div class="nav-item nav-admin-only" onclick="showSection('stock',this)">
+    <div class="nav-item" onclick="showSection('stock',this)">
       <span class="nav-icon">▨</span> Stock Tessile
     </div>
-    <div class="nav-item nav-admin-only" onclick="showSection('stock-accessori',this)">
+    <div class="nav-item" onclick="showSection('stock-accessori',this)">
       <span class="nav-icon">◆</span> Stock Accessori
     </div>
-    <div class="nav-item nav-admin-only" onclick="showSection('trasferimenti',this)">
+    <div class="nav-item" onclick="showSection('trasferimenti',this)">
       <span class="nav-icon">⇄</span> Trasferimenti
     </div>
     <div class="nav-section">Vendite</div>
-    <div class="nav-item nav-admin-only" id="nav-eventi" onclick="doShowEventi(this)">
+    <div class="nav-item" id="nav-eventi" onclick="doShowEventi(this)">
       <span class="nav-icon">★</span> Eventi
     </div>
     <div class="nav-item" onclick="showSection('cassa',this)">
@@ -786,7 +786,7 @@
         </div>
         <div id="eventi-totali" style="display:none;margin-bottom:12px"></div>
         <div class="table-wrap">
-          <table><thead><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale in €</th><th></th></tr></thead>
+          <table><thead id="thead-eventi"><tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale in €</th><th></th></tr></thead>
           <tbody id="tab-eventi"></tbody>
         </table></div>
       </div>
@@ -2421,6 +2421,13 @@ function getPrezzoCzk(catId, accCatId) {
 function getEvento(id) { return (db.eventi||[]).find(e => e.id === id); }
 
 function renderEventi() {
+  // Update table header based on role
+  const thead = document.getElementById('thead-eventi');
+  if (thead) {
+    thead.innerHTML = isAdmin
+      ? '<tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale in €</th><th></th></tr>'
+      : '<tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th></th></tr>';
+  }
   // Show CZK prices card
   const hasCzEv = (db.eventi||[]).some(isCzEvent);
   const czkCard = document.getElementById('czk-prezzi-card');
@@ -2455,7 +2462,7 @@ function renderEventi() {
   // Show totals box
   const totBox = document.getElementById('eventi-totali');
   if (totBox && eventi.length > 0) {
-    totBox.style.display = 'grid';
+    totBox.style.display = isAdmin ? 'grid' : 'none';
     totBox.style.gridTemplateColumns = 'repeat(auto-fill,minmax(160px,1fr))';
     totBox.style.gap = '10px';
     totBox.style.marginBottom = '12px';
@@ -2482,6 +2489,7 @@ function renderEventi() {
         <td><span class="mag-badge mag-${ev.magazzino}">${ev.magazzino.charAt(0).toUpperCase()+ev.magazzino.slice(1)}</span></td>
         <td>${isCz?'<span class="badge badge-blue">€ + CZK</span>':'<span class="badge badge-gray">€ EUR</span>'}</td>
         <td class="mono">${ev.czkRate ? ev.czkRate + ' CZK/€' : '-'}</td>
+        ${isAdmin ? `
         <td class="mono">${vend.length}</td>
         <td class="mono" style="font-weight:500">${fmt(incassoEur)}</td>
         <td class="mono" style="font-weight:500">${incassoCzk > 0 ? incassoCzk.toFixed(0) + ' CZK' : '-'}</td>
@@ -2494,13 +2502,14 @@ function renderEventi() {
             return fmt(incassoEur);
           }
         })()}</td>
+        ` : ''}
         <td style="display:flex;gap:6px">
           <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
-          <button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
-          <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>
+          ${isAdmin ? `<button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>` : ''}
         </td>
       </tr>`;
-    }).join('') : `<tr><td colspan="13" class="empty">Nessun evento${annoSel ? ' nel ' + annoSel : ' inserito'}</td></tr>`;
+    }).join('') : `<tr><td colspan="${isAdmin ? 13 : 9}" class="empty">Nessun evento${annoSel ? ' nel ' + annoSel : ' inserito'}</td></tr>`;
 }
 
 // ─────────────────────────────────────────────
@@ -3407,7 +3416,8 @@ function accessoCollaboratore() {
   document.getElementById('ruolo-label').style.color = 'var(--text3)';
   document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
   loadDB().then(() => {
-    showSection('cassa', document.querySelector('[onclick*="cassa"]'));
+    renderDashboard();
+    showSection('dashboard', document.querySelector('.nav-item'));
   });
 }
 
