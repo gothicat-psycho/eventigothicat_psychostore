@@ -3044,8 +3044,12 @@ function suggerisciBarcodes(id) {
     const tagliaSuf = suffissi[t];
     const exactMatch = matches.find(b => {
       const upper = b.toUpperCase();
-      return upper.includes('F.'+tagliaSuf) || upper.includes('M.'+tagliaSuf) ||
-             upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf);
+      // Con separatore punto o trattino: WQ622F.S, Y349RDF.XL
+      if(upper.includes('F.'+tagliaSuf) || upper.includes('M.'+tagliaSuf) ||
+             upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf)) return true;
+      // Senza separatore: T285M, T285XL — deve finire con la taglia
+      if(upper.endsWith(tagliaSuf) && !upper.endsWith('.'+tagliaSuf) && !upper.endsWith('-'+tagliaSuf)) return true;
+      return false;
     });
     const inputEl = document.getElementById('dil-bc-'+t+'-'+id);
     if(inputEl && !inputEl.value && exactMatch) inputEl.value = exactMatch;
@@ -3776,8 +3780,12 @@ function suggerisciBarcodesDF(id) {
     const tagliaSuf = suffissi[t];
     const exactMatch = matches.find(b => {
       const upper = b.toUpperCase();
-      return upper.includes('F.'+tagliaSuf) || upper.includes('M.'+tagliaSuf) ||
-             upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf);
+      // Con separatore punto o trattino: WQ622F.S, Y349RDF.XL
+      if(upper.includes('F.'+tagliaSuf) || upper.includes('M.'+tagliaSuf) ||
+             upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf)) return true;
+      // Senza separatore: T285M, T285XL — deve finire con la taglia
+      if(upper.endsWith(tagliaSuf) && !upper.endsWith('.'+tagliaSuf) && !upper.endsWith('-'+tagliaSuf)) return true;
+      return false;
     });
     const inputEl = document.getElementById('df-bc-'+t+'-'+id);
     if(inputEl && !inputEl.value && exactMatch) inputEl.value = exactMatch;
@@ -4233,7 +4241,11 @@ function suggerisciBarcodesPR(id) {
     const tagliaSuf = suffissi[t];
     const exactMatch = matches.find(b => {
       const upper = b.toUpperCase();
-      return upper.includes('F.'+tagliaSuf)||upper.includes('M.'+tagliaSuf)||upper.endsWith('.'+tagliaSuf)||upper.endsWith('-'+tagliaSuf);
+      // Con separatore punto o trattino: WQ622F.S, Y349RDF.XL
+      if(upper.includes('F.'+tagliaSuf)||upper.includes('M.'+tagliaSuf)||upper.endsWith('.'+tagliaSuf)||upper.endsWith('-'+tagliaSuf)) return true;
+      // Senza separatore: T285M, T285XL — deve finire con la taglia
+      if(upper.endsWith(tagliaSuf) && !upper.endsWith('.'+tagliaSuf) && !upper.endsWith('-'+tagliaSuf)) return true;
+      return false;
     });
     const inputEl = document.getElementById('pr-bc-'+t+'-'+id);
     if(inputEl && !inputEl.value && exactMatch) inputEl.value = exactMatch;
