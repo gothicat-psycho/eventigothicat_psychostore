@@ -7044,7 +7044,7 @@ window.txResetStock = txResetStock;
 function renderTxStorico() {
   if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
   const evId = document.getElementById('tx-st-evento').value;
-  const vendite = (db.toxico.vendite||[]).filter(v=>!evId||v.eventoId===evId);
+  const vendite = (db.toxico.vendite||[]).filter(v=>!evId||String(v.eventoId)===String(evId));
   
   // Metrics
   const totEur = vendite.reduce((a,v)=>a+v.totEur,0);
@@ -7064,7 +7064,7 @@ function renderTxStorico() {
   const tbody=document.getElementById('tx-storico-tbody');
   if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
   tbody.innerHTML=sorted.map(v=>{
-    const ev=(db.eventi||[]).find(e=>e.id===v.eventoId);
+    const ev=(db.eventi||[]).find(e=>String(e.id)===String(v.eventoId));
     const dt=new Date(v.ts);
     return `<tr>
       <td class="mono" style="font-size:12px;white-space:nowrap">${dt.toLocaleDateString('it-IT')} ${dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</td>
@@ -7153,7 +7153,8 @@ async function txSalvaModifica(id) {
   const qta   = parseInt(document.getElementById('txm-qta').value)||1;
   const eur   = parseFloat(document.getElementById('txm-eur').value)||0;
   const gbp   = parseFloat(document.getElementById('txm-gbp').value)||0;
-  v.eventoId  = document.getElementById('txm-evento').value;
+  const evVal = document.getElementById('txm-evento').value;
+  v.eventoId  = isNaN(evVal) ? evVal : (Number.isInteger(parseFloat(evVal)) ? parseInt(evVal) : evVal);
   v.taglia    = document.getElementById('txm-taglia').value;
   v.pagamento = document.getElementById('txm-pay').value;
   v.nota      = document.getElementById('txm-nota').value.trim();
