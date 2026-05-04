@@ -5771,7 +5771,7 @@ function renderBilancioVoci(bil) {
   // Costi
   const tbody = document.getElementById('tbody-bil-costi');
   tbody.innerHTML = (bil.voci||[]).map((v,i)=>`<tr>
-    <td style="padding:4px 6px;font-size:12px" class="mono">${v.data||'—'}</td>
+    <td style="padding:4px 6px;font-size:12px" class="mono">${v.data?fmtDate(v.data):'—'}</td>
     <td style="padding:4px 6px;font-size:12px">${v.desc}</td>
     <td style="padding:4px 6px;font-size:11px;color:var(--text3)">${v.cat||'—'}</td>
     <td style="padding:4px 6px;text-align:right" class="mono">${fmt(v.importo)}</td>
@@ -5781,7 +5781,7 @@ function renderBilancioVoci(bil) {
   // Ricavi
   const tbodyR = document.getElementById('tbody-bil-ricavi');
   tbodyR.innerHTML = (bil.ricavi||[]).map((v,i)=>`<tr>
-    <td style="padding:4px 6px;font-size:12px" class="mono">${v.data||'—'}</td>
+    <td style="padding:4px 6px;font-size:12px" class="mono">${v.data?fmtDate(v.data):'—'}</td>
     <td style="padding:4px 6px;font-size:12px">${v.desc}</td>
     <td style="padding:4px 6px;font-size:11px;color:var(--text3)">${v.cat||'—'}</td>
     <td style="padding:4px 6px;text-align:right;color:var(--green)" class="mono">${fmt(v.importo)}</td>
