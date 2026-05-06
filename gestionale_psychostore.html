@@ -249,6 +249,7 @@
       <div class="nav-item" onclick="showSection('pepito',this)"><span class="nav-icon">🚛</span> Pepito</div>
       <div class="nav-section">Toxico</div>
       <div class="nav-item" onclick="showSection('toxico',this)"><span class="nav-icon">🇬🇧</span> Toxico</div>
+      <div class="nav-item" onclick="showSection('tarocchi',this)"><span class="nav-icon">🃏</span> Toppe Tarocchi</div>
       <div class="nav-section">Strumenti</div>
       <div class="nav-item" onclick="showSection('etichette',this)"><span class="nav-icon">🏷️</span> Stampa etichette</div>
     </nav>
@@ -1517,8 +1518,120 @@
         </div>
       </div>
 
-      <!-- STAMPA ETICHETTE -->
-      <div class="section" id="sec-etichette">
+      <!-- TOPPE TAROCCHI -->
+      <div class="section" id="sec-tarocchi">
+        <div class="tab-bar" style="margin-bottom:16px">
+          <button class="tab-btn active" onclick="switchTarocchiTab('cassa',this)">🃏 Cassa</button>
+          <button class="tab-btn" onclick="switchTarocchiTab('stock',this)">📦 Stock</button>
+          <button class="tab-btn" onclick="switchTarocchiTab('storico',this)">📋 Storico</button>
+          <button class="tab-btn" onclick="switchTarocchiTab('saldo',this)">💰 Saldo</button>
+        </div>
+
+        <!-- CASSA -->
+        <div id="tar-pane-cassa">
+          <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
+            <div class="card">
+              <div class="card-title">🃏 Prodotti</div>
+              <div id="tar-prodotti-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px"></div>
+            </div>
+            <div class="card" style="position:sticky;top:12px">
+              <div class="card-title">Scontrino</div>
+              <div id="tar-sc-items" style="min-height:60px;margin-bottom:8px"></div>
+              <div style="padding:10px 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                <span style="font-weight:600">Totale</span>
+                <span id="tar-sc-tot" style="font-size:22px;font-weight:700;color:var(--green)">€ 0.00</span>
+              </div>
+              <div style="margin:8px 0;display:flex;gap:8px;align-items:center">
+                <label style="font-size:12px;color:var(--text2);white-space:nowrap">Evento:</label>
+                <select id="tar-evento-sel" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                  <option value="">— Seleziona evento —</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
+                <label style="font-size:12px;color:var(--text2);white-space:nowrap">Pagamento:</label>
+                <select id="tar-pay" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                  <option value="POS">💳 POS</option>
+                  <option value="Contanti">💵 Contanti</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" style="width:100%" onclick="tarConcludi()">✅ Concludi vendita</button>
+              <button class="btn" style="width:100%;margin-top:6px" onclick="tarSvuota()">🗑 Svuota</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STOCK -->
+        <div id="tar-pane-stock" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div class="card-title" style="margin-bottom:0">📦 Stock Toppe Tarocchi</div>
+            </div>
+            <div id="tar-stock-table"></div>
+          </div>
+        </div>
+
+        <!-- STORICO -->
+        <div id="tar-pane-storico" style="display:none">
+          <div class="card">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+              <select id="tar-st-evento" onchange="renderTarStorico()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;min-width:200px">
+                <option value="">Tutti gli eventi</option>
+              </select>
+              <button class="btn btn-sm" onclick="document.getElementById('tar-st-evento').value='';renderTarStorico()">Reset</button>
+            </div>
+            <div id="tar-storico-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px"></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Data/Ora</th><th>Evento</th><th>Prodotto</th><th>Qta</th><th>Pag.</th><th>€</th><th>Carlotta</th><th>Psycho</th><th>Band</th><th></th></tr></thead>
+                <tbody id="tar-storico-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SALDO -->
+        <div id="tar-pane-saldo" style="display:none">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div class="metric">
+              <div class="metric-label">Debito residuo Carlotta</div>
+              <div class="metric-value" style="color:#B91C1C" id="tar-saldo-carlotta">€ 0.00</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">Capitale iniziale €193 - vendite</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Rimborso Psycho-Store</div>
+              <div class="metric-value" style="color:var(--accent)" id="tar-saldo-psycho">€ 0.00</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">€1 per ogni pezzo venduto</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Maturato Five Ways</div>
+              <div class="metric-value" style="color:var(--green)" id="tar-saldo-band">€ 0.00</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">€3 per ogni pezzo venduto</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Pagamenti a Carlotta</div>
+            <div id="tar-pag-list" style="margin-bottom:12px"></div>
+            <div style="display:grid;grid-template-columns:140px 1fr 120px auto;gap:8px;align-items:end">
+              <div>
+                <label style="font-size:11px;color:var(--text3)">Data</label>
+                <input type="date" id="tar-pag-data" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3)">Note</label>
+                <input type="text" id="tar-pag-note" placeholder="es. Bonifico" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3)">Importo €</label>
+                <input type="number" id="tar-pag-eur" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <button class="btn btn-primary" onclick="tarAggiungiPag()">+ Aggiungi</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
         <div style="max-width:560px;margin:0 auto">
           <div class="card">
             <div class="card-title">🏷️ Stampa etichetta extra</div>
@@ -1589,6 +1702,7 @@ let db = {
   nextVendId: 1,
   nextEvId: 1,
   documentiDoganali: {},
+  tarocchi: { stock:{}, vendite:[], pagamenti:[], nextVendId:1 },
   toxico: {
     stock: {},
     vendite: [],
@@ -1757,7 +1871,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('sec-'+s).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧',etichette:'Stampa etichette 🏷️'};
+  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧',tarocchi:'Toppe Tarocchi 🃏',etichette:'Stampa etichette 🏷️'};
   document.getElementById('page-title').textContent = titles[s]||s;
   if(s==='dashboard') renderDashboard();
   if(s==='catalogo') { populateFornSelects(); renderCatalogo(); }
@@ -1770,6 +1884,7 @@ function showSection(s, el) {
   if(s==='bilancioeventi') renderBilancioEventiPage();
   if(s==='pepito') renderPepito();
   if(s==='toxico') renderToxico();
+  if(s==='tarocchi') initTarocchi();
   if(s==='etichette') initEtichette();
 }
 window.showSection = showSection;
@@ -6469,8 +6584,324 @@ window.docSalvaCartella = docSalvaCartella;
 
 
 // ══════════════════════════════════════════
-// STAMPA ETICHETTE EXTRA
+// TOPPE TAROCCHI
 // ══════════════════════════════════════════
+
+const TAR_CATALOG = [
+  { id:'TOPPEDT.THEFOOL',      nome:'The Fool' },
+  { id:'TOPPEDT.THEHERMIT',    nome:'The Hermit' },
+  { id:'TOPPEDT.THEMAGICIAN',  nome:'The Magician' },
+  { id:'TOPPEDT.THEHANGEDMAN', nome:'The Hanged Man' },
+  { id:'TOPPEDT.THETOWER',     nome:'The Tower' },
+  { id:'TOPPEDT.THESORCERESS', nome:'The Sorceress' },
+  { id:'TOPPEDT.THEDEVIL',     nome:'The Devil' },
+  { id:'TOPPEDT.THEMOON',      nome:'The Moon' },
+  { id:'TOPPEDT.THEFAMILIAR',  nome:'The Familiar' },
+  { id:'TOPPEDT.THEWIZARD',    nome:'The Wizard' },
+  { id:'TOPPEDT.THEVAMPYRE',   nome:'The Vampyre' },
+  { id:'TOPPEDT.DEATH',        nome:'Death' },
+];
+
+const TAR_STOCK_INIT = {
+  'TOPPEDT.THEFOOL':16,'TOPPEDT.THEHERMIT':16,'TOPPEDT.THEMAGICIAN':16,
+  'TOPPEDT.THEHANGEDMAN':16,'TOPPEDT.THETOWER':16,'TOPPEDT.THESORCERESS':16,
+  'TOPPEDT.THEDEVIL':16,'TOPPEDT.THEMOON':16,'TOPPEDT.THEFAMILIAR':16,
+  'TOPPEDT.THEWIZARD':15,'TOPPEDT.THEVAMPYRE':17,'TOPPEDT.DEATH':17,
+};
+
+const TAR_PREZZO = 5;
+const TAR_COSTO  = 1;
+const TAR_QUOTA_CARLOTTA = 1; // €1 per pezzo — rimborso capitale
+const TAR_QUOTA_PSYCHO   = 1; // €1 per pezzo — rimborso spese
+const TAR_QUOTA_BAND     = 3; // €3 per pezzo — Five Ways To Nowhere
+const TAR_CAPITALE_INIT  = 193; // anticipato da Carlotta
+
+let tarScontrino = []; // [{id, nome, qta}]
+
+function initTarocchi() {
+  if(!db.tarocchi) db.tarocchi = { stock:{}, vendite:[], pagamenti:[], nextVendId:1 };
+  renderTarProdotti();
+  renderTarScontrino();
+  // Popola select evento
+  const evOpts = (db.eventi||[]).sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''))
+    .map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+  ['tar-evento-sel','tar-st-evento'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = (id==='tar-st-evento'?'<option value="">Tutti gli eventi</option>':'<option value="">— Seleziona evento —</option>') + evOpts;
+  });
+}
+window.initTarocchi = initTarocchi;
+
+function switchTarocchiTab(tab, btn) {
+  ['cassa','stock','storico','saldo'].forEach(t => {
+    const el = document.getElementById('tar-pane-'+t);
+    if(el) el.style.display = t===tab?'':'none';
+  });
+  document.querySelectorAll('#sec-tarocchi .tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(tab==='stock') renderTarStock();
+  if(tab==='storico') renderTarStorico();
+  if(tab==='saldo') renderTarSaldo();
+}
+window.switchTarocchiTab = switchTarocchiTab;
+
+function getTarStock(id) {
+  if(!db.tarocchi) return TAR_STOCK_INIT[id]||0;
+  const venduti = (db.tarocchi.vendite||[]).reduce((a,v)=>v.prodId===id?a+v.qta:a,0);
+  const adj = (db.tarocchi.stock||{})[id]||0;
+  return (TAR_STOCK_INIT[id]||0) + adj - venduti;
+}
+
+// ── CASSA ──
+function renderTarProdotti() {
+  const grid = document.getElementById('tar-prodotti-grid');
+  if(!grid) return;
+  grid.innerHTML = TAR_CATALOG.map(p=>{
+    const st = getTarStock(p.id);
+    const cls = st<=0?'background:#FEE2E2;opacity:.6':'background:#F0FDF4';
+    const dis = st<=0?'disabled':'';
+    return `<button ${dis} onclick="tarAggiungi('${p.id}')"
+      style="padding:12px 8px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;${cls};text-align:center;font-size:13px;font-weight:600;line-height:1.3">
+      ${p.nome}<br><span style="font-size:11px;font-weight:400;color:var(--text3)">Stock: ${st} · €${TAR_PREZZO}</span>
+    </button>`;
+  }).join('');
+}
+window.renderTarProdotti = renderTarProdotti;
+
+function tarAggiungi(id) {
+  const existing = tarScontrino.find(x=>x.id===id);
+  if(existing) { existing.qta++; }
+  else {
+    const prod = TAR_CATALOG.find(p=>p.id===id);
+    tarScontrino.push({ id, nome:prod.nome, qta:1 });
+  }
+  renderTarScontrino();
+}
+window.tarAggiungi = tarAggiungi;
+
+function tarRimuovi(id) {
+  const idx = tarScontrino.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  if(tarScontrino[idx].qta>1) tarScontrino[idx].qta--;
+  else tarScontrino.splice(idx,1);
+  renderTarScontrino();
+}
+window.tarRimuovi = tarRimuovi;
+
+function renderTarScontrino() {
+  const el = document.getElementById('tar-sc-items');
+  const totEl = document.getElementById('tar-sc-tot');
+  if(!el) return;
+  if(!tarScontrino.length) { el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">Nessun prodotto</div>'; totEl.textContent='€ 0.00'; return; }
+  el.innerHTML = tarScontrino.map(it=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${it.nome}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="tarRimuovi('${it.id}')" style="width:22px;height:22px;border:1px solid var(--border);border-radius:50%;cursor:pointer;background:var(--surface2);font-size:14px;line-height:1">−</button>
+        <span style="font-size:14px;font-weight:600;min-width:20px;text-align:center">${it.qta}</span>
+        <button onclick="tarAggiungi('${it.id}')" style="width:22px;height:22px;border:1px solid var(--border);border-radius:50%;cursor:pointer;background:var(--surface2);font-size:14px;line-height:1">+</button>
+        <span style="font-size:13px;font-weight:600;min-width:40px;text-align:right">€ ${(it.qta*TAR_PREZZO).toFixed(2)}</span>
+      </div>
+    </div>`).join('');
+  const tot = tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO,0);
+  totEl.textContent = '€ '+tot.toFixed(2);
+}
+
+function tarSvuota() { tarScontrino=[]; renderTarScontrino(); }
+window.tarSvuota = tarSvuota;
+
+async function tarConcludi() {
+  if(!tarScontrino.length) return;
+  const evId = document.getElementById('tar-evento-sel').value;
+  if(!evId) { showToast('Seleziona un evento prima di concludere','amber'); return; }
+  const pay = document.getElementById('tar-pay').value;
+  if(!db.tarocchi) db.tarocchi={stock:{},vendite:[],pagamenti:[],nextVendId:1};
+  const now = new Date();
+  tarScontrino.forEach(it=>{
+    const tot = it.qta * TAR_PREZZO;
+    db.tarocchi.vendite.push({
+      id: db.tarocchi.nextVendId++,
+      eventoId: parseInt(evId),
+      prodId: it.id,
+      nome: it.nome,
+      qta: it.qta,
+      prezzoEur: TAR_PREZZO,
+      totEur: tot,
+      quotaCarlotta: it.qta * TAR_QUOTA_CARLOTTA,
+      quotaPsycho:   it.qta * TAR_QUOTA_PSYCHO,
+      quotaBand:     it.qta * TAR_QUOTA_BAND,
+      pagamento: pay,
+      ts: now.toISOString(),
+    });
+  });
+  await saveDB();
+  tarSvuota();
+  renderTarProdotti();
+  showToast('Vendita registrata ✓');
+}
+window.tarConcludi = tarConcludi;
+
+// ── STOCK ──
+function renderTarStock() {
+  if(!db.tarocchi) db.tarocchi={stock:{},vendite:[],pagamenti:[],nextVendId:1};
+  const el = document.getElementById('tar-stock-table');
+  if(!el) return;
+  el.innerHTML = TAR_CATALOG.map(p=>{
+    const st = getTarStock(p.id);
+    const cls = st<=0?'color:#B02020':st<=2?'color:#8A5C00':'color:#1A7A4A';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="font-weight:600;font-size:15px">${p.nome}</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span style="font-size:28px;font-weight:700;font-family:monospace;${cls}">${st}</span>
+        <button onclick="tarRettifica('${p.id}')" style="padding:4px 10px;font-size:11px;border:1px solid var(--border);border-radius:var(--radius);background:white;cursor:pointer;font-weight:600">✏️ Rettifica</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function tarRettifica(id) {
+  const prod = TAR_CATALOG.find(p=>p.id===id);
+  const st = getTarStock(id);
+  const existing = document.getElementById('tar-rett-modal');
+  if(existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id='tar-rett-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">✏️ Rettifica stock</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">${prod.nome} — attuale: ${st}</div>
+      <div class="form-group">
+        <label>Nuovo valore stock</label>
+        <input type="number" id="tar-rett-val" min="0" value="${st}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:16px;text-align:center;font-family:monospace;font-weight:700">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1" onclick="tarSalvaRettifica('${id}')">💾 Salva</button>
+        <button class="btn" onclick="document.getElementById('tar-rett-modal').remove()">Annulla</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.getElementById('tar-rett-val').focus();
+}
+window.tarRettifica = tarRettifica;
+
+async function tarSalvaRettifica(id) {
+  const nuovoVal = parseInt(document.getElementById('tar-rett-val').value)||0;
+  if(!db.tarocchi) db.tarocchi={stock:{},vendite:[],pagamenti:[],nextVendId:1};
+  const venduti = (db.tarocchi.vendite||[]).reduce((a,v)=>v.prodId===id?a+v.qta:a,0);
+  const adj = nuovoVal - (TAR_STOCK_INIT[id]||0) + venduti;
+  if(adj===0) delete db.tarocchi.stock[id];
+  else db.tarocchi.stock[id]=adj;
+  await saveDB();
+  document.getElementById('tar-rett-modal').remove();
+  renderTarStock();
+  showToast('Stock aggiornato ✓');
+}
+window.tarSalvaRettifica = tarSalvaRettifica;
+
+// ── STORICO ──
+function renderTarStorico() {
+  if(!db.tarocchi) return;
+  const evId = document.getElementById('tar-st-evento').value;
+  const vendite = (db.tarocchi.vendite||[]).filter(v=>!evId||String(v.eventoId)===String(evId));
+  const sorted = [...vendite].sort((a,b)=>b.ts.localeCompare(a.ts));
+  const totEur = vendite.reduce((a,v)=>a+v.totEur,0);
+  const nPezzi = vendite.reduce((a,v)=>a+v.qta,0);
+  const totCarlotta = vendite.reduce((a,v)=>a+v.quotaCarlotta,0);
+  const totPsycho   = vendite.reduce((a,v)=>a+v.quotaPsycho,0);
+  const totBand     = vendite.reduce((a,v)=>a+v.quotaBand,0);
+  document.getElementById('tar-storico-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Pezzi venduti</div><div class="metric-value">${nPezzi}</div></div>
+    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">Rimborso Carlotta</div><div class="metric-value" style="color:#B91C1C">€ ${totCarlotta.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">Five Ways To Nowhere</div><div class="metric-value" style="color:var(--green)">€ ${totBand.toFixed(2)}</div></div>`;
+  const tbody = document.getElementById('tar-storico-tbody');
+  if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
+  tbody.innerHTML = sorted.map(v=>{
+    const ev=(db.eventi||[]).find(e=>String(e.id)===String(v.eventoId));
+    const dt=new Date(v.ts);
+    return `<tr>
+      <td class="mono" style="font-size:12px;white-space:nowrap">${dt.toLocaleDateString('it-IT')} ${dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="font-weight:500">${ev?ev.nome:'—'}</td>
+      <td>${v.nome}</td>
+      <td class="mono">${v.qta}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:${v.pagamento==='POS'?'#DBEAFE':'#D1FAE5'};color:${v.pagamento==='POS'?'#1E40AF':'#065F46'}">${v.pagamento}</span></td>
+      <td class="mono">€ ${v.totEur.toFixed(2)}</td>
+      <td class="mono" style="color:#B91C1C">€ ${v.quotaCarlotta.toFixed(2)}</td>
+      <td class="mono" style="color:var(--accent)">€ ${v.quotaPsycho.toFixed(2)}</td>
+      <td class="mono" style="color:var(--green)">€ ${v.quotaBand.toFixed(2)}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="tarElimVendita(${v.id})">Elimina</button></td>
+    </tr>`;
+  }).join('');
+}
+window.renderTarStorico = renderTarStorico;
+
+async function tarElimVendita(id) {
+  if(!confirm('Eliminare questa vendita?')) return;
+  db.tarocchi.vendite = db.tarocchi.vendite.filter(v=>v.id!==id);
+  await saveDB();
+  renderTarStorico();
+  renderTarProdotti();
+  showToast('Vendita eliminata');
+}
+window.tarElimVendita = tarElimVendita;
+
+// ── SALDO ──
+function renderTarSaldo() {
+  if(!db.tarocchi) db.tarocchi={stock:{},vendite:[],pagamenti:[],nextVendId:1};
+  const vendite = db.tarocchi.vendite||[];
+  const pezziTot = vendite.reduce((a,v)=>a+v.qta,0);
+  const pagati = (db.tarocchi.pagamenti||[]).reduce((a,p)=>a+p.eur,0);
+  const rimborsoTot = pezziTot * TAR_QUOTA_CARLOTTA;
+  const debitoResiduo = Math.max(0, TAR_CAPITALE_INIT - rimborsoTot - pagati);
+  const psychoTot = pezziTot * TAR_QUOTA_PSYCHO;
+  const bandTot   = pezziTot * TAR_QUOTA_BAND;
+
+  document.getElementById('tar-saldo-carlotta').textContent = '€ '+debitoResiduo.toFixed(2);
+  document.getElementById('tar-saldo-psycho').textContent   = '€ '+psychoTot.toFixed(2);
+  document.getElementById('tar-saldo-band').textContent     = '€ '+bandTot.toFixed(2);
+
+  // Lista pagamenti a Carlotta
+  const pag = (db.tarocchi.pagamenti||[]).sort((a,b)=>a.data.localeCompare(b.data));
+  const listEl = document.getElementById('tar-pag-list');
+  if(!pag.length) { listEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0">Nessun pagamento registrato</div>'; return; }
+  listEl.innerHTML=`<table style="width:100%;font-size:13px"><thead><tr><th>Data</th><th>Note</th><th>€</th><th></th></tr></thead><tbody>`+
+    pag.map((p,i)=>`<tr>
+      <td class="mono">${fmtDate(p.data)}</td>
+      <td>${p.note||'—'}</td>
+      <td class="mono">€ ${p.eur.toFixed(2)}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="tarElimPag(${i})">✕</button></td>
+    </tr>`).join('')+'</tbody></table>';
+
+  document.getElementById('tar-pag-data').value = new Date().toISOString().split('T')[0];
+}
+window.renderTarSaldo = renderTarSaldo;
+
+async function tarAggiungiPag() {
+  const data = document.getElementById('tar-pag-data').value;
+  const eur  = parseFloat(document.getElementById('tar-pag-eur').value)||0;
+  const note = document.getElementById('tar-pag-note').value.trim();
+  if(!data||!eur) { showToast('Inserisci data e importo','amber'); return; }
+  if(!db.tarocchi) db.tarocchi={stock:{},vendite:[],pagamenti:[],nextVendId:1};
+  db.tarocchi.pagamenti.push({data,eur,note});
+  await saveDB();
+  document.getElementById('tar-pag-eur').value='';
+  document.getElementById('tar-pag-note').value='';
+  renderTarSaldo();
+  showToast('Pagamento registrato ✓');
+}
+window.tarAggiungiPag = tarAggiungiPag;
+
+async function tarElimPag(idx) {
+  if(!confirm('Eliminare questo pagamento?')) return;
+  db.tarocchi.pagamenti.splice(idx,1);
+  await saveDB();
+  renderTarSaldo();
+  showToast('Pagamento eliminato');
+}
+window.tarElimPag = tarElimPag;
+
 
 function initEtichette() {
   document.getElementById('et-barcode').value = '';
