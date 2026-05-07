@@ -1801,6 +1801,7 @@ async function verificaLogin() {
     document.getElementById('app').style.display = 'flex';
     await loadDB();
     populateFornSelects();
+    populateStoricoFiltri();
     renderDashboard();
     showSection('dashboard', document.querySelector('.nav-item'));
   } catch(e) {
@@ -1877,7 +1878,7 @@ function showSection(s, el) {
   if(s==='stock') { populateFornSelects(); renderStock(); renderStockMetrics(); }
   if(s==='eventi') renderEventi();
   if(s==='cassa') { initCassa(); setTimeout(()=>document.getElementById('barcode-input').focus(),200); }
-  if(s==='storico') { populateStoricoFiltri(); renderStorico(); }
+  if(s==='storico') { renderStorico(); }
   if(s==='ordini') initOrdini();
   if(s==='report') initReport();
   if(s==='bilancioeventi') renderBilancioEventiPage();
@@ -2482,10 +2483,11 @@ window.concludiVendita = concludiVendita;
 // ── STORICO ──
 function populateStoricoFiltri() {
   const el = document.getElementById('filter-st-evento');
+  if(!el) return;
   const cur = el.value;
   const eventi = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''));
   el.innerHTML = '<option value="">Tutti gli eventi</option>' + eventi.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
-  if(cur) el.value = cur;
+  el.value = cur;
 }
 
 function resetStoricoFiltri() {
@@ -2495,8 +2497,10 @@ function resetStoricoFiltri() {
   renderStorico();
 }
 window.resetStoricoFiltri = resetStoricoFiltri;
+window.renderStorico = renderStorico;
 
 function renderStorico() {
+  populateStoricoFiltri();
   const evId = document.getElementById('filter-st-evento').value;
   const datFilt = document.getElementById('filter-st-data').value;
   const pagFilt = document.getElementById('filter-st-pag').value;
