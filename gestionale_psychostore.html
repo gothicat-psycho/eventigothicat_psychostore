@@ -2484,7 +2484,8 @@ function populateStoricoFiltri() {
   const el = document.getElementById('filter-st-evento');
   const cur = el.value;
   const eventi = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''));
-  el.innerHTML = '<option value="">Tutti gli eventi</option>' + eventi.map(e=>`<option value="${e.id}" ${String(e.id)===String(cur)?'selected':''}>${e.nome}</option>`).join('');
+  el.innerHTML = '<option value="">Tutti gli eventi</option>' + eventi.map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+  if(cur) el.value = cur;
 }
 
 function resetStoricoFiltri() {
