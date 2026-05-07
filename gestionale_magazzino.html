@@ -858,6 +858,11 @@
               </div>
               <div id="misto-avviso" style="display:none;font-size:11px;color:var(--amber);margin-top:4px"></div>
             </div>
+            <!-- Note vendita -->
+            <div class="card" style="padding:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Note</div>
+              <textarea id="scontrino-note" placeholder="Note sulla vendita (opzionale)..." style="width:100%;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;resize:none;height:60px;font-family:inherit"></textarea>
+            </div>
             <button class="btn-cassa btn-cassa-ok" id="btn-concludi" onclick="concludiVendita()" disabled>
               ✓ Concludi vendita
             </button>
@@ -1035,7 +1040,40 @@
 </div>
 
 <!-- MODAL password vendite -->
-<!-- MODAL password vendite -->
+<!-- MODAL modifica vendita -->
+<div class="modal-backdrop" id="modal-modifica-vendita">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">✏️ Modifica vendita</div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group" style="flex:1">
+        <label>Metodo di pagamento</label>
+        <select id="mv-metodo" onchange="aggiornaMVMisto()" style="width:100%">
+          <option value="contanti">💵 Contanti</option>
+          <option value="pos">💳 POS</option>
+          <option value="misto">💵+💳 Misto</option>
+        </select>
+      </div>
+    </div>
+    <div id="mv-misto-fields" style="display:none;gap:8px;grid-template-columns:1fr 1fr;margin-bottom:12px">
+      <div class="form-group">
+        <label>Contanti (€)</label>
+        <input type="number" id="mv-contanti" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>POS (€)</label>
+        <input type="number" id="mv-pos" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Note</label>
+      <textarea id="mv-note" placeholder="Note sulla vendita..." style="width:100%;height:70px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;resize:none;font-family:inherit"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="document.getElementById('modal-modifica-vendita').classList.remove('open')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaModificaVendita()">Salva modifiche</button>
+    </div>
+  </div>
+</div>
 <div class="modal-backdrop" id="modal-pwd">
   <div class="modal" style="width:360px">
     <div class="modal-title">🔒 Area riservata</div>
@@ -2899,6 +2937,46 @@ function restoreSidebar() {
   }
 }
 
+function aggiornaMVMisto() {
+  const v = document.getElementById('mv-metodo').value;
+  const f = document.getElementById('mv-misto-fields');
+  if (f) f.style.display = v === 'misto' ? 'grid' : 'none';
+}
+
+let _editVenditaId = null;
+function apriModificaVendita(id) {
+  const v = (db.vendite||[]).find(x => x.id === id);
+  if (!v) return;
+  _editVenditaId = id;
+  const mp = v.metodoPagamento || 'contanti';
+  document.getElementById('mv-metodo').value = mp;
+  document.getElementById('mv-note').value = v.note || '';
+  document.getElementById('mv-contanti').value = v.pagContanti || '';
+  document.getElementById('mv-pos').value = v.pagPos || '';
+  aggiornaMVMisto();
+  document.getElementById('modal-modifica-vendita').classList.add('open');
+}
+
+async function salvaModificaVendita() {
+  const v = (db.vendite||[]).find(x => x.id === _editVenditaId);
+  if (!v) return;
+  const mp = document.getElementById('mv-metodo').value;
+  v.metodoPagamento = mp;
+  v.note = document.getElementById('mv-note').value.trim() || null;
+  if (mp === 'misto') {
+    v.pagContanti = parseFloat(document.getElementById('mv-contanti').value) || 0;
+    v.pagPos = parseFloat(document.getElementById('mv-pos').value) || 0;
+  } else if (mp === 'contanti') {
+    v.pagContanti = v.totale; v.pagPos = 0;
+  } else {
+    v.pagContanti = 0; v.pagPos = v.totale;
+  }
+  await saveDB();
+  document.getElementById('modal-modifica-vendita').classList.remove('open');
+  renderVendite();
+  showToast('Vendita aggiornata ✓');
+}
+
 function aggiornaPagamento() {
   const metodo = (document.getElementById('metodo-pagamento')||{}).value;
   const mistoFields = document.getElementById('misto-fields');
@@ -2942,6 +3020,7 @@ async function concludiVendita() {
   const metodoPag = (document.getElementById('metodo-pagamento')||{value:'contanti'}).value || 'contanti';
   const pagContanti = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-contanti').value)||0) : (metodoPag === 'contanti' ? totale : 0);
   const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : (metodoPag === 'pos' ? totale : 0);
+  const noteVendita = (document.getElementById('scontrino-note')||{value:''}).value.trim();
   db.vendite.push({
     id: db.nextVendId++,
     eventoId: cassaEventoId,
@@ -2951,6 +3030,7 @@ async function concludiVendita() {
     metodoPagamento: metodoPag,
     pagContanti: parseFloat(pagContanti.toFixed(2)),
     pagPos: parseFloat(pagPos.toFixed(2)),
+    note: noteVendita || null,
     items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, prezzoUnit: it.prezzoUnit||it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
   });
   // Scarica magazzino
@@ -2976,6 +3056,8 @@ async function concludiVendita() {
   if (mp2) mp2.value = '';
   const av = document.getElementById('misto-avviso');
   if (av) av.style.display = 'none';
+  const noteEl = document.getElementById('scontrino-note');
+  if (noteEl) noteEl.value = '';
   showToast('Vendita registrata ✓');
 }
 
@@ -3066,14 +3148,18 @@ function renderVendite() {
       const mpLabel = mp === 'pos' ? '💳 POS' : mp === 'misto' ? '💵+💳 Misto' : '💵 Contanti';
       const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
         `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
+      const noteHtml = v.note ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">📝 ${v.note}</div>` : '';
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
         <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
         <td>${valBadge}</td>
-        <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
+        <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}${noteHtml}</td>
         <td class="mono" style="font-weight:500">${totFmt}</td>
         <td style="font-size:12px">${mpLabel}${mpDetail}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="apriModificaVendita(${v.id})">Modifica</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button>
+        </td>
       </tr>`;
     }).join('') : '<tr><td colspan="6" class="empty">Nessuna vendita trovata</td></tr>';
 }
