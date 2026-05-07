@@ -2497,11 +2497,11 @@ window.resetStoricoFiltri = resetStoricoFiltri;
 
 function renderStorico() {
   populateStoricoFiltri();
-  const evId = parseInt(document.getElementById('filter-st-evento').value)||0;
+  const evId = document.getElementById('filter-st-evento').value;
   const datFilt = document.getElementById('filter-st-data').value;
   const pagFilt = document.getElementById('filter-st-pag').value;
   let list = [...(db.vendite||[])].filter(v=>
-    (!evId||v.eventoId===evId) &&
+    (!evId||String(v.eventoId)===String(evId)) &&
     (!datFilt||v.dataOra.startsWith(datFilt)) &&
     (!pagFilt||v.pagamento===pagFilt)
   ).sort((a,b)=>b.dataOra.localeCompare(a.dataOra));
