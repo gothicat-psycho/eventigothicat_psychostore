@@ -1042,8 +1042,15 @@
 <!-- MODAL password vendite -->
 <!-- MODAL modifica vendita -->
 <div class="modal-backdrop" id="modal-modifica-vendita">
-  <div class="modal" style="width:480px">
+  <div class="modal" style="width:560px;max-height:90vh;overflow-y:auto">
     <div class="modal-title">✏️ Modifica vendita</div>
+
+    <!-- Articoli -->
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Articoli</div>
+    <div id="mv-items" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <div id="mv-totale" style="text-align:right;font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;padding-top:8px;border-top:1px solid var(--border)"></div>
+
+    <!-- Metodo pagamento -->
     <div class="form-row" style="margin-bottom:12px">
       <div class="form-group" style="flex:1">
         <label>Metodo di pagamento</label>
@@ -1064,10 +1071,13 @@
         <input type="number" id="mv-pos" min="0" step="0.01" placeholder="0.00">
       </div>
     </div>
+
+    <!-- Note -->
     <div class="form-group" style="margin-bottom:16px">
       <label>Note</label>
       <textarea id="mv-note" placeholder="Note sulla vendita..." style="width:100%;height:70px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;resize:none;font-family:inherit"></textarea>
     </div>
+
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn" onclick="document.getElementById('modal-modifica-vendita').classList.remove('open')">Annulla</button>
       <button class="btn btn-primary" onclick="salvaModificaVendita()">Salva modifiche</button>
@@ -2944,32 +2954,91 @@ function aggiornaMVMisto() {
 }
 
 let _editVenditaId = null;
+let _editVenditaItems = [];
+
+function renderMVItems() {
+  const valuta = (db.vendite||[]).find(x => x.id === _editVenditaId)?.valuta || 'EUR';
+  const isCzk = valuta === 'CZK';
+  const container = document.getElementById('mv-items');
+  if (!container) return;
+  container.innerHTML = _editVenditaItems.map((it, idx) => {
+    const logo = it.isAccessorio
+      ? (ACC_CATS.find(c => c.id === it.accCatId) || {label: it.accCatId || 'Accessorio'})
+      : ((db.loghi||[]).find(l => l.id === it.logoId) || {nome:'?'});
+    const nomeLabel = it.isAccessorio ? logo.label : logo.nome;
+    const tagLabel = it.isAccessorio ? (it.qty > 1 ? `x${it.qty}` : '') : (it.taglia || '');
+    const catLabel = it.isAccessorio ? '' : (it.catId || '');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
+      <div style="flex:1;font-size:13px">
+        <span style="font-weight:500">${nomeLabel}</span>
+        ${catLabel ? `<span style="color:var(--text3);font-size:11px;margin-left:4px">${catLabel}</span>` : ''}
+        ${tagLabel ? `<span style="color:var(--text3);font-size:11px;margin-left:4px">${tagLabel}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="font-size:12px;color:var(--text3)">${isCzk ? 'CZK' : '€'}</span>
+        <input type="number" value="${it.prezzo}" min="0" step="0.01" style="width:80px;padding:4px 6px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;text-align:right"
+          oninput="aggiornaPrezzaMVItem(${idx}, this.value)">
+      </div>
+      <button onclick="rimuoviMVItem(${idx})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:2px 6px;border-radius:var(--radius)" title="Rimuovi">✕</button>
+    </div>`;
+  }).join('');
+  // Update totale
+  const tot = _editVenditaItems.reduce((a, i) => a + (parseFloat(i.prezzo)||0), 0);
+  const totEl = document.getElementById('mv-totale');
+  if (totEl) totEl.textContent = `Totale: ${isCzk ? Math.round(tot) + ' CZK' : '€ ' + tot.toFixed(2)}`;
+}
+
+function aggiornaPrezzaMVItem(idx, val) {
+  if (_editVenditaItems[idx]) {
+    _editVenditaItems[idx].prezzo = parseFloat(val) || 0;
+    // Update totale only
+    const valuta = (db.vendite||[]).find(x => x.id === _editVenditaId)?.valuta || 'EUR';
+    const isCzk = valuta === 'CZK';
+    const tot = _editVenditaItems.reduce((a, i) => a + (parseFloat(i.prezzo)||0), 0);
+    const totEl = document.getElementById('mv-totale');
+    if (totEl) totEl.textContent = `Totale: ${isCzk ? Math.round(tot) + ' CZK' : '€ ' + tot.toFixed(2)}`;
+  }
+}
+
+function rimuoviMVItem(idx) {
+  _editVenditaItems.splice(idx, 1);
+  renderMVItems();
+}
+
 function apriModificaVendita(id) {
   const v = (db.vendite||[]).find(x => x.id === id);
   if (!v) return;
   _editVenditaId = id;
+  _editVenditaItems = (v.items||[]).map(it => ({...it}));
   const mp = v.metodoPagamento || 'contanti';
   document.getElementById('mv-metodo').value = mp;
   document.getElementById('mv-note').value = v.note || '';
   document.getElementById('mv-contanti').value = v.pagContanti || '';
   document.getElementById('mv-pos').value = v.pagPos || '';
   aggiornaMVMisto();
+  renderMVItems();
   document.getElementById('modal-modifica-vendita').classList.add('open');
 }
 
 async function salvaModificaVendita() {
   const v = (db.vendite||[]).find(x => x.id === _editVenditaId);
   if (!v) return;
+  if (_editVenditaItems.length === 0) {
+    showToast('Aggiungi almeno un articolo o elimina la vendita'); return;
+  }
   const mp = document.getElementById('mv-metodo').value;
+  const nuovoTotale = parseFloat(_editVenditaItems.reduce((a,i) => a + (parseFloat(i.prezzo)||0), 0).toFixed(2));
+  v.items = _editVenditaItems;
+  v.totale = nuovoTotale;
   v.metodoPagamento = mp;
   v.note = document.getElementById('mv-note').value.trim() || null;
   if (mp === 'misto') {
     v.pagContanti = parseFloat(document.getElementById('mv-contanti').value) || 0;
     v.pagPos = parseFloat(document.getElementById('mv-pos').value) || 0;
   } else if (mp === 'contanti') {
-    v.pagContanti = v.totale; v.pagPos = 0;
+    v.pagContanti = nuovoTotale; v.pagPos = 0;
   } else {
-    v.pagContanti = 0; v.pagPos = v.totale;
+    v.pagContanti = 0; v.pagPos = nuovoTotale;
   }
   await saveDB();
   document.getElementById('modal-modifica-vendita').classList.remove('open');
