@@ -6486,9 +6486,9 @@ function aggiornaCostoMedioPonderato(prod, nuovoQty, nuovoCosto) {
 }
 
 // ── AUTOFILL DESCRIZIONE ──
-function _autofillDesc(codice, descElId) {
+function _autofillDesc(codice, descElId, vendElId) {
   const descEl = document.getElementById(descElId);
-  if(!descEl || descEl.value) return;
+  if(!descEl) return;
   if(!codice || codice.length < 3) return;
   const suffissi = ['S','M','L','XS','XL','XXL','F.S','F.M','M.S','M.M'];
   let found = null;
@@ -6498,13 +6498,23 @@ function _autofillDesc(codice, descElId) {
   }
   if(!found) found = (db.prodotti||[]).find(p=>p.barcode.toUpperCase().startsWith(codice.toUpperCase()));
   if(found) {
-    const nome = getNomeProdotto(found);
-    if(nome) descEl.value = nome;
+    if(!descEl.value) {
+      const nome = getNomeProdotto(found);
+      if(nome) descEl.value = nome;
+    }
+    if(vendElId) {
+      const vendEl = document.getElementById(vendElId);
+      if(vendEl && !vendEl.value && found.prezzo) {
+        vendEl.value = found.prezzo;
+        // Trigger ricalcolo
+        vendEl.dispatchEvent(new Event('input'));
+      }
+    }
   }
 }
-function autofillDescDIL(id) { _autofillDesc(document.getElementById('dil-art-'+id)?.value?.trim(), 'dil-desc-'+id); }
-function autofillDescDF(id)  { _autofillDesc(document.getElementById('df-art-'+id)?.value?.trim(),  'df-desc-'+id);  }
-function autofillDescPR(id)  { _autofillDesc(document.getElementById('pr-art-'+id)?.value?.trim(),  'pr-desc-'+id);  }
+function autofillDescDIL(id) { _autofillDesc(document.getElementById('dil-art-'+id)?.value?.trim(), 'dil-desc-'+id, 'dil-vend-'+id); }
+function autofillDescDF(id)  { _autofillDesc(document.getElementById('df-art-'+id)?.value?.trim(),  'df-desc-'+id,  'df-vend-'+id);  }
+function autofillDescPR(id)  { _autofillDesc(document.getElementById('pr-art-'+id)?.value?.trim(),  'pr-desc-'+id,  null);  }
 window.autofillDescDIL = autofillDescDIL;
 window.autofillDescDF  = autofillDescDF;
 window.autofillDescPR  = autofillDescPR;
