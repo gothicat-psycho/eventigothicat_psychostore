@@ -246,6 +246,7 @@
       <div class="nav-section">Analisi</div>
       <div class="nav-item" onclick="showSection('report',this)"><span class="nav-icon">▲</span> Report vendite</div>
       <div class="nav-item" onclick="showSection('bilancioeventi',this)"><span class="nav-icon">💰</span> Bilancio eventi</div>
+      <div class="nav-item" onclick="showSection('storicostock',this)"><span class="nav-icon">📈</span> Storico stock</div>
       <div class="nav-item" onclick="showSection('pepito',this)"><span class="nav-icon">🚛</span> Pepito</div>
       <div class="nav-section">Toxico</div>
       <div class="nav-item" onclick="showSection('toxico',this)"><span class="nav-icon">🇬🇧</span> Toxico</div>
@@ -407,7 +408,7 @@
             <div class="card-title">Ordini Dark In Love</div>
             <div class="table-wrap">
               <table><thead><tr>
-                <th>Data</th><th>Riferimento</th><th>Articoli</th><th>Totale RMB</th><th>Totale GBP</th><th>Totale USD</th><th>Totale EUR</th><th>Stato</th><th></th>
+                <th>Data</th><th>Riferimento</th><th>Articoli</th><th>Totale RMB</th><th>Totale GBP</th><th>Totale USD</th><th>Totale EUR</th><th>Dovuto €</th><th>Stato</th><th></th>
               </tr></thead>
               <tbody id="tab-ordini-dil"></tbody></table>
             </div>
@@ -1667,6 +1668,84 @@
         </div>
       </div>
 
+      <!-- STORICO STOCK -->
+      <div class="section" id="sec-storicostock">
+
+        <div class="tab-bar" style="margin-bottom:16px">
+          <button class="tab-btn active" onclick="switchStockTab('globale',this)">📋 Movimenti globali</button>
+          <button class="tab-btn" onclick="switchStockTab('prodotto',this)">🔍 Singolo prodotto</button>
+          <button class="tab-btn" onclick="switchStockTab('valore',this)">💶 Valore magazzino</button>
+        </div>
+
+        <!-- MOVIMENTI GLOBALI -->
+        <div id="ss-pane-globale">
+          <div class="card" style="margin-bottom:12px">
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Dal</label>
+                <input type="date" id="ss-dal" onchange="renderStoricoStock()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Al</label>
+                <input type="date" id="ss-al" onchange="renderStoricoStock()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Tipo</label>
+                <select id="ss-tipo" onchange="renderStoricoStock()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                  <option value="">Tutti</option>
+                  <option value="carico">📥 Carichi</option>
+                  <option value="scarico">📤 Scarichi/Vendite</option>
+                  <option value="rettifica">🔧 Rettifiche</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Cerca articolo</label>
+                <input type="text" id="ss-cerca" oninput="renderStoricoStock()" placeholder="barcode o descrizione..." style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:220px">
+              </div>
+              <button class="btn btn-sm" onclick="resetStoricoStockFiltri()">Reset</button>
+            </div>
+          </div>
+          <div id="ss-globale-metrics" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px"></div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Data</th><th>Tipo</th><th>Barcode</th><th>Descrizione</th><th>Qta</th><th>Note</th></tr></thead>
+                <tbody id="ss-globale-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SINGOLO PRODOTTO -->
+        <div id="ss-pane-prodotto" style="display:none">
+          <div class="card" style="margin-bottom:12px">
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <div style="flex:1">
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Barcode articolo</label>
+                <input type="text" id="ss-prod-barcode" placeholder="es. WQ622F.S" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:monospace" onkeydown="if(event.key==='Enter')cercaProdottoStorico()">
+              </div>
+              <button class="btn btn-primary" onclick="cercaProdottoStorico()">🔍 Cerca</button>
+            </div>
+          </div>
+          <div id="ss-prod-risultato"></div>
+        </div>
+
+        <!-- VALORE MAGAZZINO -->
+        <div id="ss-pane-valore" style="display:none">
+          <div class="card" style="margin-bottom:12px">
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Calcola valore al</label>
+                <input type="date" id="ss-val-data" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+              </div>
+              <button class="btn btn-primary" onclick="calcolaValoreMagazzino()">💶 Calcola</button>
+            </div>
+          </div>
+          <div id="ss-valore-risultato"></div>
+        </div>
+
+      </div>
+
     </div>
   </main>
 </div>
@@ -1871,7 +1950,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('sec-'+s).classList.add('active');
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧',tarocchi:'Toppe Tarocchi 🃏',etichette:'Stampa etichette 🏷️'};
+  const titles = {dashboard:'Dashboard',catalogo:'Prodotti',stock:'Stock',ordini:'Ordini',eventi:'Eventi',cassa:'Cassa',storico:'Storico vendite',report:'Report vendite',bilancioeventi:'Bilancio eventi',storicostock:'Storico stock 📈',pepito:'Pepito 🚛',toxico:'Toxico 🇬🇧',tarocchi:'Toppe Tarocchi 🃏',etichette:'Stampa etichette 🏷️'};
   document.getElementById('page-title').textContent = titles[s]||s;
   if(s==='dashboard') renderDashboard();
   if(s==='catalogo') { populateFornSelects(); renderCatalogo(); }
@@ -1883,7 +1962,7 @@ function showSection(s, el) {
   if(s==='report') initReport();
   if(s==='bilancioeventi') renderBilancioEventiPage();
   if(s==='pepito') renderPepito();
-  if(s==='toxico') renderToxico();
+  if(s==='storicostock') initStoricoStock();
   if(s==='tarocchi') initTarocchi();
   if(s==='etichette') initEtichette();
 }
@@ -3065,6 +3144,21 @@ function renderOrdiniLista() {
     const totUsd = (o._tipo==='DF'||o._tipo==='PR'||o._tipo==='OD'||o._tipo==='INNOCENT'||o._tipo==='ADRIANO') ? 0 : totRmb * (o.rmbUsd||0);
     const totEur = o._tipo==='ADRIANO' ? totRmb : (o._tipo==='OD'||o._tipo==='INNOCENT') ? (o.gbpEur>0?totRmb*o.gbpEur:0) : (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
     const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto'}[o.stato||'bozza'];
+    const totDovuto = (() => {
+      if(o._tipo==='PR'||o._tipo==='DF') {
+        const totFatt = totEur + (o.trasportoRmb||0)/o.rmbEur;
+        return totFatt + (o.commissioni||0);
+      }
+      if(o._tipo==='DIL') {
+        const totUsdLoc = totRmb*(o.rmbUsd||0);
+        const totEurLoc = totUsdLoc*(o.usdEur||0);
+        const trasp = (o.trasportoRmb||0)*(o.rmbUsd||0)*(o.usdEur||0);
+        return totEurLoc + trasp + (o.commissioni||0) + (o.diritti||0);
+      }
+      if(o._tipo==='OD'||o._tipo==='INNOCENT') return totRmb*(o.gbpEur||0)*(1+(o.commissioni||0)/100);
+      if(o._tipo==='ADRIANO') return totRmb + (o.trasporto||0);
+      return null;
+    })();
     return `<tr>
       <td class="mono" style="font-size:12px">${fmtDate(o.data)}</td>
       <td style="font-weight:600">${o.riferimento||'-'} <span class="badge" style="font-size:10px;background:${o._tipo==='DF'?'#EDE9FE':o._tipo==='PR'?'#FEF3C7':o._tipo==='OD'?'#D1FAE5':o._tipo==='INNOCENT'?'#DBEAFE':o._tipo==='ADRIANO'?'#FEF3C7':'#FCE7F3'};color:${o._tipo==='DF'?'#5B21B6':o._tipo==='PR'?'#92400E':o._tipo==='OD'?'#065F46':o._tipo==='INNOCENT'?'#1E40AF':o._tipo==='ADRIANO'?'#92400E':'#9D174D'}">${o._tipo==='DF'?'DEVIL FASHION':o._tipo==='PR'?'PUNK RAVE':o._tipo==='OD'?'ONE DIRECTION':o._tipo==='INNOCENT'?'INNOCENT':o._tipo==='ADRIANO'?'ADRIANO':'DARK IN LOVE'}</span></td>
@@ -3073,6 +3167,7 @@ function renderOrdiniLista() {
       <td class="mono">${(o._tipo==='OD'&&o.valuta==='GBP')||o._tipo==='INNOCENT' ? totRmb.toFixed(2)+' £' : '—'}</td>
       <td class="mono">${o._tipo==='DF' || o._tipo==='OD' ? '—' : (o.rmbUsd ? '$ '+totUsd.toFixed(2) : '—')}</td>
       <td class="mono">${(o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur ? fmt(totEur) : '—') : (o._tipo==='OD'||o._tipo==='INNOCENT') ? (totEur?fmt(totEur):'—') : o._tipo==='ADRIANO' ? fmt(totEur) : (o.usdEur ? fmt(totEur) : '—')}</td>
+      <td class="mono" style="font-weight:700;color:var(--accent)">${totDovuto ? fmt(totDovuto) : '—'}</td>
       <td><span class="ordine-stato ${statoClass}">${o.stato||'bozza'}</span></td>
       <td style="display:flex;gap:4px">
         ${o._tipo==='DF'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdinePR(${o.id})">Apri</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineOD(${o.id})">Apri</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineINNOCENT(${o.id})">Apri</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineADRIANO(${o.id})">Apri</button>`:`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
@@ -3082,7 +3177,7 @@ function renderOrdiniLista() {
         ${o._tipo==='DF'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDF',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordinePR',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineOD',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineINNOCENT',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineADRIANO',${o.id},'${o.riferimento}')">Elimina</button>`:`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>`}
       </td>
     </tr>`;
-  }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine inserito</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="empty">Nessun ordine inserito</td></tr>';
 }
 
 function initNuovoOrdineDIL() {
@@ -6604,8 +6699,261 @@ window.docSalvaCartella = docSalvaCartella;
 
 
 // ══════════════════════════════════════════
-// TOPPE TAROCCHI
+// STORICO STOCK
 // ══════════════════════════════════════════
+
+function switchStockTab(tab, btn) {
+  ['globale','prodotto','valore'].forEach(t=>{
+    const el = document.getElementById('ss-pane-'+t);
+    if(el) el.style.display = t===tab?'':'none';
+  });
+  document.querySelectorAll('#sec-storicostock .tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(tab==='globale') renderStoricoStock();
+}
+window.switchStockTab = switchStockTab;
+
+function initStoricoStock() {
+  // Set default dates: last 90 days
+  const oggi = new Date();
+  const da = new Date(); da.setDate(da.getDate()-90);
+  document.getElementById('ss-al').value = oggi.toISOString().split('T')[0];
+  document.getElementById('ss-dal').value = da.toISOString().split('T')[0];
+  document.getElementById('ss-val-data').value = oggi.toISOString().split('T')[0];
+  renderStoricoStock();
+}
+window.initStoricoStock = initStoricoStock;
+
+function resetStoricoStockFiltri() {
+  const oggi = new Date();
+  const da = new Date(); da.setDate(da.getDate()-90);
+  document.getElementById('ss-al').value = oggi.toISOString().split('T')[0];
+  document.getElementById('ss-dal').value = da.toISOString().split('T')[0];
+  document.getElementById('ss-tipo').value = '';
+  document.getElementById('ss-cerca').value = '';
+  renderStoricoStock();
+}
+window.resetStoricoStockFiltri = resetStoricoStockFiltri;
+
+function tipoLabel(m) {
+  if((m.note||'').toUpperCase().includes('RETTIFICA')) return {label:'Rettifica', color:'#7C3AED', bg:'#EDE9FE'};
+  if(m.tipo==='carico') return {label:'Carico', color:'#065F46', bg:'#D1FAE5'};
+  return {label:'Vendita/Scarico', color:'#991B1B', bg:'#FEE2E2'};
+}
+
+function renderStoricoStock() {
+  const dal   = document.getElementById('ss-dal').value;
+  const al    = document.getElementById('ss-al').value;
+  const tipo  = document.getElementById('ss-tipo').value;
+  const cerca = document.getElementById('ss-cerca').value.trim().toLowerCase();
+
+  let movimenti = [...(db.movimenti||[])];
+
+  // Aggiungi anche le vendite come movimenti scarico
+  (db.vendite||[]).forEach(v=>{
+    (v.items||[]).forEach(it=>{
+      movimenti.push({
+        _vendita: true,
+        id: 'v'+v.id+'_'+it.barcode,
+        barcode: it.barcode,
+        qty: it.qty,
+        tipo: 'scarico',
+        data: v.dataOra ? v.dataOra.split('T')[0] : '',
+        note: 'Vendita' + (v.eventoId ? ' — '+((db.eventi||[]).find(e=>String(e.id)===String(v.eventoId))?.nome||'') : ''),
+      });
+    });
+  });
+
+  // Filtri
+  if(dal) movimenti = movimenti.filter(m=>m.data>=dal);
+  if(al)  movimenti = movimenti.filter(m=>m.data<=al);
+  if(tipo==='rettifica') movimenti = movimenti.filter(m=>(m.note||'').toUpperCase().includes('RETTIFICA'));
+  else if(tipo==='carico') movimenti = movimenti.filter(m=>m.tipo==='carico' && !(m.note||'').toUpperCase().includes('RETTIFICA'));
+  else if(tipo==='scarico') movimenti = movimenti.filter(m=>m.tipo==='scarico' && !(m.note||'').toUpperCase().includes('RETTIFICA'));
+  if(cerca) movimenti = movimenti.filter(m=>{
+    const prod = getProdotto(m.barcode);
+    const desc = prod ? (prod.descrizione||'').toLowerCase() : '';
+    return m.barcode.toLowerCase().includes(cerca) || desc.includes(cerca);
+  });
+
+  movimenti.sort((a,b)=>b.data.localeCompare(a.data) || String(b.id).localeCompare(String(a.id)));
+
+  // Metrics
+  const totCarichi  = movimenti.filter(m=>m.tipo==='carico').reduce((a,m)=>a+m.qty,0);
+  const totScarichi = movimenti.filter(m=>m.tipo==='scarico').reduce((a,m)=>a+m.qty,0);
+  document.getElementById('ss-globale-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Movimenti</div><div class="metric-value">${movimenti.length}</div></div>
+    <div class="metric"><div class="metric-label">Pezzi caricati</div><div class="metric-value" style="color:var(--green)">+${totCarichi}</div></div>
+    <div class="metric"><div class="metric-label">Pezzi scaricati</div><div class="metric-value" style="color:#B91C1C">-${totScarichi}</div></div>
+    <div class="metric"><div class="metric-label">Saldo periodo</div><div class="metric-value" style="color:${totCarichi-totScarichi>=0?'var(--green)':'#B91C1C'}">${totCarichi-totScarichi>=0?'+':''}${totCarichi-totScarichi}</div></div>`;
+
+  const tbody = document.getElementById('ss-globale-tbody');
+  if(!movimenti.length) {
+    tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Nessun movimento nel periodo</td></tr>`;
+    return;
+  }
+  const t = tipoLabel;
+  tbody.innerHTML = movimenti.slice(0,500).map(m=>{
+    const prod = getProdotto(m.barcode);
+    const desc = prod ? (prod.descrizione||m.barcode) : m.barcode;
+    const tl = tipoLabel(m);
+    return `<tr>
+      <td class="mono" style="white-space:nowrap;font-size:12px">${fmtDate(m.data)}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:${tl.bg};color:${tl.color};font-weight:600">${tl.label}</span></td>
+      <td class="mono" style="font-size:12px">${m.barcode}</td>
+      <td style="font-size:12px">${desc}</td>
+      <td class="mono" style="font-weight:700;color:${m.tipo==='carico'?'var(--green)':'#B91C1C'}">${m.tipo==='carico'?'+':'-'}${m.qty}</td>
+      <td style="font-size:12px;color:var(--text3)">${m.note||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+window.renderStoricoStock = renderStoricoStock;
+
+function cercaProdottoStorico() {
+  const bc = document.getElementById('ss-prod-barcode').value.trim().toUpperCase();
+  const el = document.getElementById('ss-prod-risultato');
+  if(!bc) { el.innerHTML=''; return; }
+
+  const prod = getProdotto(bc);
+  if(!prod) { el.innerHTML=`<div class="card" style="color:#B91C1C">Prodotto "${bc}" non trovato nel catalogo.</div>`; return; }
+
+  // Raccoglie tutti i movimenti del prodotto
+  const movStock = (db.movimenti||[]).filter(m=>m.barcode===bc).map(m=>({
+    data: m.data, tipo: m.tipo, qty: m.tipo==='carico'?+m.qty:-m.qty, note: m.note||'—'
+  }));
+  const movVendite = (db.vendite||[]).flatMap(v=>{
+    const it = (v.items||[]).find(i=>i.barcode===bc);
+    if(!it) return [];
+    const ev = (db.eventi||[]).find(e=>String(e.id)===String(v.eventoId));
+    return [{ data: v.dataOra?v.dataOra.split('T')[0]:'', tipo:'scarico', qty:-it.qty, note:'Vendita'+(ev?' — '+ev.nome:'') }];
+  });
+
+  const tutti = [...movStock,...movVendite].sort((a,b)=>a.data.localeCompare(b.data));
+
+  // Calcola stock progressivo
+  let running = 0;
+  const withStock = tutti.map(m=>{ running+=m.qty; return {...m, stockDopo:running}; });
+
+  // Chart data for SVG sparkline
+  const maxStock = Math.max(...withStock.map(m=>m.stockDopo), 1);
+  const minStock = Math.min(...withStock.map(m=>m.stockDopo), 0);
+  const range = maxStock - minStock || 1;
+  const W=800, H=120, PAD=30;
+  const pts = withStock.map((m,i)=>{
+    const x = PAD + (i/(Math.max(withStock.length-1,1)))*(W-PAD*2);
+    const y = PAD + (1-(m.stockDopo-minStock)/range)*(H-PAD*2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  const svgChart = withStock.length > 1 ? `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px;margin-bottom:16px">
+      <line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${H-PAD}" stroke="var(--border)" stroke-width="1"/>
+      <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--border)" stroke-width="1"/>
+      <text x="${PAD-5}" y="${PAD+4}" text-anchor="end" font-size="10" fill="var(--text3)">${maxStock}</text>
+      <text x="${PAD-5}" y="${H-PAD+4}" text-anchor="end" font-size="10" fill="var(--text3)">${minStock}</text>
+      <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      ${withStock.map((m,i)=>{
+        const x=PAD+(i/(Math.max(withStock.length-1,1)))*(W-PAD*2);
+        const y=PAD+(1-(m.stockDopo-minStock)/range)*(H-PAD*2);
+        return `<circle cx="${x}" cy="${y}" r="3" fill="${m.qty>0?'#059669':'#DC2626'}"/>`;
+      }).join('')}
+    </svg>` : '<div style="color:var(--text3);font-size:13px;margin-bottom:12px">Dati insufficienti per il grafico</div>';
+
+  const stockAttuale = withStock.length ? withStock[withStock.length-1].stockDopo : 0;
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-weight:700;font-size:16px">${prod.descrizione||bc}</div>
+          <div style="font-size:12px;color:var(--text3);font-family:monospace">${bc} · Costo: €${prod.costo||'—'} · Prezzo: €${prod.prezzo||'—'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:28px;font-weight:700;color:${stockAttuale>0?'var(--green)':'#B91C1C'}">${stockAttuale}</div>
+          <div style="font-size:11px;color:var(--text3)">stock attuale</div>
+        </div>
+      </div>
+      ${svgChart}
+    </div>
+    <div class="card">
+      <div class="card-title">Storico movimenti</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Qta</th><th>Stock dopo</th><th>Note</th></tr></thead>
+          <tbody>${[...withStock].reverse().map(m=>{
+            const tl = tipoLabel({tipo:m.qty>0?'carico':'scarico', note:m.note});
+            return `<tr>
+              <td class="mono" style="font-size:12px">${fmtDate(m.data)}</td>
+              <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:${tl.bg};color:${tl.color};font-weight:600">${tl.label}</span></td>
+              <td class="mono" style="font-weight:700;color:${m.qty>0?'var(--green)':'#B91C1C'}">${m.qty>0?'+':''}${m.qty}</td>
+              <td class="mono" style="font-weight:600">${m.stockDopo}</td>
+              <td style="font-size:12px;color:var(--text3)">${m.note}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+window.cercaProdottoStorico = cercaProdottoStorico;
+
+function calcolaValoreMagazzino() {
+  const dataFine = document.getElementById('ss-val-data').value;
+  if(!dataFine) { showToast('Inserisci una data','amber'); return; }
+  const el = document.getElementById('ss-valore-risultato');
+
+  // Per ogni prodotto calcola lo stock alla data
+  const prodotti = db.prodotti||[];
+  let totValore = 0, totPezzi = 0, totPotenziale = 0;
+  const righe = [];
+
+  prodotti.forEach(prod=>{
+    // Movimenti fino alla data
+    const movStock = (db.movimenti||[]).filter(m=>m.barcode===prod.barcode&&m.data<=dataFine);
+    const movVendite = (db.vendite||[]).filter(v=>(v.dataOra||'').split('T')[0]<=dataFine)
+      .flatMap(v=>(v.items||[]).filter(i=>i.barcode===prod.barcode).map(i=>({qty:-i.qty})));
+
+    const stockQ = movStock.reduce((a,m)=>m.tipo==='carico'?a+m.qty:a-m.qty,0)
+                 + movVendite.reduce((a,m)=>a+m.qty,0);
+    if(stockQ<=0) return;
+
+    const costo = parseFloat(prod.costo)||0;
+    const prezzo = parseFloat(prod.prezzo)||0;
+    const valore = stockQ * costo;
+    const valPot = stockQ * prezzo;
+    totValore += valore;
+    totPotenziale += valPot;
+    totPezzi += stockQ;
+    if(valore>0) righe.push({desc:prod.descrizione||prod.barcode, barcode:prod.barcode, stock:stockQ, costo, prezzo, valore, valPot});
+  });
+
+  righe.sort((a,b)=>b.valore-a.valore);
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+      <div class="metric"><div class="metric-label">Pezzi in stock</div><div class="metric-value">${totPezzi.toLocaleString('it-IT')}</div></div>
+      <div class="metric"><div class="metric-label">Valore al costo</div><div class="metric-value" style="color:var(--accent)">€ ${totValore.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</div></div>
+      <div class="metric"><div class="metric-label">Valore potenziale</div><div class="metric-value" style="color:var(--green)">€ ${totPotenziale.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Dettaglio per prodotto — stock al ${fmtDate(dataFine)} (top 200)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Prodotto</th><th>Barcode</th><th>Stock</th><th>Costo €</th><th>Prezzo €</th><th>Valore €</th><th>Pot. €</th></tr></thead>
+          <tbody>${righe.slice(0,200).map(r=>`<tr>
+            <td style="font-size:12px">${r.desc}</td>
+            <td class="mono" style="font-size:12px">${r.barcode}</td>
+            <td class="mono">${r.stock}</td>
+            <td class="mono">€ ${r.costo.toFixed(2)}</td>
+            <td class="mono">€ ${r.prezzo.toFixed(2)}</td>
+            <td class="mono" style="font-weight:600;color:var(--accent)">€ ${r.valore.toFixed(2)}</td>
+            <td class="mono" style="font-weight:600;color:var(--green)">€ ${r.valPot.toFixed(2)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+window.calcolaValoreMagazzino = calcolaValoreMagazzino;
+
 
 const TAR_CATALOG = [
   { id:'TOPPEDT.THEFOOL',      nome:'The Fool' },
