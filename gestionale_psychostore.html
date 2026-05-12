@@ -3135,7 +3135,7 @@ function renderOrdiniLista() {
   const ordiniOD = [...(db.ordiniOD||[])].map(o=>({...o,_tipo:'OD'}));
   const ordiniINNOCENT = [...(db.ordiniINNOCENT||[])].map(o=>({...o,_tipo:'INNOCENT'}));
   const ordiniADRIANO = [...(db.ordiniADRIANO||[])].map(o=>({...o,_tipo:'ADRIANO'}));
-  const ordini = [...ordiniDIL,...ordiniDF,...ordiniPR,...ordiniOD,...ordiniINNOCENT,...ordiniADRIANO].sort((a,b)=>(b.data||'').localeCompare(a.data||'') || (b.id||0)-(a.id||0));
+  const ordini = [...ordiniDIL,...ordiniDF,...ordiniPR,...ordiniOD,...ordiniINNOCENT,...ordiniADRIANO].sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   const tbody = document.getElementById('tab-ordini-dil');
   if(!tbody) return;
   tbody.innerHTML = ordini.length ? ordini.map(o=>{
