@@ -4338,14 +4338,21 @@ window.rimuoviRigaPR = rimuoviRigaPR;
 function checkPrezzoVenditaPR(id) {
   const codice = document.getElementById('pr-art-'+id)?.value?.trim();
   if(!codice) return;
-  const p = (db.prodotti||[]).find(x=>
+  const varianti = (db.prodotti||[]).filter(x=>
     x.barcode===codice ||
-    x.barcode.startsWith(codice+'.') ||
-    x.barcode.startsWith(codice+'F.') ||
-    x.barcode.startsWith(codice+'M.')
+    x.barcode.toUpperCase().startsWith(codice.toUpperCase()+'.') ||
+    x.barcode.toUpperCase().startsWith(codice.toUpperCase()+'F.') ||
+    x.barcode.toUpperCase().startsWith(codice.toUpperCase()+'M.')
   );
+  if(!varianti.length) return;
+  // Usa il prezzo più frequente tra le varianti (o il più alto in caso di parità)
+  const prezzi = varianti.map(v=>v.prezzo).filter(Boolean);
+  if(!prezzi.length) return;
+  const freq = {};
+  prezzi.forEach(p=>{ freq[p]=(freq[p]||0)+1; });
+  const prezzoScelto = Object.entries(freq).sort((a,b)=>b[1]-a[1]||b[0]-a[0])[0][0];
   const vendEl = document.getElementById('pr-vend-'+id);
-  if(p && p.prezzo && vendEl && !vendEl.value) vendEl.value = p.prezzo.toFixed(2);
+  if(vendEl && !vendEl.value) vendEl.value = parseFloat(prezzoScelto).toFixed(2);
 }
 window.checkPrezzoVenditaPR = checkPrezzoVenditaPR;
 
