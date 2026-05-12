@@ -3409,7 +3409,10 @@ function renderBarcodesTable(righe) {
       const qty = r[t]||0;
       const bcId = 'dil-bc-'+t+'-'+r.id;
       const dlId = 'dl-'+r.id+'-'+t;
-      const val = document.getElementById(bcId)?.value || r[bcKeys[t]] || '';
+      // Priorità: 1) valore già salvato nell'articolo, 2) valore nel DOM (se l'input esiste già)
+      const domVal = document.getElementById(bcId)?.value||'';
+      const savedVal = r[bcKeys[t]] || '';
+      const val = savedVal || domVal;
       if(!qty) return `<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>`;
       return `<td style="background:var(--green-light)">
         <input class="input-rmb" style="width:100px;font-size:11px" id="${bcId}" value="${val}" placeholder="${t.toUpperCase()}" list="${dlId}" oninput="aggiornaBarcode('${bcId}')">
