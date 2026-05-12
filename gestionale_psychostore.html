@@ -3155,7 +3155,7 @@ function renderOrdiniLista() {
         const trasportoEurLoc = (o.trasportoRmb||0)*(o.rmbUsd||0)*(o.usdEur||0);
         return totMerceEurLoc + trasportoEurLoc;
       }
-      if(o._tipo==='OD'||o._tipo==='INNOCENT') return totRmb*(o.gbpEur||0)*(1+(o.commissioni||0)/100);
+      if(o._tipo==='OD'||o._tipo==='INNOCENT') return (totRmb+(o.trasporto||0))*(o.gbpEur||0);
       if(o._tipo==='ADRIANO') return totRmb + (o.trasporto||0);
       return null;
     })();
@@ -5555,7 +5555,8 @@ function suggerisciBarcodesINNOCENT(id) {
     const tagliaSuf = suffissi[t];
     const exactMatch = matches.find(b => {
       const upper = b.toUpperCase();
-      if(upper.includes('F.'+tagliaSuf)||upper.includes('M.'+tagliaSuf)||upper.endsWith('.'+tagliaSuf)||upper.endsWith('-'+tagliaSuf)) return true;
+      // Termina con .S, -S, o solo S (con o senza caratteri extra tra codice e taglia)
+      if(upper.endsWith('.'+tagliaSuf) || upper.endsWith('-'+tagliaSuf)) return true;
       if(upper.endsWith(tagliaSuf) && !upper.endsWith('.'+tagliaSuf) && !upper.endsWith('-'+tagliaSuf)) return true;
       return false;
     });
