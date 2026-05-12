@@ -3150,10 +3150,10 @@ function renderOrdiniLista() {
         return totFatt + (o.commissioni||0);
       }
       if(o._tipo==='DIL') {
-        const totUsdLoc = totRmb*(o.rmbUsd||0);
-        const totEurLoc = totUsdLoc*(o.usdEur||0);
-        const trasp = (o.trasportoRmb||0)*(o.rmbUsd||0)*(o.usdEur||0);
-        return totEurLoc + trasp + (o.commissioni||0) + (o.diritti||0);
+        const totMerceUsdLoc = totRmb*(o.rmbUsd||0);
+        const totMerceEurLoc = totMerceUsdLoc*(o.usdEur||0);
+        const trasportoEurLoc = (o.trasportoRmb||0)*(o.rmbUsd||0)*(o.usdEur||0);
+        return totMerceEurLoc + trasportoEurLoc;
       }
       if(o._tipo==='OD'||o._tipo==='INNOCENT') return totRmb*(o.gbpEur||0)*(1+(o.commissioni||0)/100);
       if(o._tipo==='ADRIANO') return totRmb + (o.trasporto||0);
