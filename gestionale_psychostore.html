@@ -725,7 +725,6 @@
                   <div class="sep"></div>
                   <div style="font-size:11px;font-weight:700;color:var(--accent);margin:6px 0 4px;text-transform:uppercase;letter-spacing:.5px">Importazione (paghi al corriere)</div>
                   <div class="costo-row"><span>Customs Invoice (€)</span><span id="pr-rc-customs" class="mono">—</span></div>
-                  <div class="costo-row"><span>Extra (€)</span><span id="pr-rc-extra" class="mono">—</span></div>
                   <div class="costo-row"><span>Dazio (12% customs)</span><span id="pr-rc-dazio" class="mono">—</span></div>
                   <div class="costo-row"><span>IVA ((customs+dazio) × 22%)</span><span id="pr-rc-iva" class="mono">—</span></div>
                   <div class="costo-row"><span>Diritti doganali</span><span id="pr-rc-diritti" class="mono">—</span></div>
@@ -736,7 +735,7 @@
                   <div class="costo-row"><span>Trasporto</span><span id="pr-rc-trasporto2" class="mono">—</span></div>
                   <div class="costo-row"><span>Dazio</span><span id="pr-rc-dazio2" class="mono">—</span></div>
                   <div class="costo-row"><span>Diritti doganali</span><span id="pr-rc-diritti2" class="mono">—</span></div>
-                  <div class="costo-row"><span>Commissioni bancarie</span><span id="pr-rc-commissioni" class="mono">—</span></div>
+                  <div class="costo-row"><span>Commissioni Paypal</span><span id="pr-rc-commissioni2" class="mono">—</span></div>
                   <div class="costo-row totale" style="color:var(--green)"><span>Totale costi su merce</span><span id="pr-rc-tot-costi-merce" class="mono">—</span></div>
                 </div>
               </div>
@@ -4559,7 +4558,6 @@ function ricalcolaPR() {
   set('pr-rc-commissioni',commissioni?fmt(commissioni):'—');
   set('pr-rc-tot-dovuto',totDovuto&&rmbEur?fmt(totDovuto):'—');
   set('pr-rc-customs',totCustoms?fmt(totCustoms):'—');
-  set('pr-rc-extra',totExtra?fmt(totExtra):'—');
   set('pr-rc-dazio',dazio&&rmbEur?fmt(dazio):'—');
   set('pr-rc-iva',iva&&rmbEur?fmt(iva):'—');
   set('pr-rc-diritti',diritti?fmt(diritti):'—');
