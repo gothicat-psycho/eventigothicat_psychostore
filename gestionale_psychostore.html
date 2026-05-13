@@ -444,6 +444,7 @@
               <div class="card">
                 <div class="card-title">Riepilogo costi</div>
                 <div class="sezione-costi">
+                  <div class="costo-row"><span>Totale pezzi</span><span id="dil-rc-tot-pz" class="mono" style="font-weight:600">—</span></div>
                   <div class="costo-row"><span>Merce (¥)</span><span id="rc-tot-rmb" class="mono">—</span></div>
                   <div class="costo-row"><span>Merce (USD)</span><span id="rc-tot-usd" class="mono">—</span></div>
                   <div class="costo-row"><span>Merce (€)</span><span id="rc-tot-eur" class="mono">—</span></div>
@@ -3347,6 +3348,7 @@ function ricalcolaDIL() {
   // Costi da imputare alla merce = quelli che pesano sul costo prodotto
   const totCostiMerce = trasportoEur + dazio + diritti + commissioni;
   const totPezzi = righe.reduce((a,r)=>a+r.pz, 0);
+  set('dil-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
 
   // Aggiorna display riepilogo
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
