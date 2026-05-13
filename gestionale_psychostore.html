@@ -3210,7 +3210,7 @@ function aggiungiRigaDIL(articolo) {
   tr.dataset.bcXxxl = a.bcXxxl||'';
   const TAGLIE_DIL = ['xs','s','m','l','xl','xxl','xxxl'];
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px;text-align:left" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id});suggerisciBarcodes(${id})" onblur="autofillDescDIL(${id})"></td>
+    <td><input class="input-rmb" style="width:80px;text-align:left" id="dil-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVendita(${id});suggerisciBarcodes(${id})" onblur="autofillDescDIL(${id});autofillPrezzoDIL(${id})"></td>
     <td><input class="input-rmb" style="width:220px;text-align:left" id="dil-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="dil-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDIL()"></td>
     <td><input class="input-qty" id="dil-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaDIL()"></td>
@@ -3954,7 +3954,7 @@ function aggiungiRigaDF(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'df-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px;text-align:left" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id});suggerisciBarcodesDF(${id})" onblur="autofillDescDF(${id})"></td>
+    <td><input class="input-rmb" style="width:80px;text-align:left" id="df-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaDF(${id});suggerisciBarcodesDF(${id})" onblur="autofillDescDF(${id});autofillPrezzoDF(${id})"></td>
     <td><input class="input-rmb" style="width:220px;text-align:left" id="df-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="df-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaDF()"></td>
     <td style="background:var(--amber-light)"><input class="input-qty" id="df-acc-${id}" type="number" min="0" value="${a.acc||''}" oninput="ricalcolaDF()" title="Accessori senza taglia"></td>
@@ -4425,7 +4425,7 @@ function aggiungiRigaPR(articolo) {
   tr.dataset.bcXxl  = a.bcXxl||'';
   tr.dataset.bcXxxl = a.bcXxxl||'';
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:80px;text-align:left" id="pr-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaPR(${id});suggerisciBarcodesPR(${id})" onblur="autofillDescPR(${id})"></td>
+    <td><input class="input-rmb" style="width:80px;text-align:left" id="pr-art-${id}" value="${a.articolo||''}" placeholder="Codice" oninput="checkPrezzoVenditaPR(${id});suggerisciBarcodesPR(${id})" onblur="autofillDescPR(${id});autofillPrezzoPR(${id})"></td>
     <td><input class="input-rmb" style="width:220px;text-align:left" id="pr-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="pr-rmb-${id}" type="number" step="0.01" value="${a.prezzoRmb||''}" placeholder="0.00" oninput="ricalcolaPR()"></td>
     <td class="mono" id="pr-sconto-${id}" style="background:var(--green-light);color:var(--green);font-size:12px;font-weight:600;text-align:center">—</td>
@@ -4991,7 +4991,7 @@ function aggiungiRigaOD(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'od-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:85px;text-align:left" id="od-cod-${id}" value="${a.codice||''}" placeholder="es. TPA3214" onblur="checkPrezzoVenditaOD(${id})"></td>
+    <td><input class="input-rmb" style="width:85px;text-align:left" id="od-cod-${id}" value="${a.codice||''}" placeholder="es. TPA3214" onblur="checkPrezzoVenditaOD(${id});autofillPrezzoOD(${id})"></td>
     <td><input class="input-rmb" style="width:220px;text-align:left" id="od-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="od-prezzo-${id}" type="number" step="0.01" value="${a.prezzoUnit||''}" placeholder="0.00" oninput="ricalcolaOD()"></td>
     <td><input class="input-qty" id="od-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaOD()"></td>
@@ -5510,7 +5510,7 @@ function aggiungiRigaINNOCENT(articolo) {
   const tr = document.createElement('tr');
   tr.id = 'inn-row-'+id;
   tr.innerHTML = `
-    <td><input class="input-rmb" style="width:85px;text-align:left" id="inn-cod-${id}" value="${a.codice||''}" placeholder="es. HCAIUS" oninput="suggerisciBarcodesINNOCENT(${id})" onblur="checkPrezzoVenditaINNOCENT(${id})"></td>
+    <td><input class="input-rmb" style="width:85px;text-align:left" id="inn-cod-${id}" value="${a.codice||''}" placeholder="es. HCAIUS" oninput="suggerisciBarcodesINNOCENT(${id})" onblur="checkPrezzoVenditaINNOCENT(${id});autofillPrezzoINN(${id})"></td>
     <td><input class="input-rmb" style="width:200px;text-align:left" id="inn-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
     <td><input class="input-rmb" id="inn-prezzo-${id}" type="number" step="0.01" value="${a.prezzoUnit||''}" placeholder="0.00" oninput="ricalcolaINNOCENT()"></td>
     <td><input class="input-qty" id="inn-xs-${id}" type="number" min="0" value="${a.xs||''}" oninput="ricalcolaINNOCENT()"></td>
@@ -6749,6 +6749,98 @@ async function docSalvaCartella(tipo) {
   showToast('Cartella salvata ✓');
 }
 window.docSalvaCartella = docSalvaCartella;
+
+
+// ══════════════════════════════════════════
+// PREZZO ACQUISTO STORICO
+// ══════════════════════════════════════════
+
+function getPrezzoAcquistoStorico(codice, tipo) {
+  const codUp = codice.toUpperCase();
+  let ordini = [];
+  if(tipo==='DIL')  ordini = [...(db.ordiniDIL||[])];
+  else if(tipo==='PR')   ordini = [...(db.ordiniPR||[])];
+  else if(tipo==='DF')   ordini = [...(db.ordiniDF||[])];
+  else if(tipo==='INN')  ordini = [...(db.ordiniINNOCENT||[])];
+  else if(tipo==='OD')   ordini = [...(db.ordiniOD||[])];
+  ordini.sort((a,b)=>(b.data||'').localeCompare(a.data||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
+  for(const ord of ordini) {
+    const art = (ord.articoli||[]).find(r=>(r.articolo||r.codice||'').toUpperCase()===codUp);
+    if(art) {
+      const prezzo = art.prezzoRmb || art.prezzoUnit || 0;
+      const valuta = (tipo==='INN'||tipo==='OD') ? '£' : '¥';
+      return { prezzo, valuta, riferimento: ord.riferimento, data: ord.data };
+    }
+  }
+  return null;
+}
+
+function mostraHintPrezzo(elId, info) {
+  if(!info || !info.prezzo) return;
+  let hint = document.getElementById(elId+'-hint');
+  if(!hint) {
+    hint = document.createElement('div');
+    hint.id = elId+'-hint';
+    hint.style.cssText = 'font-size:11px;color:#6366F1;margin-top:2px;font-weight:500';
+    const el = document.getElementById(elId);
+    if(el && el.parentNode) el.parentNode.appendChild(hint);
+  }
+  hint.textContent = `📦 Ultimo acquisto (${info.riferimento}): ${info.prezzo} ${info.valuta}`;
+}
+
+function autofillPrezzoDIL(id) {
+  const codice = document.getElementById('dil-art-'+id)?.value?.trim();
+  if(!codice) return;
+  const info = getPrezzoAcquistoStorico(codice, 'DIL');
+  const prezzoEl = document.getElementById('dil-rmb-'+id);
+  if(prezzoEl && !prezzoEl.value && info) prezzoEl.value = info.prezzo;
+  mostraHintPrezzo('dil-rmb-'+id, info);
+}
+
+function autofillPrezzoPR(id) {
+  const codice = document.getElementById('pr-art-'+id)?.value?.trim();
+  if(!codice) return;
+  const info = getPrezzoAcquistoStorico(codice, 'PR');
+  const prezzoEl = document.getElementById('pr-rmb-'+id);
+  if(prezzoEl && !prezzoEl.value && info) prezzoEl.value = info.prezzo;
+  mostraHintPrezzo('pr-rmb-'+id, info);
+  if(info) ricalcolaPR();
+}
+
+function autofillPrezzoDF(id) {
+  const codice = document.getElementById('df-art-'+id)?.value?.trim();
+  if(!codice) return;
+  const info = getPrezzoAcquistoStorico(codice, 'DF');
+  const prezzoEl = document.getElementById('df-rmb-'+id);
+  if(prezzoEl && !prezzoEl.value && info) prezzoEl.value = info.prezzo;
+  mostraHintPrezzo('df-rmb-'+id, info);
+  if(info) ricalcolaDF();
+}
+
+function autofillPrezzoINN(id) {
+  const codice = document.getElementById('inn-cod-'+id)?.value?.trim();
+  if(!codice) return;
+  const info = getPrezzoAcquistoStorico(codice, 'INN');
+  const prezzoEl = document.getElementById('inn-prezzo-'+id);
+  if(prezzoEl && !prezzoEl.value && info) prezzoEl.value = info.prezzo;
+  mostraHintPrezzo('inn-prezzo-'+id, info);
+  if(info) ricalcolaINNOCENT();
+}
+
+function autofillPrezzoOD(id) {
+  const codice = document.getElementById('od-cod-'+id)?.value?.trim();
+  if(!codice) return;
+  const info = getPrezzoAcquistoStorico(codice, 'OD');
+  const prezzoEl = document.getElementById('od-prezzo-'+id);
+  if(prezzoEl && !prezzoEl.value && info) prezzoEl.value = info.prezzo;
+  mostraHintPrezzo('od-prezzo-'+id, info);
+  if(info) ricalcolaOD();
+}
+window.autofillPrezzoDIL = autofillPrezzoDIL;
+window.autofillPrezzoPR  = autofillPrezzoPR;
+window.autofillPrezzoDF  = autofillPrezzoDF;
+window.autofillPrezzoINN = autofillPrezzoINN;
+window.autofillPrezzoOD  = autofillPrezzoOD;
 
 
 // ══════════════════════════════════════════
