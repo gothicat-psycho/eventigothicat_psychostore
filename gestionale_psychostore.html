@@ -2088,6 +2088,7 @@ async function salvaProdotto() {
   if(!p) return;
   p.fornitore = document.getElementById('ep-fornitore').value.trim();
   p.descrizione = document.getElementById('ep-descrizione').value.trim();
+  p.categoria = document.getElementById('ep-categoria').value;
   p.costo = parseFloat(document.getElementById('ep-costo').value)||0;
   p.prezzo = parseFloat(document.getElementById('ep-prezzo').value)||0;
   p.prezzoCzk = parseFloat(document.getElementById('ep-prezzo-czk').value)||0;
