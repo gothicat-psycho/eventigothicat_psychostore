@@ -3115,7 +3115,7 @@ function switchOrdiniTab(tab) {
   const bt = document.getElementById('otab-'+tab);
   if(bt) bt.classList.add('active');
   if(tab==='lista') renderOrdiniLista();
-  if(tab==='nuovo') initNuovoOrdineDIL();
+  if(tab==='nuovo' && !editingOrdineId) initNuovoOrdineDIL();
   if(tab==='nuovodf' && !editingOrdineDF) initNuovoOrdineDF();
   if(tab==='nuovopr' && !editingOrdinePR) initNuovoOrdinePR();
   if(tab==='nuovood' && !editingOrdineOD) initNuovoOrdineOD();
