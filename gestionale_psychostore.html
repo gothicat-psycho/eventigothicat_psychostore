@@ -3309,6 +3309,8 @@ function getRighe() {
   return righe;
 }
 
+function setEl(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+
 function ricalcolaDIL() {
   const righe = getRighe();
   const rmbUsd = parseFloat(document.getElementById('dil-rmb-usd')?.value)||0;
@@ -3348,37 +3350,36 @@ function ricalcolaDIL() {
   // Costi da imputare alla merce = quelli che pesano sul costo prodotto
   const totCostiMerce = trasportoEur + dazio + diritti + commissioni;
   const totPezzi = righe.reduce((a,r)=>a+r.pz, 0);
-  set('dil-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  setEl('dil-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
 
   // Aggiorna display riepilogo
-  const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('rc-tot-rmb', totMerceRmb ? Math.round(totMerceRmb).toLocaleString('it')+' ¥' : '—');
-  set('rc-tot-usd', totMerceUsd && rmbUsd ? '$ '+totMerceUsd.toFixed(2) : '—');
-  set('rc-tot-eur', totMerceEur && usdEur ? fmt(totMerceEur) : '—');
-  set('rc-trasporto-eur', trasportoEur && usdEur ? fmt(trasportoEur) + ' ($ '+trasportoUsd.toFixed(2)+' · '+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
-  set('rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
-  set('rc-fatt-usd', totFattUsd && rmbUsd ? '$ '+totFattUsd.toFixed(2) : '—');
-  set('rc-fatt-eur', totFattEur && usdEur ? fmt(totFattEur) : '—');
-  set('rc-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
-  set('rc-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
-  set('rc-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : (totFattUsd&&!psychoUsd?'inserisci customs invoice':'—'));
-  set('rc-dazio', dazio && usdEur ? fmt(dazio) : '—');
-  set('rc-iva', iva && usdEur ? fmt(iva) : '—');
-  set('rc-diritti', diritti ? fmt(diritti) : '—');
-  set('rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
-  set('rc-commissioni', commissioni ? fmt(commissioni) : '—');
-  set('rc-trasporto-eur2', trasportoEur && usdEur ? fmt(trasportoEur) : '—');
-  set('rc-dazio2', dazio && usdEur ? fmt(dazio) : '—');
-  set('rc-diritti2', diritti ? fmt(diritti) : '—');
-  set('rc-tot-importazione', totImportazione && usdEur ? fmt(totImportazione) : '—');
-  set('rc-tot-costi-merce', totCostiMerce && usdEur ? fmt(totCostiMerce) : '—');
+  setEl('rc-tot-rmb', totMerceRmb ? Math.round(totMerceRmb).toLocaleString('it')+' ¥' : '—');
+  setEl('rc-tot-usd', totMerceUsd && rmbUsd ? '$ '+totMerceUsd.toFixed(2) : '—');
+  setEl('rc-tot-eur', totMerceEur && usdEur ? fmt(totMerceEur) : '—');
+  setEl('rc-trasporto-eur', trasportoEur && usdEur ? fmt(trasportoEur) + ' ($ '+trasportoUsd.toFixed(2)+' · '+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
+  setEl('rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
+  setEl('rc-fatt-usd', totFattUsd && rmbUsd ? '$ '+totFattUsd.toFixed(2) : '—');
+  setEl('rc-fatt-eur', totFattEur && usdEur ? fmt(totFattEur) : '—');
+  setEl('rc-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
+  setEl('rc-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
+  setEl('rc-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : (totFattUsd&&!psychoUsd?'inserisci customs invoice':'—'));
+  setEl('rc-dazio', dazio && usdEur ? fmt(dazio) : '—');
+  setEl('rc-iva', iva && usdEur ? fmt(iva) : '—');
+  setEl('rc-diritti', diritti ? fmt(diritti) : '—');
+  setEl('rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
+  setEl('rc-commissioni', commissioni ? fmt(commissioni) : '—');
+  setEl('rc-trasporto-eur2', trasportoEur && usdEur ? fmt(trasportoEur) : '—');
+  setEl('rc-dazio2', dazio && usdEur ? fmt(dazio) : '—');
+  setEl('rc-diritti2', diritti ? fmt(diritti) : '—');
+  setEl('rc-tot-importazione', totImportazione && usdEur ? fmt(totImportazione) : '—');
+  setEl('rc-tot-costi-merce', totCostiMerce && usdEur ? fmt(totCostiMerce) : '—');
 
 
   // Pagamenti
-  set('pag-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
-  set('pag-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
-  set('pag-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : '—');
-  set('pag-extra-eur', extraEur && usdEur ? fmt(extraEur) : '—');
+  setEl('pag-psycho-usd', psychoUsd ? '$ '+psychoUsd.toFixed(2) : '—');
+  setEl('pag-psycho-eur', psychoEur && usdEur ? fmt(psychoEur) : '—');
+  setEl('pag-extra-usd', extraUsd ? '$ '+extraUsd.toFixed(2) : '—');
+  setEl('pag-extra-eur', extraEur && usdEur ? fmt(extraEur) : '—');
 
   // Aggiorna ogni riga
   // Refresh barcode table
@@ -4083,33 +4084,32 @@ function ricalcolaDF() {
   const totCostiMerce = trasportoEur + dazio + diritti + commissioni;
   const totPezzi = righe.reduce((a,r)=>a+r.pz,0);
 
-  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('df-rc-tot-rmb', totMerceRmb ? Math.round(totMerceRmb).toLocaleString('it')+' ¥' : '—');
-  set('df-rc-tot-eur', totMerceEur && rmbEur ? fmt(totMerceEur) : '—');
-  set('df-rc-trasporto-eur', trasportoEur && rmbEur ? fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
-  set('df-rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
-  set('df-rc-fatt-eur', totFattEur && rmbEur ? fmt(totFattEur) : '—');
-  set('df-rc-commissioni', commissioni ? fmt(commissioni) : '—');
-  set('df-rc-tot-dovuto', totDovuto && rmbEur ? fmt(totDovuto) : '—');
-  set('df-rc-customs', totCustoms ? fmt(totCustoms) : '—');
-  set('df-rc-extra', totExtra > 0 ? fmt(totExtra) : '—');
-  set('df-pag-customs-merce', customsMerce ? fmt(customsMerce) : '—');
-  set('df-pag-customs-paypal', customsPaypal ? fmt(customsPaypal) : '—');
-  set('df-pag-customs-eur', totCustoms ? fmt(totCustoms) : '—');
-  set('df-pag-extra-merce', extraMerce ? fmt(extraMerce) : '—');
-  set('df-pag-extra-paypal', extraPaypal ? fmt(extraPaypal) : '—');
-  set('df-pag-extra-eur', totExtra > 0 ? fmt(totExtra) : '—');
-  set('df-rc-dazio', dazio && rmbEur ? fmt(dazio) : '—');
-  set('df-rc-iva', iva && rmbEur ? fmt(iva) : '—');
-  set('df-rc-diritti', diritti ? fmt(diritti) : '—');
-  set('df-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
-  set('df-rc-tot-importazione', totImportazione && rmbEur ? fmt(totImportazione) : '—');
-  set('df-rc-trasporto2', trasportoEur && rmbEur ? fmt(trasportoEur) : '—');
-  set('df-rc-dazio2', dazio && rmbEur ? fmt(dazio) : '—');
-  set('df-rc-diritti2', diritti ? fmt(diritti) : '—');
-  set('df-rc-commissioni', commissioni ? fmt(commissioni) : '—');
+  setEl('df-rc-tot-rmb', totMerceRmb ? Math.round(totMerceRmb).toLocaleString('it')+' ¥' : '—');
+  setEl('df-rc-tot-eur', totMerceEur && rmbEur ? fmt(totMerceEur) : '—');
+  setEl('df-rc-trasporto-eur', trasportoEur && rmbEur ? fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)' : '—');
+  setEl('df-rc-fatt-rmb', totFattRmb ? Math.round(totFattRmb).toLocaleString('it')+' ¥' : '—');
+  setEl('df-rc-fatt-eur', totFattEur && rmbEur ? fmt(totFattEur) : '—');
+  setEl('df-rc-commissioni', commissioni ? fmt(commissioni) : '—');
+  setEl('df-rc-tot-dovuto', totDovuto && rmbEur ? fmt(totDovuto) : '—');
+  setEl('df-rc-customs', totCustoms ? fmt(totCustoms) : '—');
+  setEl('df-rc-extra', totExtra > 0 ? fmt(totExtra) : '—');
+  setEl('df-pag-customs-merce', customsMerce ? fmt(customsMerce) : '—');
+  setEl('df-pag-customs-paypal', customsPaypal ? fmt(customsPaypal) : '—');
+  setEl('df-pag-customs-eur', totCustoms ? fmt(totCustoms) : '—');
+  setEl('df-pag-extra-merce', extraMerce ? fmt(extraMerce) : '—');
+  setEl('df-pag-extra-paypal', extraPaypal ? fmt(extraPaypal) : '—');
+  setEl('df-pag-extra-eur', totExtra > 0 ? fmt(totExtra) : '—');
+  setEl('df-rc-dazio', dazio && rmbEur ? fmt(dazio) : '—');
+  setEl('df-rc-iva', iva && rmbEur ? fmt(iva) : '—');
+  setEl('df-rc-diritti', diritti ? fmt(diritti) : '—');
+  setEl('df-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
+  setEl('df-rc-tot-importazione', totImportazione && rmbEur ? fmt(totImportazione) : '—');
+  setEl('df-rc-trasporto2', trasportoEur && rmbEur ? fmt(trasportoEur) : '—');
+  setEl('df-rc-dazio2', dazio && rmbEur ? fmt(dazio) : '—');
+  setEl('df-rc-diritti2', diritti ? fmt(diritti) : '—');
+  setEl('df-rc-commissioni', commissioni ? fmt(commissioni) : '—');
   // (pagamenti già settati sopra)
-  set('df-rc-tot-costi-merce', totCostiMerce && rmbEur ? fmt(totCostiMerce) : '—');
+  setEl('df-rc-tot-costi-merce', totCostiMerce && rmbEur ? fmt(totCostiMerce) : '—');
 
   // Aggiorna righe
   righe.forEach(r => { suggerisciBarcodesDF(r.id); });
@@ -4559,31 +4559,31 @@ function ricalcolaPR() {
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
   const totPezzi=righe.reduce((a,r)=>a+r.pz,0);
-  set('pr-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
-  set('pr-rc-tot-rmb',totMerceRmb?totMerceRmb.toFixed(2)+' ¥':'—');
-  set('pr-rc-tot-eur',totMerceEur&&rmbEur?fmt(totMerceEur):'—');
-  set('pr-rc-trasporto-eur',trasportoEur&&rmbEur?fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)':'—');
-  set('pr-rc-fatt-rmb',totFattRmb?Math.round(totFattRmb).toLocaleString('it')+' ¥':'—');
-  set('pr-rc-fatt-eur',totFattEur&&rmbEur?fmt(totFattEur):'—');
-  set('pr-rc-commissioni',commissioni?fmt(commissioni):'—');
-  set('pr-rc-tot-dovuto',totDovuto&&rmbEur?fmt(totDovuto):'—');
-  set('pr-rc-customs',totCustoms?fmt(totCustoms):'—');
-  set('pr-rc-dazio',dazio&&rmbEur?fmt(dazio):'—');
-  set('pr-rc-iva',iva&&rmbEur?fmt(iva):'—');
-  set('pr-rc-diritti',diritti?fmt(diritti):'—');
-  set('pr-rc-iva-diritti',ivaDiritti?fmt(ivaDiritti):'—');
-  set('pr-rc-tot-importazione',totImportazione&&rmbEur?fmt(totImportazione):'—');
-  set('pr-rc-trasporto2',trasportoEur&&rmbEur?fmt(trasportoEur):'—');
-  set('pr-rc-dazio2',dazio&&rmbEur?fmt(dazio):'—');
-  set('pr-rc-diritti2',diritti?fmt(diritti):'—');
-  set('pr-rc-commissioni2',commissioni?fmt(commissioni):'—');
-  set('pr-rc-tot-costi-merce',totCostiMerce&&rmbEur?fmt(totCostiMerce):'—');
-  set('pr-pag-customs-merce',customsMerce?fmt(customsMerce):'—');
-  set('pr-pag-customs-paypal',customsPaypal?fmt(customsPaypal):'—');
-  set('pr-pag-customs-eur',totCustoms?fmt(totCustoms):'—');
-  set('pr-pag-extra-merce',extraMerce?fmt(extraMerce):'—');
-  set('pr-pag-extra-paypal',extraPaypal?fmt(extraPaypal):'—');
-  set('pr-pag-extra-eur',totExtra>0?fmt(totExtra):'—');
+  setEl('pr-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  setEl('pr-rc-tot-rmb',totMerceRmb?totMerceRmb.toFixed(2)+' ¥':'—');
+  setEl('pr-rc-tot-eur',totMerceEur&&rmbEur?fmt(totMerceEur):'—');
+  setEl('pr-rc-trasporto-eur',trasportoEur&&rmbEur?fmt(trasportoEur)+' ('+Math.round(trasportoRmb).toLocaleString('it')+' ¥)':'—');
+  setEl('pr-rc-fatt-rmb',totFattRmb?Math.round(totFattRmb).toLocaleString('it')+' ¥':'—');
+  setEl('pr-rc-fatt-eur',totFattEur&&rmbEur?fmt(totFattEur):'—');
+  setEl('pr-rc-commissioni',commissioni?fmt(commissioni):'—');
+  setEl('pr-rc-tot-dovuto',totDovuto&&rmbEur?fmt(totDovuto):'—');
+  setEl('pr-rc-customs',totCustoms?fmt(totCustoms):'—');
+  setEl('pr-rc-dazio',dazio&&rmbEur?fmt(dazio):'—');
+  setEl('pr-rc-iva',iva&&rmbEur?fmt(iva):'—');
+  setEl('pr-rc-diritti',diritti?fmt(diritti):'—');
+  setEl('pr-rc-iva-diritti',ivaDiritti?fmt(ivaDiritti):'—');
+  setEl('pr-rc-tot-importazione',totImportazione&&rmbEur?fmt(totImportazione):'—');
+  setEl('pr-rc-trasporto2',trasportoEur&&rmbEur?fmt(trasportoEur):'—');
+  setEl('pr-rc-dazio2',dazio&&rmbEur?fmt(dazio):'—');
+  setEl('pr-rc-diritti2',diritti?fmt(diritti):'—');
+  setEl('pr-rc-commissioni2',commissioni?fmt(commissioni):'—');
+  setEl('pr-rc-tot-costi-merce',totCostiMerce&&rmbEur?fmt(totCostiMerce):'—');
+  setEl('pr-pag-customs-merce',customsMerce?fmt(customsMerce):'—');
+  setEl('pr-pag-customs-paypal',customsPaypal?fmt(customsPaypal):'—');
+  setEl('pr-pag-customs-eur',totCustoms?fmt(totCustoms):'—');
+  setEl('pr-pag-extra-merce',extraMerce?fmt(extraMerce):'—');
+  setEl('pr-pag-extra-paypal',extraPaypal?fmt(extraPaypal):'—');
+  setEl('pr-pag-extra-eur',totExtra>0?fmt(totExtra):'—');
 
   righe.forEach(r => {
     const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
@@ -5115,25 +5115,24 @@ function ricalcolaOD() {
   const dazioPz = totPezzi>0 ? totImportazione/totPezzi : 0;
   const costoPz = toEur(trasPz) + (isUK ? dazioPz : 0);
 
-  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('od-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
-  set('od-rc-tot-merce', totMerce ? totMerce.toFixed(2)+' '+sym : '—');
-  set('od-rc-trasporto', trasporto ? trasporto.toFixed(2)+' '+sym : '—');
-  set('od-rc-tras-pz', trasPz ? trasPz.toFixed(2)+' '+sym+'/pz' : '—');
-  set('od-rc-tot-fatt', totFatt ? totFatt.toFixed(2)+' '+sym : '—');
-  set('od-rc-tot-eur', totFattEur ? fmt(totFattEur) : (valuta==='EUR'?fmt(totFatt):'inserisci tasso'));
+  setEl('od-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  setEl('od-rc-tot-merce', totMerce ? totMerce.toFixed(2)+' '+sym : '—');
+  setEl('od-rc-trasporto', trasporto ? trasporto.toFixed(2)+' '+sym : '—');
+  setEl('od-rc-tras-pz', trasPz ? trasPz.toFixed(2)+' '+sym+'/pz' : '—');
+  setEl('od-rc-tot-fatt', totFatt ? totFatt.toFixed(2)+' '+sym : '—');
+  setEl('od-rc-tot-eur', totFattEur ? fmt(totFattEur) : (valuta==='EUR'?fmt(totFatt):'inserisci tasso'));
   if(isUK) {
-    set('od-rc-customs', customsMerce ? fmt(customsMerce) : '—');
-    set('od-rc-extra', extraEur ? fmt(extraEur) : '—');
-    set('od-rc-dazio', dazio ? fmt(dazio) : '—');
-    set('od-rc-iva', iva ? fmt(iva) : '—');
-    set('od-rc-diritti', diritti ? fmt(diritti) : '—');
-    set('od-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
-    set('od-rc-tot-importazione', totImportazione ? fmt(totImportazione) : '—');
+    setEl('od-rc-customs', customsMerce ? fmt(customsMerce) : '—');
+    setEl('od-rc-extra', extraEur ? fmt(extraEur) : '—');
+    setEl('od-rc-dazio', dazio ? fmt(dazio) : '—');
+    setEl('od-rc-iva', iva ? fmt(iva) : '—');
+    setEl('od-rc-diritti', diritti ? fmt(diritti) : '—');
+    setEl('od-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
+    setEl('od-rc-tot-importazione', totImportazione ? fmt(totImportazione) : '—');
   }
-  set('od-rc-costo-pz', trasPzEur ? fmt(trasPzEur)+'/pz' : '—');
-  set('od-rc-dazio-pz', isUK&&dazioPz ? fmt(dazioPz)+'/pz' : '—');
-  set('od-rc-costo-tot-pz', costoPz ? fmt(costoPz)+'/pz aggiuntivo' : '—');
+  setEl('od-rc-costo-pz', trasPzEur ? fmt(trasPzEur)+'/pz' : '—');
+  setEl('od-rc-dazio-pz', isUK&&dazioPz ? fmt(dazioPz)+'/pz' : '—');
+  setEl('od-rc-costo-tot-pz', costoPz ? fmt(costoPz)+'/pz aggiuntivo' : '—');
 
   // Update righe
   righe.forEach(r => {
@@ -5631,25 +5630,24 @@ function ricalcolaINNOCENT() {
   const extraEur = isUK&&customsMerce&&totFattEur ? totFattEur-customsMerce : 0;
   const costoPz = toEur(trasPz) + (isUK ? dazioPz : 0);
 
-  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('inn-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
-  set('inn-rc-tot-merce', totMerce ? totMerce.toFixed(2)+' £' : '—');
-  set('inn-rc-trasporto', trasporto ? trasporto.toFixed(2)+' £' : '—');
-  set('inn-rc-tras-pz', trasPz ? trasPz.toFixed(2)+' £/pz' : '—');
-  set('inn-rc-tot-fatt', totFatt ? totFatt.toFixed(2)+' £' : '—');
-  set('inn-rc-tot-eur', totFattEur ? fmt(totFattEur) : (gbpEur?'—':'inserisci tasso'));
+  setEl('inn-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  setEl('inn-rc-tot-merce', totMerce ? totMerce.toFixed(2)+' £' : '—');
+  setEl('inn-rc-trasporto', trasporto ? trasporto.toFixed(2)+' £' : '—');
+  setEl('inn-rc-tras-pz', trasPz ? trasPz.toFixed(2)+' £/pz' : '—');
+  setEl('inn-rc-tot-fatt', totFatt ? totFatt.toFixed(2)+' £' : '—');
+  setEl('inn-rc-tot-eur', totFattEur ? fmt(totFattEur) : (gbpEur?'—':'inserisci tasso'));
   if(isUK) {
-    set('inn-rc-customs', customsMerce ? fmt(customsMerce) : '—');
-    set('inn-rc-extra', extraEur ? fmt(extraEur) : '—');
-    set('inn-rc-dazio', dazio ? fmt(dazio) : '—');
-    set('inn-rc-iva', iva ? fmt(iva) : '—');
-    set('inn-rc-diritti', diritti ? fmt(diritti) : '—');
-    set('inn-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
-    set('inn-rc-tot-importazione', totImportazione ? fmt(totImportazione) : '—');
+    setEl('inn-rc-customs', customsMerce ? fmt(customsMerce) : '—');
+    setEl('inn-rc-extra', extraEur ? fmt(extraEur) : '—');
+    setEl('inn-rc-dazio', dazio ? fmt(dazio) : '—');
+    setEl('inn-rc-iva', iva ? fmt(iva) : '—');
+    setEl('inn-rc-diritti', diritti ? fmt(diritti) : '—');
+    setEl('inn-rc-iva-diritti', ivaDiritti ? fmt(ivaDiritti) : '—');
+    setEl('inn-rc-tot-importazione', totImportazione ? fmt(totImportazione) : '—');
   }
-  set('inn-rc-costo-pz', toEur(trasPz) ? fmt(toEur(trasPz))+'/pz' : '—');
-  set('inn-rc-dazio-pz', isUK&&dazioPz ? fmt(dazioPz)+'/pz' : '—');
-  set('inn-rc-costo-tot-pz', costoPz ? fmt(costoPz)+'/pz aggiuntivo' : '—');
+  setEl('inn-rc-costo-pz', toEur(trasPz) ? fmt(toEur(trasPz))+'/pz' : '—');
+  setEl('inn-rc-dazio-pz', isUK&&dazioPz ? fmt(dazioPz)+'/pz' : '—');
+  setEl('inn-rc-costo-tot-pz', costoPz ? fmt(costoPz)+'/pz aggiuntivo' : '—');
 
   righe.forEach(r => {
     const totRiga = r.prezzoUnit*r.qty;
@@ -6083,18 +6081,17 @@ function aggiornaBilancio() {
   const utile = incasso + ricaviExtra - costoMerce - costiNetti;
   const margine = incasso>0 ? utile/incasso*100 : null;
 
-  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('bil-tot-costi', costiTot?fmt(costiTot):'—');
-  set('bil-tot-gothicat', isGothicat&&quotaGothicat?fmt(quotaGothicat):'—');
-  set('bil-tot-ricavi', ricaviExtra?fmt(ricaviExtra):'—');
-  set('bil-incasso', fmt(incasso));
-  set('bil-sum-ricavi', ricaviExtra?fmt(ricaviExtra):'—');
-  set('bil-costo-merce', costoMerce?fmt(costoMerce):'—');
-  set('bil-sum-costi', costiTot?fmt(costiTot):'—');
-  set('bil-rim-gothicat', isGothicat&&quotaGothicat?fmt(quotaGothicat):'—');
+  setEl('bil-tot-costi', costiTot?fmt(costiTot):'—');
+  setEl('bil-tot-gothicat', isGothicat&&quotaGothicat?fmt(quotaGothicat):'—');
+  setEl('bil-tot-ricavi', ricaviExtra?fmt(ricaviExtra):'—');
+  setEl('bil-incasso', fmt(incasso));
+  setEl('bil-sum-ricavi', ricaviExtra?fmt(ricaviExtra):'—');
+  setEl('bil-costo-merce', costoMerce?fmt(costoMerce):'—');
+  setEl('bil-sum-costi', costiTot?fmt(costiTot):'—');
+  setEl('bil-rim-gothicat', isGothicat&&quotaGothicat?fmt(quotaGothicat):'—');
   const utileEl = document.getElementById('bil-utile');
   if(utileEl) { utileEl.textContent=fmt(utile); utileEl.style.color=utile>=0?'var(--green)':'var(--red)'; }
-  set('bil-margine-pct', margine!==null?Math.round(margine)+'%':'—');
+  setEl('bil-margine-pct', margine!==null?Math.round(margine)+'%':'—');
   const gothLabel = document.getElementById('bil-gothicat-label');
   if(gothLabel) gothLabel.style.display = isGothicat?'':'none';
   const rimEl = document.getElementById('bil-rim-gothicat');
@@ -6280,13 +6277,12 @@ function ricalcolaADRIANO() {
   const totMerce = righe.reduce((a,r)=>a+r.prezzoUnit*r.qty,0);
   const totFatt = totMerce+trasporto;
   const trasPz = totPezzi>0 ? trasporto/totPezzi : 0;
-  const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  set('adr-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
-  set('adr-rc-tot-merce', totMerce ? fmt(totMerce) : '—');
-  set('adr-rc-trasporto', trasporto ? fmt(trasporto) : '—');
-  set('adr-rc-tras-pz', trasPz ? fmt(trasPz)+'/pz' : '—');
-  set('adr-rc-tot-fatt', totFatt ? fmt(totFatt) : '—');
-  set('adr-rc-costo-pz', trasPz ? fmt(trasPz)+'/pz aggiuntivo' : '—');
+  setEl('adr-rc-tot-pz', totPezzi ? totPezzi+' pz' : '—');
+  setEl('adr-rc-tot-merce', totMerce ? fmt(totMerce) : '—');
+  setEl('adr-rc-trasporto', trasporto ? fmt(trasporto) : '—');
+  setEl('adr-rc-tras-pz', trasPz ? fmt(trasPz)+'/pz' : '—');
+  setEl('adr-rc-tot-fatt', totFatt ? fmt(totFatt) : '—');
+  setEl('adr-rc-costo-pz', trasPz ? fmt(trasPz)+'/pz aggiuntivo' : '—');
   righe.forEach(r => {
     const costoAdd = trasPz;
     const costoRiga = r.prezzoUnit + costoAdd;
