@@ -3492,7 +3492,6 @@ function modificaOrdineDIL(id) {
   if(!o) return;
   editingOrdineId = id;
   switchOrdiniTab('nuovo');
-  // Populate fields
   setTimeout(()=>{
     document.getElementById('dil-ref').value = o.riferimento||'';
     document.getElementById('dil-data').value = o.data||'';
@@ -3506,9 +3505,9 @@ function modificaOrdineDIL(id) {
     document.getElementById('tbody-dil').innerHTML='';
     dilRigheId=0;
     (o.articoli||[]).forEach(a=>aggiungiRigaDIL(a));
-    ricalcolaDIL();
     showDocModifica('DIL', id);
-  }, 50);
+    setTimeout(()=>ricalcolaDIL(), 50);
+  }, 100);
 }
 window.modificaOrdineDIL = modificaOrdineDIL;
 
