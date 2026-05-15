@@ -5511,6 +5511,12 @@ function aggiungiRigaINNOCENT(articolo) {
   const a = articolo || {};
   const tr = document.createElement('tr');
   tr.id = 'inn-row-'+id;
+  tr.dataset.bcXs  = a.bcXs||'';
+  tr.dataset.bcS   = a.bcS||'';
+  tr.dataset.bcM   = a.bcM||'';
+  tr.dataset.bcL   = a.bcL||'';
+  tr.dataset.bcXl  = a.bcXl||'';
+  tr.dataset.bcXxl = a.bcXxl||'';
   tr.innerHTML = `
     <td><input class="input-rmb" style="width:85px;text-align:left" id="inn-cod-${id}" value="${a.codice||''}" placeholder="es. HCAIUS" oninput="suggerisciBarcodesINNOCENT(${id})" onblur="checkPrezzoVenditaINNOCENT(${id});autofillPrezzoINN(${id})"></td>
     <td><input class="input-rmb" style="width:200px;text-align:left" id="inn-desc-${id}" value="${a.descrizione||''}" placeholder="Descrizione"></td>
@@ -5594,12 +5600,13 @@ function getRigheINNOCENT() {
     const xxl = parseInt(document.getElementById('inn-xxl-'+id)?.value)||0;
     const qty = xs+s+m+l+xl+xxl;
     const vendita = parseFloat(document.getElementById('inn-vend-'+id)?.value)||0;
-    const bcXs  = document.getElementById('inn-bc-xs-'+id)?.value?.trim()||'';
-    const bcS   = document.getElementById('inn-bc-s-'+id)?.value?.trim()||'';
-    const bcM   = document.getElementById('inn-bc-m-'+id)?.value?.trim()||'';
-    const bcL   = document.getElementById('inn-bc-l-'+id)?.value?.trim()||'';
-    const bcXl  = document.getElementById('inn-bc-xl-'+id)?.value?.trim()||'';
-    const bcXxl = document.getElementById('inn-bc-xxl-'+id)?.value?.trim()||'';
+    const inn_row = document.getElementById('inn-row-'+id);
+    const bcXs  = document.getElementById('inn-bc-xs-'+id)?.value?.trim()  || inn_row?.dataset.bcXs  || '';
+    const bcS   = document.getElementById('inn-bc-s-'+id)?.value?.trim()   || inn_row?.dataset.bcS   || '';
+    const bcM   = document.getElementById('inn-bc-m-'+id)?.value?.trim()   || inn_row?.dataset.bcM   || '';
+    const bcL   = document.getElementById('inn-bc-l-'+id)?.value?.trim()   || inn_row?.dataset.bcL   || '';
+    const bcXl  = document.getElementById('inn-bc-xl-'+id)?.value?.trim()  || inn_row?.dataset.bcXl  || '';
+    const bcXxl = document.getElementById('inn-bc-xxl-'+id)?.value?.trim() || inn_row?.dataset.bcXxl || '';
     if(!codice && !prezzoUnit) return;
     righe.push({id, codice, descrizione, prezzoUnit, xs, s, m, l, xl, xxl, qty, vendita, bcXs, bcS, bcM, bcL, bcXl, bcXxl});
   });
@@ -5681,9 +5688,12 @@ function renderBarcodesTableINNOCENT(righe) {
     const cols = taglieMap.map(({t,suf}) => {
       const qty = r[t]||0;
       const bcId = 'inn-bc-'+t+'-'+r.id;
-      const existingVal = document.getElementById(bcId)?.value||'';
+      const domVal = document.getElementById(bcId)?.value||'';
+      const inn_tr = document.getElementById('inn-row-'+r.id);
+      const bcKey = {xs:'bcXs',s:'bcS',m:'bcM',l:'bcL',xl:'bcXl',xxl:'bcXxl'}[t]||'';
+      const savedVal = inn_tr?.dataset[bcKey] || r[bcKey] || '';
       if(!qty) return '<td style="background:var(--surface2);text-align:center;color:var(--text3);font-size:11px">—</td>';
-      let autoVal = existingVal;
+      let autoVal = domVal || savedVal;
       if(!autoVal && r.codice) {
         const candidates = [r.codice+'.'+suf, r.codice+suf, r.codice+'F.'+suf];
         for(const bc of candidates) { if(getProdotto(bc)){autoVal=bc;break;} }
