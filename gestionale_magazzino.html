@@ -2463,7 +2463,7 @@ function confirmDel(tipo, id, nome) {
   document.getElementById('modal-del').classList.add('open');
 }
 
-function executeDel() {
+async function executeDel() {
   if (!pendingDel) return;
   const { tipo, id } = pendingDel;
   if (tipo === 'fornitore') { db.fornitori = db.fornitori.filter(f => f.id !== id); renderFornitori(); }
