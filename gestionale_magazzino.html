@@ -881,15 +881,21 @@
           <select id="filter-vend-evento" onchange="renderVendite()" style="max-width:260px">
             <option value="">Tutti gli eventi</option>
           </select>
+          <select id="filter-vend-venditore" onchange="renderVendite()" style="max-width:200px">
+            <option value="">Tutti i venditori</option>
+            <option value="matteo.lassandro@gmail.com">👑 Amministratore</option>
+            <option value="collaboratore1@gothicat.net">👤 Collaboratore 1</option>
+            <option value="collaboratore2@gothicat.net">👤 Collaboratore 2</option>
+          </select>
           <input id="filter-vend-data" type="date" onchange="renderVendite()" style="max-width:160px">
-          <button class="btn btn-sm" onclick="document.getElementById('filter-vend-data').value='';renderVendite()">Reset data</button>
+          <button class="btn btn-sm" onclick="document.getElementById('filter-vend-data').value='';document.getElementById('filter-vend-venditore').value='';renderVendite()">Reset</button>
         </div>
       </div>
       <div id="vendite-metrics" class="grid4" style="margin-bottom:16px"></div>
       <div class="card">
         <div class="card-title">Scontrini</div>
         <div class="table-wrap">
-          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Valuta</th><th>Articoli</th><th>Totale</th><th>Pagamento</th><th></th></tr></thead>
+          <table><thead><tr><th>Data/Ora</th><th>Evento</th><th>Valuta</th><th>Articoli</th><th>Totale</th><th>Pagamento</th><th>Venditore</th><th></th></tr></thead>
           <tbody id="tab-vendite"></tbody>
         </table></div>
       </div>
@@ -1021,15 +1027,29 @@
     <div style="font-size:16px;font-weight:600;margin-bottom:6px;color:var(--text)">MEOWVENUTO!</div>
     <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Come vuoi accedere?</div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-primary" style="padding:16px;font-size:15px" onclick="accessoCollaboratore()">
+      <button class="btn btn-primary" style="padding:16px;font-size:15px" onclick="mostraLoginCollaboratore()">
         🐒 Accedi come Collaboratore
       </button>
       <button class="btn" style="padding:16px;font-size:15px;border-color:var(--accent);color:var(--accent)" onclick="mostraLoginAdmin()">
         👑 Accedi come Amministratore
       </button>
     </div>
-    <div id="login-admin-form" style="display:none;margin-top:16px">
-      <div class="form-group" style="text-align:left">
+    <!-- Form collaboratore -->
+    <div id="login-collab-form" style="display:none;margin-top:16px;text-align:left">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-collab-email" placeholder="collaboratore@gothicat.net" onkeydown="if(event.key==='Enter')verificaLoginCollaboratore()">
+      </div>
+      <div class="form-group" style="margin-top:8px">
+        <label>Password</label>
+        <input type="password" id="login-collab-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')verificaLoginCollaboratore()">
+      </div>
+      <div id="login-collab-error" style="color:var(--red);font-size:12px;margin-top:4px;display:none">Email o password errati. Riprova.</div>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px;padding:12px" onclick="verificaLoginCollaboratore()">Entra</button>
+    </div>
+    <!-- Form admin -->
+    <div id="login-admin-form" style="display:none;margin-top:16px;text-align:left">
+      <div class="form-group">
         <label>Password amministratore</label>
         <input type="password" id="login-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')verificaLogin()">
       </div>
@@ -1238,7 +1258,9 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const firestore = firebase.firestore();
-const DOC_REF = firestore.collection('gestionale').doc('data');
+const DOC_REF       = firestore.collection('gestionale').doc('data');
+const VEND_COL      = firestore.collection('vendite');
+const MOV_COL       = firestore.collection('movimenti');
 const auth = firebase.auth();
 
 // ─────────────────────────────────────────────
@@ -1247,13 +1269,123 @@ const auth = firebase.auth();
 let db = { fornitori: [], loghi: [], ordini: [], movimenti: [], nextFornId: 1, nextLogoId: 1, nextOrdId: 1, nextMovId: 1 };
 let isSaving = false;
 
+// ── MIGRAZIONE: sposta vendite e movimenti in collezioni separate ──
+async function migraSeNecessario() {
+  const doc = await DOC_REF.get();
+  if (!doc.exists) return;
+  const data = doc.data();
+
+  // Backup automatico se non ancora fatto
+  const backupRef = firestore.collection('gestionale').doc('backup_pre_migrazione');
+  const backupDoc = await backupRef.get();
+  if (!backupDoc.exists && (data.vendite||[]).length > 0) {
+    showSyncStatus('Backup in corso...');
+    await backupRef.set({ ...data, _backupDate: new Date().toISOString() });
+    showSyncStatus('Backup completato ✓');
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  // Migra vendite se ancora nell'array
+  const venditeLocali = data.vendite || [];
+  if (venditeLocali.length > 0) {
+    showSyncStatus(`Migrazione ${venditeLocali.length} vendite...`);
+    const batch = firestore.batch();
+    venditeLocali.forEach(v => {
+      const ref = VEND_COL.doc(String(v.id));
+      batch.set(ref, v);
+    });
+    await batch.commit();
+    // Rimuovi vendite dal documento principale
+    await DOC_REF.update({ vendite: firebase.firestore.FieldValue.delete(), nextVendId: data.nextVendId || 1 });
+    showSyncStatus('Vendite migrate ✓');
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  // Migra movimenti se ancora nell'array
+  const movimentiLocali = data.movimenti || [];
+  if (movimentiLocali.length > 0) {
+    showSyncStatus(`Migrazione ${movimentiLocali.length} movimenti...`);
+    // Firestore batch max 500 documenti — splittiamo
+    const chunks = [];
+    for (let i = 0; i < movimentiLocali.length; i += 400) chunks.push(movimentiLocali.slice(i, i + 400));
+    for (const chunk of chunks) {
+      const batch = firestore.batch();
+      chunk.forEach(m => {
+        const ref = MOV_COL.doc(String(m.id));
+        batch.set(ref, m);
+      });
+      await batch.commit();
+    }
+    await DOC_REF.update({ movimenti: firebase.firestore.FieldValue.delete(), nextMovId: data.nextMovId || 1 });
+    showSyncStatus('Movimenti migrati ✓');
+    await new Promise(r => setTimeout(r, 600));
+  }
+}
+
+// ── REALTIME LISTENERS ──
+let _unsubscribeData = null;
+let _unsubscribeVendite = null;
+let _unsubscribeMovimenti = null;
+
+function avviaListeners() {
+  // Listener documento principale
+  if (_unsubscribeData) _unsubscribeData();
+  _unsubscribeData = DOC_REF.onSnapshot(snap => {
+    if (!snap.exists) return;
+    const nuovi = snap.data();
+    // Aggiorna solo i campi leggeri, non sovrascrivere vendite/movimenti in memoria
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId'];
+    campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
+    updateFooter();
+  });
+
+  // Listener vendite
+  if (_unsubscribeVendite) _unsubscribeVendite();
+  _unsubscribeVendite = VEND_COL.orderBy('id').onSnapshot(snap => {
+    db.vendite = snap.docs.map(d => d.data());
+    // Aggiorna UI se siamo nella sezione vendite o dashboard
+    const active = document.querySelector('.section.active');
+    if (active) {
+      if (active.id === 'sec-vendite') renderVendite();
+      if (active.id === 'sec-dashboard') renderDashboard();
+      if (active.id === 'sec-eventi') renderEventi();
+      if (active.id === 'sec-report') { try { renderReport(); } catch(e){} }
+    }
+  });
+
+  // Listener movimenti
+  if (_unsubscribeMovimenti) _unsubscribeMovimenti();
+  _unsubscribeMovimenti = MOV_COL.orderBy('id').onSnapshot(snap => {
+    db.movimenti = snap.docs.map(d => d.data());
+    const active = document.querySelector('.section.active');
+    if (active) {
+      if (active.id === 'sec-stock') renderStock();
+      if (active.id === 'sec-dashboard') renderDashboard();
+    }
+  });
+}
+
 async function loadDB() {
   try {
     showSyncStatus('Caricamento dati...');
+
+    // Controlla se serve migrare
+    await migraSeNecessario();
+
+    // Carica documento principale (leggero)
     const doc = await DOC_REF.get();
     if (doc.exists) {
       db = doc.data();
     }
+
+    // Carica vendite dalla collezione separata
+    const vendSnap = await VEND_COL.orderBy('id').get();
+    db.vendite = vendSnap.docs.map(d => d.data());
+
+    // Carica movimenti dalla collezione separata
+    const movSnap = await MOV_COL.orderBy('id').get();
+    db.movimenti = movSnap.docs.map(d => d.data());
+
     updateFooter();
     renderDashboard();
     showSyncStatus('');
@@ -1267,7 +1399,9 @@ async function saveDB() {
   try {
     isSaving = true;
     showSyncStatus('Salvataggio...');
-    await DOC_REF.set(db);
+    // Salva solo dati leggeri nel documento principale
+    const { vendite, movimenti, ...dbLight } = db;
+    await DOC_REF.set(dbLight);
     updateFooter();
     showSyncStatus('');
     isSaving = false;
@@ -1276,6 +1410,26 @@ async function saveDB() {
     showSyncStatus('Errore salvataggio!', true);
     isSaving = false;
   }
+}
+
+// Salva una singola vendita nella collezione separata
+async function saveVendita(v) {
+  await VEND_COL.doc(String(v.id)).set(v);
+}
+
+// Salva un singolo movimento nella collezione separata
+async function saveMovimento(m) {
+  await MOV_COL.doc(String(m.id)).set(m);
+}
+
+// Elimina una vendita dalla collezione separata
+async function deleteVendita(id) {
+  await VEND_COL.doc(String(id)).delete();
+}
+
+// Elimina un movimento dalla collezione separata
+async function deleteMovimento(id) {
+  await MOV_COL.doc(String(id)).delete();
 }
 
 function updateFooter() {
@@ -1830,11 +1984,11 @@ function riceviOrdine() {
         if (cat.taglie) {
           TAGLIE.forEach(t => {
             const qty = qMag[t] || 0;
-            if (qty > 0) db.movimenti.push({ id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: t, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() });
+            if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: t, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
           });
         } else {
           const qty = qMag._ || 0;
-          if (qty > 0) db.movimenti.push({ id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: null, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() });
+          if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: null, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
         }
       });
     });
@@ -2056,7 +2210,7 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
     if (isNaN(nuovoStock) || nuovoStock < 0) { el.innerHTML = originalHtml; return; }
     if (nuovoStock === stockAttuale) { el.innerHTML = originalHtml; return; }
     const delta = nuovoStock - stockAttuale;
-    db.movimenti.push({
+    const m = {
       id: db.nextMovId++,
       logoId, catId, taglia,
       magazzino: mag,
@@ -2065,8 +2219,9 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
       ordineId: null,
       data: today(),
       note: 'Rettifica manuale',
-    });
-    await saveDB();
+    };
+    db.movimenti.push(m);
+    await Promise.all([saveMovimento(m), saveDB()]);
     renderStock();
     showToast(`Stock ${mag} aggiornato: ${stockAttuale} → ${nuovoStock}`);
   }
@@ -2316,17 +2471,27 @@ function executeDel() {
   if (tipo === 'evento') { db.eventi = (db.eventi||[]).filter(e => e.id !== id); renderEventi(); }
   if (tipo === 'vendita') {
     const v = (db.vendite||[]).find(x => x.id === id);
+    const nuoviMov = [];
     if (v) {
-      // restore stock
       const ev = getEvento(v.eventoId);
       v.items.forEach(it => {
-        db.movimenti.push({ id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: 1, tipo: 'carico', magazzino: ev ? ev.magazzino : 'avigliana', vendita: false, data: today(), note: 'Storno vendita' });
+        if (!it.isAccessorio) {
+          const m = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: 1, tipo: 'carico', magazzino: ev ? ev.magazzino : 'avigliana', vendita: false, data: today(), note: 'Storno vendita' };
+          db.movimenti.push(m);
+          nuoviMov.push(m);
+        }
       });
     }
     db.vendite = (db.vendite||[]).filter(v => v.id !== id);
+    await Promise.all([
+      deleteVendita(id),
+      ...nuoviMov.map(m => saveMovimento(m)),
+      saveDB(),
+    ]);
     renderVendite();
+  } else {
+    saveDB();
   }
-  saveDB();
   closeModal('modal-del');
   showToast('Elemento rimosso');
 }
@@ -3040,7 +3205,10 @@ async function salvaModificaVendita() {
   } else {
     v.pagContanti = 0; v.pagPos = nuovoTotale;
   }
-  await saveDB();
+  await Promise.all([
+    saveVendita(v),
+    saveDB(),
+  ]);
   document.getElementById('modal-modifica-vendita').classList.remove('open');
   renderVendite();
   showToast('Vendita aggiornata ✓');
@@ -3085,12 +3253,11 @@ async function concludiVendita() {
   const totale = scontrino.reduce((a,i) => a + i.prezzo, 0);
   if (!db.vendite) db.vendite = [];
   if (!db.nextVendId) db.nextVendId = 1;
-  // Save vendita
   const metodoPag = (document.getElementById('metodo-pagamento')||{value:'contanti'}).value || 'contanti';
   const pagContanti = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-contanti').value)||0) : (metodoPag === 'contanti' ? totale : 0);
   const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : (metodoPag === 'pos' ? totale : 0);
   const noteVendita = (document.getElementById('scontrino-note')||{value:''}).value.trim();
-  db.vendite.push({
+  const nuovaVendita = {
     id: db.nextVendId++,
     eventoId: cassaEventoId,
     dataOra,
@@ -3100,21 +3267,33 @@ async function concludiVendita() {
     pagContanti: parseFloat(pagContanti.toFixed(2)),
     pagPos: parseFloat(pagPos.toFixed(2)),
     note: noteVendita || null,
+    venditore: currentUser || null,
     items: scontrino.map(it => ({ logoId: it.logoId, catId: it.catId, taglia: it.taglia, prezzo: it.prezzo, prezzoUnit: it.prezzoUnit||it.prezzo, isAccessorio: it.isAccessorio||false, accCatId: it.accCatId||null, qty: it.qty||1 })),
-  });
-  // Scarica magazzino
+  };
+  db.vendite.push(nuovaVendita);
+
+  // Nuovi movimenti da salvare
+  const nuoviMovimenti = [];
   scontrino.forEach(it => {
     if (it.isAccessorio) {
       if (!db.movimentiAcc) db.movimentiAcc = [];
       if (!db.nextMovAccId) db.nextMovAccId = 1;
       db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.accCatId, mag: ev.magazzino, magazzino: ev.magazzino, qty: it.qty||1, tipo: 'scarico', data: now.toISOString().split('T')[0], note: 'Vendita' });
     } else {
-      db.movimenti.push({ id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty||1, tipo: 'scarico', magazzino: ev.magazzino, vendita: true, data: now.toISOString().split('T')[0] });
+      const mov = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty||1, tipo: 'scarico', magazzino: ev.magazzino, vendita: true, data: now.toISOString().split('T')[0] };
+      db.movimenti.push(mov);
+      nuoviMovimenti.push(mov);
     }
   });
-  await saveDB();
+
+  // Salva vendita e movimenti nelle collezioni separate + aggiorna contatori nel doc principale
+  await Promise.all([
+    saveVendita(nuovaVendita),
+    ...nuoviMovimenti.map(m => saveMovimento(m)),
+    saveDB(),
+  ]);
+
   svuotaScontrino();
-  // Reset metodo pagamento
   const mpEl = document.getElementById('metodo-pagamento');
   if (mpEl) mpEl.value = 'contanti';
   const mf = document.getElementById('misto-fields');
@@ -3161,9 +3340,11 @@ function renderVendite() {
   const evIdRaw = (document.getElementById('filter-vend-evento')||{}).value || '';
   const evId = evIdRaw ? parseInt(evIdRaw) : 0;
   const datFilt = (document.getElementById('filter-vend-data')||{}).value || '';
+  const vendFilt = (document.getElementById('filter-vend-venditore')||{}).value || '';
   let list = [...(db.vendite||[])].filter(v =>
     (!evId || v.eventoId === evId) &&
-    (!datFilt || v.dataOra.startsWith(datFilt))
+    (!datFilt || v.dataOra.startsWith(datFilt)) &&
+    (!vendFilt || v.venditore === vendFilt)
   ).sort((a,b) => b.dataOra.localeCompare(a.dataOra));
 
   // Metrics — separate EUR and CZK
@@ -3218,6 +3399,7 @@ function renderVendite() {
       const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
         `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
       const noteHtml = v.note ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">📝 ${v.note}</div>` : '';
+      const vLabel = !v.venditore ? '—' : v.venditore === 'matteo.lassandro@gmail.com' ? '👑 Admin' : v.venditore === 'collaboratore1@gothicat.net' ? '👤 Collab. 1' : v.venditore === 'collaboratore2@gothicat.net' ? '👤 Collab. 2' : v.venditore;
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
         <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
@@ -3225,6 +3407,7 @@ function renderVendite() {
         <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}${noteHtml}</td>
         <td class="mono" style="font-weight:500">${totFmt}</td>
         <td style="font-size:12px">${mpLabel}${mpDetail}</td>
+        <td style="font-size:12px;color:var(--text3)">${vLabel}</td>
         <td style="display:flex;gap:6px">
           <button class="btn btn-sm" onclick="apriModificaVendita(${v.id})">Modifica</button>
           <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button>
@@ -3546,61 +3729,92 @@ if (window.speechSynthesis) {
 // ─────────────────────────────────────────────
 let isAdmin = false;
 let venditeUnlocked = false;
+let currentUser = null; // email utente loggato
+
+const COLLAB_EMAILS = ['collaboratore1@gothicat.net', 'collaboratore2@gothicat.net'];
+const ADMIN_EMAIL = 'matteo.lassandro@gmail.com';
 
 function mostraLoginModal() {
   document.getElementById('login-admin-form').style.display = 'none';
+  document.getElementById('login-collab-form').style.display = 'none';
   document.getElementById('login-pwd').value = '';
+  document.getElementById('login-collab-email').value = '';
+  document.getElementById('login-collab-pwd').value = '';
   document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-collab-error').style.display = 'none';
   document.getElementById('modal-login').classList.add('open');
 }
 
 function mostraLoginAdmin() {
+  document.getElementById('login-collab-form').style.display = 'none';
   document.getElementById('login-admin-form').style.display = 'block';
   setTimeout(() => document.getElementById('login-pwd').focus(), 100);
 }
 
-function accessoCollaboratore() {
-  isAdmin = false;
-  venditeUnlocked = false;
+function mostraLoginCollaboratore() {
+  document.getElementById('login-admin-form').style.display = 'none';
+  document.getElementById('login-collab-form').style.display = 'block';
+  setTimeout(() => document.getElementById('login-collab-email').focus(), 100);
+}
+
+function completaAccesso(email, adminMode) {
+  currentUser = email;
+  isAdmin = adminMode;
+  venditeUnlocked = adminMode;
   document.getElementById('modal-login').classList.remove('open');
   document.getElementById('app').style.display = 'flex';
-  const badge = document.getElementById('ruolo-badge');
-  badge.style.background = 'var(--surface2)';
-  badge.style.borderRadius = 'var(--radius)';
-  document.getElementById('ruolo-label').textContent = '👤 Collaboratore';
-  document.getElementById('ruolo-label').style.color = 'var(--text3)';
-  document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
+  if (adminMode) {
+    document.getElementById('ruolo-label').textContent = '🔑 Amministratore';
+    document.getElementById('ruolo-label').style.color = 'var(--accent)';
+    document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'block');
+  } else {
+    const nome = email.replace('@gothicat.net','').replace('collaboratore','Collaboratore ');
+    document.getElementById('ruolo-label').textContent = '👤 ' + nome;
+    document.getElementById('ruolo-label').style.color = 'var(--text3)';
+    document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
+  }
+  avviaListeners();
   loadDB().then(() => {
     renderDashboard();
-    showSection('dashboard', document.querySelector('.nav-item'));
+    showSection(adminMode ? 'dashboard' : 'dashboard', document.querySelector('.nav-item'));
   });
+}
+
+async function verificaLoginCollaboratore() {
+  const email = document.getElementById('login-collab-email').value.trim();
+  const pwd = document.getElementById('login-collab-pwd').value;
+  const errEl = document.getElementById('login-collab-error');
+  errEl.style.display = 'none';
+  const btn = document.querySelector('#login-collab-form .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Accesso...'; }
+  try {
+    await auth.signInWithEmailAndPassword(email, pwd);
+    completaAccesso(email, false);
+  } catch(e) {
+    errEl.textContent = 'Email o password errati. Riprova.';
+    errEl.style.display = 'block';
+    document.getElementById('login-collab-pwd').value = '';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Entra'; }
+  }
 }
 
 async function verificaLogin() {
   const pwd = document.getElementById('login-pwd').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
-  const btnLogin = document.querySelector('#modal-login .btn-primary:last-child');
-  if (btnLogin) { btnLogin.disabled = true; btnLogin.textContent = 'Accesso...'; }
+  const btn = document.querySelector('#login-admin-form .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Accesso...'; }
   try {
-    await auth.signInWithEmailAndPassword('matteo.lassandro@gmail.com', pwd);
-    isAdmin = true;
-    venditeUnlocked = true;
-    document.getElementById('modal-login').classList.remove('open');
-    document.getElementById('app').style.display = 'flex';
-    document.getElementById('ruolo-label').textContent = '🔑 Amministratore';
-    document.getElementById('ruolo-label').style.color = 'var(--accent)';
-    document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'block');
-    await loadDB();
-    renderDashboard();
-    showSection('dashboard', document.querySelector('.nav-item'));
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
+    completaAccesso(ADMIN_EMAIL, true);
   } catch(e) {
     errEl.textContent = 'Password errata. Riprova.';
     errEl.style.display = 'block';
     document.getElementById('login-pwd').value = '';
     document.getElementById('login-pwd').focus();
   } finally {
-    if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = 'Entra'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Entra'; }
   }
 }
 
@@ -4057,7 +4271,7 @@ async function impostaStockMassa() {
           const attuale = getStock(l.id, cat.id, t, mag);
           const delta = qty - attuale;
           if (delta !== 0) {
-            db.movimenti.push({
+            const m = {
               id: db.nextMovId++,
               logoId: l.id, catId: cat.id, taglia: t,
               magazzino: mag,
@@ -4065,7 +4279,9 @@ async function impostaStockMassa() {
               tipo: delta > 0 ? 'carico' : 'scarico',
               data: today(),
               note: `Stock massa ${qty}pz`,
-            });
+            };
+            db.movimenti.push(m);
+            saveMovimento(m);
             count++;
           }
         });
