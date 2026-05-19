@@ -4371,7 +4371,8 @@ function stampaEtichetteOrdineDF(ordineId) {
       const qty=r[t]||0; const barcode=r[bc]||'';
       if(!qty||!barcode) return;
       const prod=getProdotto(barcode);
-      const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+      const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
+      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
       const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
@@ -4835,7 +4836,8 @@ function stampaEtichetteOrdinePR(ordineId) {
       const qty=r[t]||0,barcode=r[bc]||'';
       if(!qty||!barcode) return;
       const prod=getProdotto(barcode);
-      const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+      const prezzoFallback=parseFloat(r.vendita)||0;
+      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':prezzoFallback>0?Math.round(prezzoFallback)+' EURO':'— EURO';
       const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
@@ -5396,7 +5398,8 @@ function stampaEtichetteOrdineOD(ordineId) {
       let prod=null,barcode='';
       for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
       if(!barcode) barcode=r.codice+suf;
-      const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+      const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
+      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
       const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
@@ -5913,7 +5916,8 @@ function stampaEtichetteOrdineINNOCENT(ordineId) {
         for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
       }
       if(!barcode) barcode=r.codice+'.'+suf;
-      const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+      const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
+      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
       const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
@@ -6505,7 +6509,8 @@ function stampaEtichetteOrdineADRIANO(ordineId) {
         for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
       }
       if(!barcode) barcode=r.barcode+'.'+suf;
-      const pEur=prod?Math.round(parseFloat(prod.prezzo||0))+' EURO':'— EURO';
+      const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
+      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
       const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
