@@ -3645,6 +3645,7 @@ async function caricaAMagazzino(ordineId) {
 
   let caricati = 0;
   let nonTrovati = [];
+  let czkMancanti = [];
 
   (o.articoli||[]).forEach(r => {
     taglieCampi.forEach(({t, bc}) => {
@@ -3652,10 +3653,9 @@ async function caricaAMagazzino(ordineId) {
       if(!qty) return;
       const barcode = r[bc];
       if(!barcode) { nonTrovati.push(`${r.articolo} ${t.toUpperCase()}`); return; }
-      // Verifica che il barcode esista nel catalogo
-      const prod = getProdotto(barcode);
-      if(!prod) { nonTrovati.push(`${barcode} (non trovato in catalogo)`); return; }
-      // Carica stock
+      const costoRiga = calcolaCostoProdottoDIL(o, r);
+      const {prod, czkMancante} = creaOAggiornaProdottoNuovo(barcode, r.descrizione||r.articolo||'', 'DARK IN LOVE', r.vendita||0, costoRiga);
+      if(czkMancante) czkMancanti.push({barcode, prezzoEur: r.vendita||0});
       db.movimenti.push({
         id: db.nextMovId++,
         barcode,
@@ -3664,14 +3664,13 @@ async function caricaAMagazzino(ordineId) {
         data: new Date().toISOString().split('T')[0],
         note: `Ordine ${o.riferimento} - DARK IN LOVE`
       });
-      // Aggiorna costo prodotto
-      const costoRiga = calcolaCostoProdottoDIL(o, r);
       if(costoRiga > 0) prod.costo = parseFloat(costoRiga.toFixed(2));
       caricati++;
     });
   });
 
   o.stato = 'ricevuto';
+  await gestisciCzkMancanti(czkMancanti);
   await saveDB();
 
   let msg = `✓ ${caricati} varianti caricate in stock`;
@@ -4330,29 +4329,30 @@ async function caricaAMagazzinoDF(ordineId) {
     {t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},
     {t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}
   ];
-  let caricati=0, nonTrovati=[];
+  let caricati=0, nonTrovati=[], czkMancanti=[];
   (o.articoli||[]).forEach(r => {
     taglieCampi.forEach(({t,bc}) => {
       const qty=r[t]||0;
       const barcode=r[bc]||'';
       if(!qty||!barcode) return;
-      const prod=getProdotto(barcode);
-      if(!prod) { nonTrovati.push(barcode+' (non trovato)'); return; }
-      db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - DEVIL FASHION'});
       const rmbEur=o.rmbEur||0;
       const totMerceRmb=(o.articoli||[]).reduce((a,x)=>a+x.totRmb,0);
       const trasportoEur=rmbEur>0?(o.trasportoRmb||0)/rmbEur:0;
-      const totFattEur=rmbEur>0?totMerceRmb/rmbEur+trasportoEur:0;
       const customsMerceC=o.customsMerce||o.customsEur||0,customsPaypalC=o.customsPaypal||0;
       const totCustomsC=customsMerceC+customsPaypalC,dazioC=totCustomsC*0.12;
       const totCostiMerce=trasportoEur+dazioC+(o.diritti||0)+(o.commissioni||0);
       const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
       const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
-      aggiornaCostoMedioPonderato(prod, qty, (rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd);
+      const costoUnitario=(rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd;
+      const {prod, czkMancante}=creaOAggiornaProdottoNuovo(barcode, r.descrizione||r.articolo||'', 'DEVIL FASHION', r.vendita||0, costoUnitario);
+      if(czkMancante) czkMancanti.push({barcode, prezzoEur: r.vendita||0});
+      db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - DEVIL FASHION'});
+      aggiornaCostoMedioPonderato(prod, qty, costoUnitario);
       caricati++;
     });
   });
   o.stato='ricevuto';
+  await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length) { showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber'); alert(nonTrovati.join(', ')); }
   else showToast(caricati+' varianti caricate in stock ✓');
@@ -4372,8 +4372,10 @@ function stampaEtichetteOrdineDF(ordineId) {
       if(!qty||!barcode) return;
       const prod=getProdotto(barcode);
       const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
-      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
-      const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+      const _prezzoEurNum = prod&&parseFloat(prod.prezzo)>0 ? parseFloat(prod.prezzo) : _vFallback;
+      const pEur=_prezzoEurNum>0?Math.round(_prezzoEurNum)+' EURO':'— EURO';
+      const _pCzkNum = prod&&parseFloat(prod.prezzoCzk)>0 ? parseFloat(prod.prezzoCzk) : (_prezzoEurNum>0?eurToCzk(_prezzoEurNum):0);
+      const pCzk=_pCzkNum>0?Math.round(_pCzkNum)+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
   });
@@ -4799,14 +4801,11 @@ async function caricaAMazzinoPR(ordineId) {
   if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
   if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const taglieCampi=[{t:'acc',bc:'bcAcc'},{t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},{t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}];
-  let caricati=0,nonTrovati=[];
+  let caricati=0,nonTrovati=[],czkMancanti=[];
   (o.articoli||[]).forEach(r=>{
     taglieCampi.forEach(({t,bc})=>{
       const qty=r[t]||0,barcode=r[bc]||'';
       if(!qty||!barcode) return;
-      const prod=getProdotto(barcode);
-      if(!prod){nonTrovati.push(barcode+' (non trovato)');return;}
-      db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - PUNK RAVE'});
       const rmbEur=o.rmbEur||0,totMerceRmb=(o.articoli||[]).reduce((a,x)=>a+x.totRmb,0);
       const trasportoEur=rmbEur>0?(o.trasportoRmb||0)/rmbEur:0;
       const customsMerceC=o.customsMerce||o.customsEur||0,customsPaypalC=o.customsPaypal||0;
@@ -4814,13 +4813,18 @@ async function caricaAMazzinoPR(ordineId) {
       const totCostiMerce=trasportoEur+dazio+(o.diritti||0)+(o.commissioni||0);
       const pct=totMerceRmb>0?r.totRmb/totMerceRmb:0;
       const costoAdd=r.pz>0&&totMerceRmb>0?(totCostiMerce*pct)/r.pz:0;
-      aggiornaCostoMedioPonderato(prod, qty, (rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd);
+      const costoUnitario = (rmbEur>0?r.prezzoRmb/rmbEur:0)+costoAdd;
+      const {prod, czkMancante} = creaOAggiornaProdottoNuovo(barcode, r.descrizione, 'PUNK RAVE', r.vendita||0, costoUnitario);
+      if(czkMancante) czkMancanti.push({barcode, prezzoEur: r.vendita||0});
+      db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - PUNK RAVE'});
+      aggiornaCostoMedioPonderato(prod, qty, costoUnitario);
       caricati++;
     });
   });
   o.stato='ricevuto';
   await saveDB();
-  if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
+  await gestisciCzkMancanti(czkMancanti);
+  if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');}
   else showToast(caricati+' varianti caricate in stock');
   renderOrdiniLista();
 }
@@ -4837,8 +4841,10 @@ function stampaEtichetteOrdinePR(ordineId) {
       if(!qty||!barcode) return;
       const prod=getProdotto(barcode);
       const prezzoFallback=parseFloat(r.vendita)||0;
-      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':prezzoFallback>0?Math.round(prezzoFallback)+' EURO':'— EURO';
-      const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+      const prezzoEurNum = prod&&parseFloat(prod.prezzo)>0 ? parseFloat(prod.prezzo) : prezzoFallback;
+      const pEur=prezzoEurNum>0?Math.round(prezzoEurNum)+' EURO':'— EURO';
+      const pCzkNum = prod&&parseFloat(prod.prezzoCzk)>0 ? parseFloat(prod.prezzoCzk) : (prezzoEurNum>0?eurToCzk(prezzoEurNum):0);
+      const pCzk=pCzkNum>0?Math.round(pCzkNum)+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
   });
@@ -5379,6 +5385,7 @@ async function caricaAMagazzinoOD(ordineId) {
     });
   });
   o.stato='ricevuto';
+  await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
   else showToast(caricati+' articoli caricati in stock');
@@ -5399,8 +5406,10 @@ function stampaEtichetteOrdineOD(ordineId) {
       for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
       if(!barcode) barcode=r.codice+suf;
       const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
-      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
-      const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+      const _prezzoEurNum = prod&&parseFloat(prod.prezzo)>0 ? parseFloat(prod.prezzo) : _vFallback;
+      const pEur=_prezzoEurNum>0?Math.round(_prezzoEurNum)+' EURO':'— EURO';
+      const _pCzkNum = prod&&parseFloat(prod.prezzoCzk)>0 ? parseFloat(prod.prezzoCzk) : (_prezzoEurNum>0?eurToCzk(_prezzoEurNum):0);
+      const pCzk=_pCzkNum>0?Math.round(_pCzkNum)+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
   });
@@ -5892,6 +5901,7 @@ async function caricaAMagazzinoINNOCENT(ordineId) {
     });
   });
   o.stato='ricevuto';
+  await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
   else showToast(caricati+' articoli caricati in stock');
@@ -5917,8 +5927,10 @@ function stampaEtichetteOrdineINNOCENT(ordineId) {
       }
       if(!barcode) barcode=r.codice+'.'+suf;
       const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
-      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
-      const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+      const _prezzoEurNum = prod&&parseFloat(prod.prezzo)>0 ? parseFloat(prod.prezzo) : _vFallback;
+      const pEur=_prezzoEurNum>0?Math.round(_prezzoEurNum)+' EURO':'— EURO';
+      const _pCzkNum = prod&&parseFloat(prod.prezzoCzk)>0 ? parseFloat(prod.prezzoCzk) : (_prezzoEurNum>0?eurToCzk(_prezzoEurNum):0);
+      const pCzk=_pCzkNum>0?Math.round(_pCzkNum)+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
   });
@@ -6485,6 +6497,7 @@ async function caricaAMagazzinoADRIANO(ordineId) {
     });
   });
   o.stato='ricevuto';
+  await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
   else showToast(caricati+' articoli caricati in stock');
@@ -6510,8 +6523,10 @@ function stampaEtichetteOrdineADRIANO(ordineId) {
       }
       if(!barcode) barcode=r.barcode+'.'+suf;
       const _vFallback=parseFloat(r.vendita||r.prezzoUnit||0);
-      const pEur=prod&&parseFloat(prod.prezzo)>0?Math.round(parseFloat(prod.prezzo))+' EURO':_vFallback>0?Math.round(_vFallback)+' EURO':'— EURO';
-      const pCzk=prod&&parseFloat(prod.prezzoCzk)>0?Math.round(parseFloat(prod.prezzoCzk))+' CZK':'—';
+      const _prezzoEurNum = prod&&parseFloat(prod.prezzo)>0 ? parseFloat(prod.prezzo) : _vFallback;
+      const pEur=_prezzoEurNum>0?Math.round(_prezzoEurNum)+' EURO':'— EURO';
+      const _pCzkNum = prod&&parseFloat(prod.prezzoCzk)>0 ? parseFloat(prod.prezzoCzk) : (_prezzoEurNum>0?eurToCzk(_prezzoEurNum):0);
+      const pCzk=_pCzkNum>0?Math.round(_pCzkNum)+' CZK':'—';
       for(let i=0;i<qty;i++) lista.push({barcode,pEur,pCzk});
     });
   });
@@ -6652,6 +6667,54 @@ function aggiornaCostoMedioPonderato(prod, nuovoQty, nuovoCosto) {
   } else {
     prod.costo = parseFloat(nuovoCosto.toFixed(2));
   }
+}
+
+// Crea un nuovo prodotto in catalogo se non esiste, impostando prezzo EUR e CZK
+// Restituisce {prod, czkMancante} dove czkMancante=true se il prezzo CZK non è in tabella
+function creaOAggiornaProdottoNuovo(barcode, descrizione, fornitore, prezzoEur, costo) {
+  let prod = getProdotto(barcode);
+  if(!prod) {
+    // Prodotto nuovo — crealo
+    prod = {
+      barcode,
+      descrizione: descrizione || barcode,
+      fornitore: fornitore || '',
+      prezzo: Math.round(prezzoEur) || 0,
+      prezzoCzk: 0,
+      costo: costo || 0,
+    };
+    if(!db.prodotti) db.prodotti = [];
+    db.prodotti.push(prod);
+  }
+  // Imposta prezzo CZK se mancante
+  let czkMancante = false;
+  if(!prod.prezzoCzk && prod.prezzo > 0) {
+    const czk = eurToCzk(prod.prezzo);
+    if(czk > 0) {
+      prod.prezzoCzk = czk;
+    } else {
+      czkMancante = true;
+    }
+  }
+  return { prod, czkMancante };
+}
+
+
+// Gestisce prodotti senza prezzo CZK in tabella — chiede all'utente di inserirlo
+async function gestisciCzkMancanti(czkMancanti) {
+  for(const item of czkMancanti) {
+    const czk = prompt(
+      `⚠️ Prezzo CZK mancante in tabella\n\nProdotto: ${item.barcode}\nPrezzo EUR: ${Math.round(item.prezzoEur)} €\n\nInserisci il prezzo in CZK (solo numero intero):`
+    );
+    if(czk && parseInt(czk) > 0) {
+      const prod = getProdotto(item.barcode);
+      if(prod) {
+        prod.prezzoCzk = parseInt(czk);
+        showToast(`CZK salvato per ${item.barcode}`);
+      }
+    }
+  }
+  if(czkMancanti.length > 0) await saveDB();
 }
 
 // ── AUTOFILL DESCRIZIONE ──
