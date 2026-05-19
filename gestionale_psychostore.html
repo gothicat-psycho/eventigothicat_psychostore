@@ -3779,8 +3779,11 @@ function stampaEtichetteOrdine(ordineId) {
       const barcode = r[bc]||'';
       if(!qty || !barcode) return;
       const prod = getProdotto(barcode);
-      const pEur = prod ? Math.round(parseFloat(prod.prezzo)||0) + ' EURO' : '— EURO';
-      const pCzk = prod && parseFloat(prod.prezzoCzk) > 0 ? Math.round(parseFloat(prod.prezzoCzk))+' CZK' : '—';
+      const prezzoFallback = parseFloat(r.vendita)||0;
+      const prezzoEurNum = prod && parseFloat(prod.prezzo)>0 ? parseFloat(prod.prezzo) : prezzoFallback;
+      const pEur = prezzoEurNum>0 ? Math.round(prezzoEurNum)+' EURO' : '— EURO';
+      const pCzkNum = prod && parseFloat(prod.prezzoCzk)>0 ? parseFloat(prod.prezzoCzk) : (prezzoEurNum>0 ? eurToCzk(prezzoEurNum) : 0);
+      const pCzk = pCzkNum>0 ? Math.round(pCzkNum)+' CZK' : '—';
       for(let i=0; i<qty; i++) lista.push({barcode, pEur, pCzk});
     });
   });
