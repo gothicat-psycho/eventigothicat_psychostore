@@ -3526,7 +3526,6 @@ function apriDettaglioOrdine(id) {
   const totUsd = rmbUsd ? totRmb/rmbUsd : 0;
   const totEur = totUsd*usdEur;
   const trasportoEur = rmbUsd ? (o.trasportoRmb||0)/rmbUsd*usdEur : 0;
-  const psychoEur = totEur;
   const psychoUsdDet = o.psychoUsd||0;
   const psychoEurDet = psychoUsdDet * usdEur;
   const dazio = psychoEurDet * 0.12;
@@ -3606,8 +3605,8 @@ function apriDettaglioOrdine(id) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
         <div style="background:var(--accent-light);border-radius:var(--radius-lg);padding:12px">
           <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px">PSYCHO (fattura doganale)</div>
-          <div style="font-size:13px">USD: <strong class="mono">${rmbUsd?'$ '+totUsd.toFixed(2):'—'}</strong></div>
-          <div style="font-size:13px">EUR: <strong class="mono">${usdEur?fmt(totEur):'—'}</strong></div>
+          <div style="font-size:13px">USD: <strong class="mono">${o.psychoUsd?'$ '+o.psychoUsd.toFixed(2):'—'}</strong></div>
+          <div style="font-size:13px">EUR: <strong class="mono">${psychoEurDet&&usdEur?fmt(psychoEurDet):'—'}</strong></div>
         </div>
         <div style="background:var(--green-light);border-radius:var(--radius-lg);padding:12px">
           <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">EXTRA (rimanente)</div>
