@@ -151,6 +151,7 @@
   .stato-bozza { background:var(--surface2); color:var(--text2); }
   .stato-confermato { background:var(--amber-light); color:var(--amber); }
   .stato-ricevuto { background:var(--green-light); color:var(--green); }
+  .stato-in_stock { background:var(--green); color:#fff; font-weight:700; }
 </style>
 </head>
 <body>
@@ -3147,7 +3148,7 @@ function renderOrdiniLista() {
     const totRmb = (o._tipo==='OD'||o._tipo==='INNOCENT'||o._tipo==='ADRIANO') ? (o.articoli||[]).reduce((a,r)=>a+(r.prezzoUnit||0)*(r.qty||0),0) : (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
     const totUsd = (o._tipo==='DF'||o._tipo==='PR'||o._tipo==='OD'||o._tipo==='INNOCENT'||o._tipo==='ADRIANO') ? 0 : totRmb * (o.rmbUsd||0);
     const totEur = o._tipo==='ADRIANO' ? totRmb : (o._tipo==='OD'||o._tipo==='INNOCENT') ? (o.gbpEur>0?totRmb*o.gbpEur:0) : (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
-    const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto'}[o.stato||'bozza'];
+    const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto',in_stock:'stato-in_stock'}[o.stato||'bozza'];
     const totDovuto = (() => {
       if(o._tipo==='PR'||o._tipo==='DF') {
         const totFatt = totEur + (o.trasportoRmb||0)/o.rmbEur;
@@ -3176,7 +3177,7 @@ function renderOrdiniLista() {
       <td style="display:flex;gap:4px">
         ${o._tipo==='DF'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineDF(${o.id})">Apri</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdinePR(${o.id})">Apri</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineOD(${o.id})">Apri</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineINNOCENT(${o.id})">Apri</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdineADRIANO(${o.id})">Apri</button>`:`<button class="btn btn-sm btn-primary" onclick="apriDettaglioOrdine(${o.id})">Apri</button>`}
         ${o._tipo==='DF'?`<button class="btn btn-sm" onclick="modificaOrdineDF(${o.id})">Modifica</button>`:o._tipo==='PR'?`<button class="btn btn-sm" onclick="modificaOrdinePR(${o.id})">Modifica</button>`:o._tipo==='OD'?`<button class="btn btn-sm" onclick="modificaOrdineOD(${o.id})">Modifica</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm" onclick="modificaOrdineINNOCENT(${o.id})">Modifica</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm" onclick="modificaOrdineADRIANO(${o.id})">Modifica</button>`:`<button class="btn btn-sm" onclick="modificaOrdineDIL(${o.id})">Modifica</button>`}
-        ${o.stato!=='ricevuto'?(o._tipo==='DF'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoDF(${o.id})">Carica stock</button>`:o._tipo==='PR'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMazzinoPR(${o.id})">Carica stock</button>`:o._tipo==='OD'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoOD(${o.id})">Carica stock</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoINNOCENT(${o.id})">Carica stock</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoADRIANO(${o.id})">Carica stock</button>`:`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">Carica stock</button>`):'<span class="badge badge-green">In stock</span>'}
+        ${(o.stato!=='ricevuto'&&o.stato!=='in_stock')?(o._tipo==='DF'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoDF(${o.id})">Carica stock</button>`:o._tipo==='PR'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMazzinoPR(${o.id})">Carica stock</button>`:o._tipo==='OD'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoOD(${o.id})">Carica stock</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoINNOCENT(${o.id})">Carica stock</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzinoADRIANO(${o.id})">Carica stock</button>`:`<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="caricaAMagazzino(${o.id})">Carica stock</button>`):'<span class="badge" style="background:var(--green);color:#fff;font-weight:700">✓ In stock</span>'}
         ${o._tipo==='DF'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineDF(${o.id})">Etichette</button>`:o._tipo==='PR'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdinePR(${o.id})">Etichette</button>`:o._tipo==='OD'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineOD(${o.id})">Etichette</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineINNOCENT(${o.id})">Etichette</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdineADRIANO(${o.id})">Etichette</button>`:`<button class="btn btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="stampaEtichetteOrdine(${o.id})">Etichette</button>`}
         ${o._tipo==='DF'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDF',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='PR'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordinePR',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='OD'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineOD',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='INNOCENT'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineINNOCENT',${o.id},'${o.riferimento}')">Elimina</button>`:o._tipo==='ADRIANO'?`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineADRIANO',${o.id},'${o.riferimento}')">Elimina</button>`:`<button class="btn btn-sm btn-danger" onclick="confirmDel('ordineDIL',${o.id},'${o.riferimento}')">Elimina</button>`}
       </td>
@@ -3550,7 +3551,7 @@ function apriDettaglioOrdine(id) {
           <select onchange="cambiaStatoOrdine(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
-            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+            <option value="in_stock" ${o.stato==='in_stock'?'selected':''}>✓ In stock</option>
           </select>
         </div>
       </div>
@@ -3634,7 +3635,7 @@ window.cambiaStatoOrdine = cambiaStatoOrdine;
 async function caricaAMagazzino(ordineId) {
   const o = (db.ordiniDIL||[]).find(x=>x.id===ordineId);
   if(!o) return;
-  if(o.stato==='ricevuto') { showToast('Ordine già caricato in stock','amber'); return; }
+  if(o.stato==='in_stock') { showToast('Ordine già caricato in stock','amber'); return; }
   if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
 
   const taglieCampi = [
@@ -3668,7 +3669,7 @@ async function caricaAMagazzino(ordineId) {
     });
   });
 
-  o.stato = 'ricevuto';
+  o.stato = 'in_stock';
   await gestisciCzkMancanti(czkMancanti);
   await saveDB();
 
@@ -4180,7 +4181,7 @@ function apriDettaglioOrdineDF(id) {
           <select onchange="cambiaStatoOrdineDF(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
-            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+            <option value="in_stock" ${o.stato==='in_stock'?'selected':''}>✓ In stock</option>
           </select>
         </div>
       </div>
@@ -4273,7 +4274,7 @@ window.modificaOrdineDF = modificaOrdineDF;
 async function caricaAMagazzinoDF(ordineId) {
   const o = (db.ordiniDF||[]).find(x=>x.id===ordineId);
   if(!o) return;
-  if(o.stato==='ricevuto') { showToast('Ordine già caricato in stock','amber'); return; }
+  if(o.stato==='in_stock') { showToast('Ordine già caricato in stock','amber'); return; }
   if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const taglieCampi = [
     {t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},
@@ -4301,7 +4302,7 @@ async function caricaAMagazzinoDF(ordineId) {
       caricati++;
     });
   });
-  o.stato='ricevuto';
+  o.stato='in_stock';
   await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length) { showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber'); alert(nonTrovati.join(', ')); }
@@ -4674,7 +4675,7 @@ function apriDettaglioOrdinePR(id) {
           <select onchange="cambiaStatoOrdinePR(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
-            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+            <option value="in_stock" ${o.stato==='in_stock'?'selected':''}>✓ In stock</option>
           </select>
         </div>
       </div>
@@ -4765,7 +4766,7 @@ async function caricaAMazzinoPR(ordineId) {
       caricati++;
     });
   });
-  o.stato='ricevuto';
+  o.stato='in_stock';
   await saveDB();
   await gestisciCzkMancanti(czkMancanti);
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');}
@@ -5226,7 +5227,7 @@ function apriDettaglioOrdineOD(id) {
           <select onchange="cambiaStatoOrdineOD(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
-            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+            <option value="in_stock" ${o.stato==='in_stock'?'selected':''}>✓ In stock</option>
           </select>
         </div>
       </div>
@@ -5322,7 +5323,7 @@ async function caricaAMagazzinoOD(ordineId) {
       caricati++;
     });
   });
-  o.stato='ricevuto';
+  o.stato='in_stock';
   await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
@@ -5739,7 +5740,7 @@ function apriDettaglioOrdineINNOCENT(id) {
           <select onchange="cambiaStatoOrdineINNOCENT(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
-            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+            <option value="in_stock" ${o.stato==='in_stock'?'selected':''}>✓ In stock</option>
           </select>
         </div>
       </div>
@@ -5832,7 +5833,7 @@ async function caricaAMagazzinoINNOCENT(ordineId) {
       caricati++;
     });
   });
-  o.stato='ricevuto';
+  o.stato='in_stock';
   await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
@@ -6350,7 +6351,7 @@ function apriDettaglioOrdineADRIANO(id) {
           <select onchange="cambiaStatoOrdineADRIANO(${o.id},this.value)" style="font-size:12px;padding:4px 8px">
             <option value="bozza" ${o.stato==='bozza'?'selected':''}>Bozza</option>
             <option value="confermato" ${o.stato==='confermato'?'selected':''}>Confermato</option>
-            <option value="ricevuto" ${o.stato==='ricevuto'?'selected':''}>Ricevuto</option>
+            <option value="in_stock" ${o.stato==='in_stock'?'selected':''}>✓ In stock</option>
           </select>
         </div>
       </div>
@@ -6422,7 +6423,7 @@ async function caricaAMagazzinoADRIANO(ordineId) {
       caricati++;
     });
   });
-  o.stato='ricevuto';
+  o.stato='in_stock';
   await gestisciCzkMancanti(czkMancanti);
   await saveDB();
   if(nonTrovati.length){showToast(caricati+' caricate, '+nonTrovati.length+' non trovate','amber');alert(nonTrovati.join(', '));}
