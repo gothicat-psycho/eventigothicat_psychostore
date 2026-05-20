@@ -1571,7 +1571,8 @@ function showSection(s, el) {
     const sel = document.getElementById('tour-logo-sel');
     if (sel) {
       sel.innerHTML = '<option value="">-- Seleziona logo --</option>' +
-        (db.loghi||[]).map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+        [...(db.loghi||[])].sort((a,b) => a.nome.localeCompare(b.nome,'it'))
+          .map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
     }
   }
   // eventi is password-protected, handled by apriEventiConPwd()
