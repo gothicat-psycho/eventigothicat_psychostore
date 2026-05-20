@@ -3825,14 +3825,16 @@ function disegnaBarcode128(testo, canvas) {
   bars.push(...PATTERNS[check]); // checksum
   bars.push(...STOP);
 
-  // Disegna
+  // Disegna con precisione pixel-perfect
   const total = bars.reduce((a,b)=>a+b,0);
   const unit = W / total;
   let x = 0, black = true;
   bars.forEach(n => {
+    const x0 = Math.round(x);
+    const x1 = Math.round(x + n * unit);
     ctx.fillStyle = black ? '#000' : '#fff';
-    ctx.fillRect(Math.round(x), 0, Math.max(1, Math.round(n*unit)), H);
-    x += n*unit; black = !black;
+    ctx.fillRect(x0, 0, Math.max(1, x1 - x0), H);
+    x += n * unit; black = !black;
   });
 }
 
@@ -3869,7 +3871,7 @@ function stampaEtichetteOrdine(ordineId) {
   // Genera immagini barcode come dataURL per ogni etichetta
   const items = lista.map((et, idx) => {
     const c = document.createElement('canvas');
-    c.width = 500; c.height = 80;
+    c.width=1000;c.height=160;
     disegnaBarcode128(et.barcode, c);
     // Draw a unique 1px white dot at position idx to make each image truly unique
     const ctx = c.getContext('2d');
@@ -4926,7 +4928,7 @@ function stampaEtichetteOrdinePR(ordineId) {
   });
   if(!lista.length){showToast('Nessun barcode associato','amber');return;}
   const items=lista.map((et,idx)=>{
-    const c=document.createElement('canvas');c.width=500;c.height=80;
+    const c=document.createElement('canvas');c.width=1000;c.height=160;
     disegnaBarcode128(et.barcode,c);
     const ctx=c.getContext('2d');ctx.fillStyle='rgba(255,255,255,0.01)';ctx.fillRect(idx%100,79,1,1);
     return {barcode:et.barcode,pEur:et.pEur,pCzk:et.pCzk,img:c.toDataURL()};
@@ -5491,7 +5493,7 @@ function stampaEtichetteOrdineOD(ordineId) {
   });
   if(!lista.length){showToast('Nessun barcode negli articoli','amber');return;}
   const items=lista.map((et,idx)=>{
-    const c=document.createElement('canvas');c.width=500;c.height=80;
+    const c=document.createElement('canvas');c.width=1000;c.height=160;
     disegnaBarcode128(et.barcode,c);
     const ctx=c.getContext('2d');ctx.fillStyle='rgba(255,255,255,0.01)';ctx.fillRect(idx%100,79,1,1);
     return {barcode:et.barcode,pEur:et.pEur,pCzk:et.pCzk,img:c.toDataURL()};
@@ -6012,7 +6014,7 @@ function stampaEtichetteOrdineINNOCENT(ordineId) {
   });
   if(!lista.length){showToast('Nessun barcode negli articoli','amber');return;}
   const items=lista.map((et,idx)=>{
-    const c=document.createElement('canvas');c.width=500;c.height=80;
+    const c=document.createElement('canvas');c.width=1000;c.height=160;
     disegnaBarcode128(et.barcode,c);
     const ctx=c.getContext('2d');ctx.fillStyle='rgba(255,255,255,0.01)';ctx.fillRect(idx%100,79,1,1);
     return {barcode:et.barcode,pEur:et.pEur,pCzk:et.pCzk,img:c.toDataURL()};
@@ -6608,7 +6610,7 @@ function stampaEtichetteOrdineADRIANO(ordineId) {
   });
   if(!lista.length){showToast('Nessun barcode negli articoli','amber');return;}
   const items=lista.map((et,idx)=>{
-    const c=document.createElement('canvas');c.width=500;c.height=80;
+    const c=document.createElement('canvas');c.width=1000;c.height=160;
     disegnaBarcode128(et.barcode,c);
     return {barcode:et.barcode,pEur:et.pEur,pCzk:et.pCzk};
   });
@@ -7621,7 +7623,7 @@ function stampaEtichetteExtra() {
   const items = [];
   for(let i = 0; i < copie; i++) {
     const c = document.createElement('canvas');
-    c.width = 500; c.height = 80;
+    c.width=1000;c.height=160;
     disegnaBarcode128(bc, c);
     const ctx = c.getContext('2d');
     ctx.fillStyle = 'rgba(255,255,255,0.01)';
