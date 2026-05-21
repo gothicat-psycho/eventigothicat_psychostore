@@ -680,14 +680,14 @@
       <!-- STOCK ADRIANO ON TOUR -->
       <div class="card">
         <div class="card-title">🎒 Stock Adriano On Tour</div>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Carico manuale diretto nello stock tour. Per caricare da Napoli usa il trasferimento sopra. Per caricare da ordine fornitore, seleziona "Tour" come magazzino nell'ordine.</p>
-        <div id="tour-stock-grid" style="overflow-x:auto"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <select id="tour-logo-sel" style="flex:1;min-width:200px">
+        <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Clicca su un valore per modificarlo. Per caricare da Napoli usa il trasferimento sopra.</p>
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+          <select id="tour-logo-sel" style="flex:1;min-width:200px" onchange="renderTourGrid()">
             <option value="">-- Seleziona logo --</option>
           </select>
-          <button class="btn btn-primary" onclick="mostraTourLogo()">Mostra stock tour</button>
+          <button class="btn" onclick="renderTourGrid()">Aggiorna</button>
         </div>
+        <div id="tour-stock-grid"></div>
       </div>
 
       <!-- RIENTRO POST-EVENTO -->
@@ -1573,6 +1573,7 @@ function showSection(s, el) {
       sel.innerHTML = '<option value="">-- Seleziona logo --</option>' +
         [...(db.loghi||[])].sort((a,b) => a.nome.localeCompare(b.nome,'it'))
           .map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+      renderTourGrid();
     }
   }
   // eventi is password-protected, handled by apriEventiConPwd()
@@ -2382,44 +2383,81 @@ async function salvaTrasferimento() {
 // STOCK ADRIANO ON TOUR
 // ─────────────────────────────────────────────
 
-function mostraTourLogo() {
+function renderTourGrid() {
   const logoId = parseInt(document.getElementById('tour-logo-sel').value);
   const grid = document.getElementById('tour-stock-grid');
-  if (!logoId) { grid.innerHTML = '<p style="color:var(--text3);font-size:13px">Seleziona un logo.</p>'; return; }
+  if (!logoId) {
+    grid.innerHTML = '<p style="color:var(--text3);font-size:13px">Seleziona un logo per visualizzare e modificare lo stock tour.</p>';
+    return;
+  }
   const logo = getLogo(logoId);
-  const cats = getCatPerLogo(logo ? logo.nome : '');
-  let html = '<table style="width:100%;font-size:13px"><thead><tr><th>Categoria</th><th>Taglia</th><th style="text-align:center">Stock Tour</th><th style="text-align:center">Modifica</th></tr></thead><tbody>';
+  if (!logo) return;
+  const cats = getCatPerLogo(logo.nome);
+  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-donna', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+
+  let html = `<div style="margin-bottom:8px;font-weight:600;font-size:14px">${logo.nome}</div>`;
+  html += `<div style="display:flex;flex-direction:column;gap:10px">`;
+
   cats.forEach(cat => {
+    const lblCls = catLabelClass[cat.id] || 'cat-shop';
     if (cat.taglie) {
-      (cat.taglieLista || TAGLIE).forEach(t => {
+      const taglie = cat.taglieLista || TAGLIE;
+      html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px">
+        <div style="margin-bottom:6px"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">`;
+      taglie.forEach(t => {
         const s = getStock(logoId, cat.id, t, 'tour');
-        html += `<tr>
-          <td>${cat.label}</td><td>${t}</td>
-          <td style="text-align:center;font-weight:600">${s}</td>
-          <td style="text-align:center"><button class="btn btn-sm" onclick="editTourStock(${logoId},'${cat.id}','${t}',${s})">✏️</button></td>
-        </tr>`;
+        const cls = getStockClass(s, logo.minimo||3);
+        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div class="stock-taglia-hdr">${t}</div>
+          <div class="stock-cell editable ${cls}" title="Clicca per modificare"
+            onclick="editTourCell(this,${logoId},'${cat.id}','${t}',${s})">${s}</div>
+        </div>`;
       });
+      html += `</div></div>`;
     } else {
       const s = getStock(logoId, cat.id, null, 'tour');
-      html += `<tr>
-        <td>${cat.label}</td><td>—</td>
-        <td style="text-align:center;font-weight:600">${s}</td>
-        <td style="text-align:center"><button class="btn btn-sm" onclick="editTourStock(${logoId},'${cat.id}',null,${s})">✏️</button></td>
-      </tr>`;
+      const cls = getStockClass(s, logo.minimo||3);
+      html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px">
+        <div style="margin-bottom:6px"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
+        <div class="stock-cell editable ${cls}" title="Clicca per modificare" style="min-width:44px;display:inline-flex;align-items:center;justify-content:center"
+          onclick="editTourCell(this,${logoId},'${cat.id}',null,${s})">${s}</div>
+      </div>`;
     }
   });
-  html += '</tbody></table>';
+
+  html += `</div>`;
   grid.innerHTML = html;
 }
 
-async function editTourStock(logoId, catId, taglia, stockAttuale) {
-  const nuovo = parseInt(prompt(`Stock Tour attuale: ${stockAttuale}\nNuovo valore:`, stockAttuale));
-  if (isNaN(nuovo) || nuovo < 0 || nuovo === stockAttuale) return;
+function editTourCell(el, logoId, catId, taglia, stockAttuale) {
+  const tagliaJs = (taglia === 'null' || taglia === null) ? null : taglia;
+  el.innerHTML = `<input type="number" min="0" value="${stockAttuale}"
+    style="width:48px;text-align:center;padding:2px;font-size:13px;border:1px solid var(--accent);border-radius:3px;background:var(--surface);color:var(--text)"
+    onblur="salvaTourgCell(this,${logoId},'${catId}',${tagliaJs===null?"null":"'"+tagliaJs+"'"},${stockAttuale})"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')renderTourGrid();"
+  >`;
+  const input = el.querySelector('input');
+  input.focus();
+  input.select();
+}
+
+async function salvaTourgCell(input, logoId, catId, taglia, stockAttuale) {
+  const nuovo = parseInt(input.value);
+  if (isNaN(nuovo) || nuovo < 0 || nuovo === stockAttuale) { renderTourGrid(); return; }
   const delta = nuovo - stockAttuale;
-  const m = { id: db.nextMovId++, logoId, catId, taglia, qty: Math.abs(delta), tipo: delta > 0 ? 'carico' : 'scarico', magazzino: 'tour', data: today(), note: 'Carico manuale tour' };
+  const m = {
+    id: db.nextMovId++, logoId, catId,
+    taglia: (taglia === 'null' || taglia === null) ? null : taglia,
+    qty: Math.abs(delta),
+    tipo: delta > 0 ? 'carico' : 'scarico',
+    magazzino: 'tour',
+    data: today(),
+    note: 'Carico manuale tour'
+  };
   db.movimenti.push(m);
   await Promise.all([saveMovimento(m), saveDB()]);
-  mostraTourLogo();
+  renderTourGrid();
   showToast('Stock tour aggiornato ✓');
 }
 
