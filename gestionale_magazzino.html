@@ -878,6 +878,16 @@
           </div>
           <button class="btn btn-sm" onclick="showSection('eventi', document.querySelector('.nav-item:nth-child(12)'))">Cambia evento</button>
         </div>
+        <!-- Snapshot reminder banner -->
+        <div id="cassa-snapshot-banner" style="display:none;align-items:center;gap:12px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:16px">
+          <span style="font-size:20px">⚠️</span>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px;color:#92400E">Nessuna fotografia stock iniziale per questo evento!</div>
+            <div style="font-size:12px;color:#B45309;margin-top:2px">Fai uno snapshot di apertura prima di iniziare a vendere per poter confrontare i dati a fine evento.</div>
+          </div>
+          <button class="btn btn-sm" style="background:#F59E0B;color:#fff;border-color:#F59E0B;white-space:nowrap" onclick="faiSnapshotDaCassa()">📸 Fotografa ora</button>
+          <button onclick="document.getElementById('cassa-snapshot-banner').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:#92400E;padding:0 4px">✕</button>
+        </div>
         <div class="cassa-layout">
           <div class="cassa-main">
             <div class="card" style="overflow-y:auto;max-height:calc(100vh - 140px)">
@@ -1113,6 +1123,18 @@
       </div>
       <div id="login-error" style="color:var(--red);font-size:12px;margin-top:4px;display:none">Password errata. Riprova.</div>
       <button class="btn btn-primary" style="width:100%;margin-top:10px;padding:12px" onclick="verificaLogin()">Entra</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL report snapshot -->
+<div class="modal-backdrop" id="modal-snapshot-report">
+  <div class="modal" style="width:90vw;max-width:900px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">📊 Report confronto stock — <span id="snap-report-nome"></span></div>
+    <div id="snap-report-meta" style="font-size:12px;color:var(--text3);margin-bottom:16px"></div>
+    <div id="snap-report-content"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="document.getElementById('modal-snapshot-report').classList.remove('open')">Chiudi</button>
     </div>
   </div>
 </div>
@@ -2483,9 +2505,211 @@ async function salvaTourgCell(input, logoId, catId, taglia, stockAttuale) {
 }
 
 // ─────────────────────────────────────────────
-// RIENTRO POST-EVENTO
+// SNAPSHOT STOCK
 // ─────────────────────────────────────────────
 
+function creaSnapshot(eventoId, tipo) {
+  const ev = getEvento(eventoId);
+  if (!ev) return null;
+  const mag = ev.magazzino;
+  const stockData = {};
+
+  // Fotografa stock tessile
+  (db.loghi||[]).forEach(logo => {
+    const cats = getCatPerLogo(logo.nome);
+    cats.forEach(cat => {
+      if (cat.taglie) {
+        (cat.taglieLista||TAGLIE).forEach(t => {
+          const s = getStock(logo.id, cat.id, t, mag);
+          if (s > 0) stockData[`${logo.id}_${cat.id}_${t}`] = { logoId: logo.id, logoNome: logo.nome, catId: cat.id, catLabel: cat.label, taglia: t, qty: s };
+        });
+      } else {
+        const s = getStock(logo.id, cat.id, null, mag);
+        if (s > 0) stockData[`${logo.id}_${cat.id}_null`] = { logoId: logo.id, logoNome: logo.nome, catId: cat.id, catLabel: cat.label, taglia: null, qty: s };
+      }
+    });
+  });
+
+  // Fotografa accessori
+  const accData = {};
+  ACC_CATS.forEach(c => {
+    const s = getAccStock(c.id, mag);
+    if (s > 0) accData[c.id] = { label: c.label, qty: s };
+  });
+
+  return {
+    id: Date.now(),
+    eventoId,
+    tipo,
+    magazzino: mag,
+    data: new Date().toISOString(),
+    stock: stockData,
+    accessori: accData,
+  };
+}
+
+async function faiSnapshot(eventoId, tipo) {
+  const ev = getEvento(eventoId);
+  if (!ev) return;
+
+  // Controlla se esiste già uno snapshot dello stesso tipo
+  const esistente = (db.snapshots||[]).find(s => s.eventoId === eventoId && s.tipo === tipo);
+  if (esistente) {
+    const conf = confirm(`Esiste già uno snapshot di ${tipo} per ${ev.nome} del ${new Date(esistente.data).toLocaleDateString('it')}.\nVuoi sovrascriverlo?`);
+    if (!conf) return;
+    db.snapshots = (db.snapshots||[]).filter(s => !(s.eventoId === eventoId && s.tipo === tipo));
+  }
+
+  if (!db.snapshots) db.snapshots = [];
+  const snap = creaSnapshot(eventoId, tipo);
+  db.snapshots.push(snap);
+  await saveDB();
+
+  const nLoghi = Object.keys(snap.stock).length;
+  const nAcc = Object.keys(snap.accessori).length;
+  showToast(`📸 Snapshot ${tipo} salvato — ${nLoghi} righe tessile, ${nAcc} accessori`);
+
+  // Nascondi banner cassa se era apertura
+  if (tipo === 'apertura') {
+    const banner = document.getElementById('cassa-snapshot-banner');
+    if (banner) banner.style.display = 'none';
+  }
+  renderEventi();
+}
+
+async function faiSnapshotDaCassa() {
+  if (!cassaEventoId) return;
+  await faiSnapshot(cassaEventoId, 'apertura');
+}
+
+function apriReportSnapshot(eventoId) {
+  const ev = getEvento(eventoId);
+  if (!ev) return;
+  const snapAp = (db.snapshots||[]).find(s => s.eventoId === eventoId && s.tipo === 'apertura');
+  const snapCh = (db.snapshots||[]).find(s => s.eventoId === eventoId && s.tipo === 'chiusura');
+
+  document.getElementById('snap-report-nome').textContent = ev.nome;
+  document.getElementById('snap-report-meta').innerHTML = `
+    📸 Apertura: ${snapAp ? new Date(snapAp.data).toLocaleString('it') : '<span style="color:var(--red)">Non disponibile</span>'}
+    &nbsp;|&nbsp;
+    📸 Chiusura: ${snapCh ? new Date(snapCh.data).toLocaleString('it') : '<span style="color:var(--amber)">Non disponibile</span>'}
+  `;
+
+  if (!snapAp) {
+    document.getElementById('snap-report-content').innerHTML = '<div class="alert alert-amber">⚠ Nessuno snapshot di apertura disponibile per questo evento. Impossibile generare il report.</div>';
+    document.getElementById('modal-snapshot-report').classList.add('open');
+    return;
+  }
+
+  // Vendite per questo evento
+  const vendite = (db.vendite||[]).filter(v => v.eventoId === eventoId);
+
+  // Calcola venduto per ogni chiave
+  const vendutoMap = {};
+  vendite.forEach(v => {
+    (v.items||[]).forEach(it => {
+      if (it.isAccessorio) {
+        const k = `acc_${it.accCatId}`;
+        vendutoMap[k] = (vendutoMap[k]||0) + (it.qty||1);
+      } else {
+        const k = `${it.logoId}_${it.catId}_${it.taglia||'null'}`;
+        vendutoMap[k] = (vendutoMap[k]||0) + (it.qty||1);
+      }
+    });
+  });
+
+  // Prezzi per calcolare valori
+  const getPrezzoVendita = (logoId, catId) => {
+    const logo = getLogo(logoId);
+    if (!logo || !logo.prezzi) return 0;
+    return logo.prezzi[catId]?.prezzo || 0;
+  };
+
+  // Build report tessile
+  let html = '';
+  const keys = Object.keys(snapAp.stock);
+
+  if (keys.length > 0) {
+    html += `<div style="font-weight:700;font-size:15px;margin-bottom:10px;color:var(--text)">👕 Stock Tessile</div>`;
+    html += `<div class="table-wrap" style="margin-bottom:24px"><table>
+      <thead><tr>
+        <th>Logo</th><th>Categoria</th><th>Taglia</th>
+        <th style="text-align:center">Apertura</th>
+        <th style="text-align:center">Venduto</th>
+        <th style="text-align:center">Chiusura</th>
+        <th style="text-align:center">Non venduto</th>
+        <th style="text-align:center">% Venduto</th>
+      </tr></thead><tbody>`;
+
+    // Raggruppa per logo
+    const byLogo = {};
+    keys.forEach(k => {
+      const it = snapAp.stock[k];
+      if (!byLogo[it.logoNome]) byLogo[it.logoNome] = [];
+      byLogo[it.logoNome].push({ k, ...it });
+    });
+
+    Object.keys(byLogo).sort().forEach(logoNome => {
+      byLogo[logoNome].forEach(it => {
+        const venduto = vendutoMap[it.k] || 0;
+        const chiusura = snapCh ? (snapCh.stock[it.k]?.qty || 0) : '—';
+        const nonVenduto = it.qty - venduto;
+        const pct = it.qty > 0 ? Math.round((venduto / it.qty) * 100) : 0;
+        const pctColor = pct === 0 ? 'var(--red)' : pct >= 80 ? 'var(--green)' : 'var(--amber)';
+        html += `<tr>
+          <td style="font-weight:500">${it.logoNome}</td>
+          <td>${it.catLabel}</td>
+          <td>${it.taglia||'—'}</td>
+          <td style="text-align:center;font-weight:600">${it.qty}</td>
+          <td style="text-align:center;color:${venduto>0?'var(--green)':'var(--red)'};font-weight:600">${venduto}</td>
+          <td style="text-align:center">${chiusura}</td>
+          <td style="text-align:center;color:${nonVenduto>0?'var(--amber)':'var(--green)'}">${nonVenduto}</td>
+          <td style="text-align:center;font-weight:700;color:${pctColor}">${pct}%</td>
+        </tr>`;
+      });
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Report accessori
+  const accKeys = Object.keys(snapAp.accessori);
+  if (accKeys.length > 0) {
+    html += `<div style="font-weight:700;font-size:15px;margin-bottom:10px;color:var(--text)">🎒 Accessori</div>`;
+    html += `<div class="table-wrap"><table>
+      <thead><tr>
+        <th>Accessorio</th>
+        <th style="text-align:center">Apertura</th>
+        <th style="text-align:center">Venduto</th>
+        <th style="text-align:center">Chiusura</th>
+        <th style="text-align:center">Non venduto</th>
+        <th style="text-align:center">% Venduto</th>
+      </tr></thead><tbody>`;
+
+    accKeys.forEach(catId => {
+      const it = snapAp.accessori[catId];
+      const venduto = vendutoMap[`acc_${catId}`] || 0;
+      const chiusura = snapCh ? (snapCh.accessori[catId]?.qty || 0) : '—';
+      const nonVenduto = it.qty - venduto;
+      const pct = it.qty > 0 ? Math.round((venduto / it.qty) * 100) : 0;
+      const pctColor = pct === 0 ? 'var(--red)' : pct >= 80 ? 'var(--green)' : 'var(--amber)';
+      html += `<tr>
+        <td style="font-weight:500">${it.label}</td>
+        <td style="text-align:center;font-weight:600">${it.qty}</td>
+        <td style="text-align:center;color:${venduto>0?'var(--green)':'var(--red)'};font-weight:600">${venduto}</td>
+        <td style="text-align:center">${chiusura}</td>
+        <td style="text-align:center;color:${nonVenduto>0?'var(--amber)':'var(--green)'}">${nonVenduto}</td>
+        <td style="text-align:center;font-weight:700;color:${pctColor}">${pct}%</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+
+  if (!html) html = '<p style="color:var(--text3)">Nessun articolo nello snapshot di apertura.</p>';
+  document.getElementById('snap-report-content').innerHTML = html;
+  document.getElementById('modal-snapshot-report').classList.add('open');
+}
+
+// Reminder nel rientro post-evento
 function caricaStockTourRientro() {
   // Raccoglie tutti gli articoli con stock tour > 0
   const items = [];
@@ -2559,6 +2783,18 @@ async function eseguiRientro() {
   const items = JSON.parse(grid.dataset.items || '[]');
   const data = document.getElementById('rientro-data').value || today();
   const note = document.getElementById('rientro-note').value.trim() || 'Rientro post-evento';
+
+  // Reminder snapshot chiusura
+  const eventoAttivoId = cassaEventoId || parseInt(localStorage.getItem('cassaEventoId'));
+  if (eventoAttivoId) {
+    const hasChiusura = (db.snapshots||[]).some(s => s.eventoId === eventoAttivoId && s.tipo === 'chiusura');
+    if (!hasChiusura) {
+      const conf = confirm('⚠️ Attenzione: non hai ancora fatto la fotografia dello stock di CHIUSURA per questo evento!\n\nVuoi farne una ora prima di eseguire il rientro?\n\nOK = Fotografa ora\nAnnulla = Procedi senza fotografia');
+      if (conf) {
+        await faiSnapshot(eventoAttivoId, 'chiusura');
+      }
+    }
+  }
 
   // Validazione
   for (let idx = 0; idx < items.length; idx++) {
@@ -3007,10 +3243,13 @@ function renderEventi() {
           }
         })()}</td>
         ` : ''}
-        <td style="display:flex;gap:6px">
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
           ${isAdmin ? `<button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
-          <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>
+          <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="faiSnapshot(${ev.id},'apertura')">📸 Apertura</button>
+          <button class="btn btn-sm" style="border-color:#E65100;color:#E65100" onclick="faiSnapshot(${ev.id},'chiusura')">📸 Chiusura</button>
+          <button class="btn btn-sm" style="border-color:var(--green);color:var(--green)" onclick="apriReportSnapshot(${ev.id})">📊 Report</button>` : ''}
         </td>
       </tr>`;
     }).join('') : `<tr><td colspan="${isAdmin ? 13 : 9}" class="empty">Nessun evento${annoSel ? ' nel ' + annoSel : ' inserito'}</td></tr>`;
@@ -3065,6 +3304,13 @@ function initCassa() {
   const magBadge = document.getElementById('cassa-evento-mag');
   magBadge.textContent = ev.magazzino === 'tour' ? '🎒 Adriano On Tour' : ev.magazzino.charAt(0).toUpperCase() + ev.magazzino.slice(1);
   magBadge.className = 'mag-badge mag-' + ev.magazzino;
+
+  // Snapshot reminder banner
+  const snapBanner = document.getElementById('cassa-snapshot-banner');
+  if (snapBanner) {
+    const hasApertura = (db.snapshots||[]).some(s => s.eventoId === cassaEventoId && s.tipo === 'apertura');
+    snapBanner.style.display = hasApertura ? 'none' : 'flex';
+  }
   // Show CZK selector only for Czech events
   const valutaSel = document.getElementById('cassa-valuta-sel');
   if (isCzEvent(ev)) {
