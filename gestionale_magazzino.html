@@ -177,15 +177,17 @@
   .stock-inline-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: start; margin-bottom: 4px; }
   .stock-cat-block { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .stock-cat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; padding: 2px 6px; border-radius: 20px; display: inline-block; }
-  .stock-cat-label.cat-uomo  { background: #DBEAFE; color: #1E40AF; }
-  .stock-cat-label.cat-donna { background: #FCE7F3; color: #9D174D; }
-  .stock-cat-label.cat-can   { background: #D1FAE5; color: #065F46; }
-  .stock-cat-label.cat-shop  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .stock-cat-label.cat-uomo    { background: #DBEAFE; color: #1E40AF; }
+  .stock-cat-label.cat-donna   { background: #FCE7F3; color: #9D174D; }
+  .stock-cat-label.cat-bambino { background: #FEF3C7; color: #92400E; }
+  .stock-cat-label.cat-can     { background: #D1FAE5; color: #065F46; }
+  .stock-cat-label.cat-shop    { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
   .stock-cat-tot { font-size: 14px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; vertical-align: middle; }
-  .stock-cat-tot.cat-uomo  { color: #1E40AF; }
-  .stock-cat-tot.cat-donna { color: #9D174D; }
-  .stock-cat-tot.cat-can   { color: #065F46; }
-  .stock-cat-tot.cat-shop  { color: var(--text2); }
+  .stock-cat-tot.cat-uomo    { color: #1E40AF; }
+  .stock-cat-tot.cat-donna   { color: #9D174D; }
+  .stock-cat-tot.cat-bambino { color: #92400E; }
+  .stock-cat-tot.cat-can     { color: #065F46; }
+  .stock-cat-tot.cat-shop    { color: var(--text2); }
   .stock-taglia-row { display: flex; gap: 3px; flex-wrap: nowrap; }
   .stock-cell { flex: 1; min-width: 28px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 5px 2px; background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); }
   .stock-cell.zero { color: var(--text3); }
@@ -333,7 +335,7 @@
       <span class="nav-icon">◆</span> Stock Accessori
     </div>
     <div class="nav-item" onclick="showSection('trasferimenti',this)">
-      <span class="nav-icon">⇄</span> Trasferimenti
+      <span class="nav-icon">⇄</span> Trasferimenti/Stock Tour
     </div>
     <div class="nav-section">Vendite</div>
     <div class="nav-item" id="nav-eventi" onclick="doShowEventi(this)">
@@ -2132,7 +2134,7 @@ function renderStock() {
 
     // Build compact inline row: all categories side by side
     const logoCategorie = getCatPerLogo(l.nome);
-    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-donna', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
 
     const buildCatBlock = (cat, magFilter) => {
       const catTl = cat.taglieLista || TAGLIE;
@@ -2393,24 +2395,25 @@ function renderTourGrid() {
   const logo = getLogo(logoId);
   if (!logo) return;
   const cats = getCatPerLogo(logo.nome);
-  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-donna', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
 
-  let html = `<div style="margin-bottom:8px;font-weight:600;font-size:14px">${logo.nome}</div>`;
-  html += `<div style="display:flex;flex-direction:column;gap:10px">`;
+  let html = `<div style="margin-bottom:10px;font-weight:700;font-size:18px">${logo.nome}</div>`;
+  html += `<div style="display:flex;flex-direction:column;gap:12px">`;
 
   cats.forEach(cat => {
     const lblCls = catLabelClass[cat.id] || 'cat-shop';
     if (cat.taglie) {
       const taglie = cat.taglieLista || TAGLIE;
-      html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px">
-        <div style="margin-bottom:6px"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">`;
+      html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:14px 16px">
+        <div style="margin-bottom:10px"><span class="stock-cat-label ${lblCls}" style="font-size:13px;padding:4px 10px">${cat.label}</span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">`;
       taglie.forEach(t => {
         const s = getStock(logoId, cat.id, t, 'tour');
         const cls = getStockClass(s, logo.minimo||3);
-        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-          <div class="stock-taglia-hdr">${t}</div>
+        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+          <div style="text-align:center;font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase">${t}</div>
           <div class="stock-cell editable ${cls}" title="Clicca per modificare"
+            style="font-size:20px;font-weight:700;min-width:56px;padding:10px 6px"
             onclick="editTourCell(this,${logoId},'${cat.id}','${t}',${s})">${s}</div>
         </div>`;
       });
@@ -2418,9 +2421,10 @@ function renderTourGrid() {
     } else {
       const s = getStock(logoId, cat.id, null, 'tour');
       const cls = getStockClass(s, logo.minimo||3);
-      html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px">
-        <div style="margin-bottom:6px"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-        <div class="stock-cell editable ${cls}" title="Clicca per modificare" style="min-width:44px;display:inline-flex;align-items:center;justify-content:center"
+      html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:14px 16px">
+        <div style="margin-bottom:10px"><span class="stock-cat-label ${lblCls}" style="font-size:13px;padding:4px 10px">${cat.label}</span></div>
+        <div class="stock-cell editable ${cls}" title="Clicca per modificare"
+          style="font-size:20px;font-weight:700;min-width:56px;padding:10px 6px;display:inline-flex;align-items:center;justify-content:center"
           onclick="editTourCell(this,${logoId},'${cat.id}',null,${s})">${s}</div>
       </div>`;
     }
