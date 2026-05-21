@@ -3836,6 +3836,7 @@ function rettificaAccStock(catId, mag, el) {
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty: Math.abs(delta), tipo: delta > 0 ? 'carico' : 'scarico', data: today(), note: 'Rettifica manuale' });
     await saveDB();
     renderAccessori();
+    renderAccTour();
     showToast(`Stock aggiornato: ${attuale} → ${nuovo}`);
   }
   input.addEventListener('blur', conferma);
