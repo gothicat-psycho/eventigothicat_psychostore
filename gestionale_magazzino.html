@@ -911,6 +911,7 @@
               <select id="metodo-pagamento" onchange="aggiornaPagamento()" style="width:100%;padding:8px 10px;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;margin-bottom:8px">
                 <option value="pos">💳 POS</option>
                 <option value="contanti">💵 Contanti</option>
+                <option value="paypal">🅿️ PayPal</option>
                 <option value="misto">💵+💳 Misto</option>
               </select>
               <div id="misto-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px">
@@ -3739,6 +3740,8 @@ async function salvaModificaVendita() {
     v.pagPos = parseFloat(document.getElementById('mv-pos').value) || 0;
   } else if (mp === 'contanti') {
     v.pagContanti = nuovoTotale; v.pagPos = 0;
+  } else if (mp === 'paypal') {
+    v.pagContanti = 0; v.pagPos = nuovoTotale;
   } else {
     v.pagContanti = 0; v.pagPos = nuovoTotale;
   }
@@ -3792,7 +3795,7 @@ async function concludiVendita() {
   if (!db.nextVendId) db.nextVendId = 1;
   const metodoPag = (document.getElementById('metodo-pagamento')||{value:'contanti'}).value || 'contanti';
   const pagContanti = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-contanti').value)||0) : (metodoPag === 'contanti' ? totale : 0);
-  const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : (metodoPag === 'pos' ? totale : 0);
+  const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : ((metodoPag === 'pos' || metodoPag === 'paypal') ? totale : 0);
   const noteVendita = (document.getElementById('scontrino-note')||{value:''}).value.trim();
   const nuovaVendita = {
     id: db.nextVendId++,
@@ -3932,7 +3935,7 @@ function renderVendite() {
         : '<span class="badge badge-gray">€ EUR</span>';
       const totFmt = v.valuta === 'CZK' ? Math.round(v.totale) + ' CZK' : fmt(v.totale);
       const mp = v.metodoPagamento || 'contanti';
-      const mpLabel = mp === 'pos' ? '💳 POS' : mp === 'misto' ? '💵+💳 Misto' : '💵 Contanti';
+      const mpLabel = mp === 'pos' ? '💳 POS' : mp === 'misto' ? '💵+💳 Misto' : mp === 'paypal' ? '🅿️ PayPal' : '💵 Contanti';
       const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
         `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
       const noteHtml = v.note ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">📝 ${v.note}</div>` : '';
