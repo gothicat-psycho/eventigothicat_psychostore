@@ -1542,6 +1542,13 @@ function fmt(n) { return '€ ' + parseFloat(n||0).toFixed(2); }
 function fmtDate(d) { if(!d) return '-'; const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 function today() { return new Date().toISOString().split('T')[0]; }
 
+// Restituisce data/ora locale in formato ISO (senza shift UTC)
+function nowLocal() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 // Stock per logoId, genere, taglia
 function getStock(logoId, catId, taglia, mag) {
   // mag = 'avigliana' | 'napoli' | null (= totale)
@@ -2543,7 +2550,7 @@ function creaSnapshot(eventoId, tipo) {
     eventoId,
     tipo,
     magazzino: mag,
-    data: new Date().toISOString(),
+    data: nowLocal(),
     stock: stockData,
     accessori: accData,
   };
@@ -3789,7 +3796,7 @@ async function concludiVendita() {
   if (!scontrino.length || !cassaEventoId) return;
   const ev = getEvento(cassaEventoId);
   const now = new Date();
-  const dataOra = now.toISOString();
+  const dataOra = nowLocal();
   const totale = scontrino.reduce((a,i) => a + i.prezzo, 0);
   if (!db.vendite) db.vendite = [];
   if (!db.nextVendId) db.nextVendId = 1;
