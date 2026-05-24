@@ -398,12 +398,12 @@
       <div class="section" id="sec-ordini">
         <div class="tab-bar ordine-tab-bar">
           <button class="tab-btn active" id="otab-lista" onclick="switchOrdiniTab('lista')">📋 Lista ordini</button>
-          <button class="tab-btn" id="otab-nuovo" onclick="switchOrdiniTab('nuovo')">＋ Nuovo ordine DIL</button>
-          <button class="tab-btn" id="otab-nuovodf" onclick="switchOrdiniTab('nuovodf')">＋ Nuovo ordine DF</button>
-          <button class="tab-btn" id="otab-nuovopr" onclick="switchOrdiniTab('nuovopr')">＋ Nuovo ordine PR</button>
-          <button class="tab-btn" id="otab-nuovood" onclick="switchOrdiniTab('nuovood')">＋ Nuovo ordine OD</button>
-          <button class="tab-btn" id="otab-nuovoinnocent" onclick="switchOrdiniTab('nuovoinnocent')">＋ Nuovo ordine INNOCENT</button>
-          <button class="tab-btn" id="otab-nuovoadriano" onclick="switchOrdiniTab('nuovoadriano')">＋ Nuovo ordine ADRIANO</button>
+          <button class="tab-btn" id="otab-nuovo" onclick="editingOrdineId=null;switchOrdiniTab('nuovo')">＋ Nuovo ordine DIL</button>
+          <button class="tab-btn" id="otab-nuovodf" onclick="editingOrdineDF=null;switchOrdiniTab('nuovodf')">＋ Nuovo ordine DF</button>
+          <button class="tab-btn" id="otab-nuovopr" onclick="editingOrdinePR=null;switchOrdiniTab('nuovopr')">＋ Nuovo ordine PR</button>
+          <button class="tab-btn" id="otab-nuovood" onclick="editingOrdineOD=null;switchOrdiniTab('nuovood')">＋ Nuovo ordine OD</button>
+          <button class="tab-btn" id="otab-nuovoinnocent" onclick="editingOrdineINNOCENT=null;switchOrdiniTab('nuovoinnocent')">＋ Nuovo ordine INNOCENT</button>
+          <button class="tab-btn" id="otab-nuovoadriano" onclick="editingOrdineADRIANO=null;switchOrdiniTab('nuovoadriano')">＋ Nuovo ordine ADRIANO</button>
         </div>
 
         <!-- LISTA ORDINI -->
@@ -3124,7 +3124,7 @@ function switchOrdiniTab(tab) {
   if(tab==='nuovodf' && !editingOrdineDF) initNuovoOrdineDF();
   if(tab==='nuovopr' && !editingOrdinePR) initNuovoOrdinePR();
   if(tab==='nuovood' && !editingOrdineOD) initNuovoOrdineOD();
-  if(tab==='nuovoinnocent' && !editingOrdineINNOCENT) initNuovoOrdineINNOCENT();
+  if(tab==='nuovoinnocent') { if(!editingOrdineINNOCENT) initNuovoOrdineINNOCENT(); }
   if(tab==='nuovoadriano' && !editingOrdineADRIANO) initNuovoOrdineADRIANO();
 }
 window.switchOrdiniTab = switchOrdiniTab;
