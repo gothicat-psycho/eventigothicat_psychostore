@@ -3147,7 +3147,7 @@ function renderOrdiniLista() {
     const nArt = (o.articoli||[]).length;
     const totRmb = (o._tipo==='OD'||o._tipo==='INNOCENT'||o._tipo==='ADRIANO') ? (o.articoli||[]).reduce((a,r)=>a+(r.prezzoUnit||0)*(r.qty||0),0) : (o.articoli||[]).reduce((a,r)=>a+r.totRmb,0);
     const totUsd = (o._tipo==='DF'||o._tipo==='PR'||o._tipo==='OD'||o._tipo==='INNOCENT'||o._tipo==='ADRIANO') ? 0 : totRmb * (o.rmbUsd||0);
-    const totEur = o._tipo==='ADRIANO' ? totRmb : (o._tipo==='OD'||o._tipo==='INNOCENT') ? (o.gbpEur>0?totRmb*o.gbpEur:0) : (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
+    const totEur = o._tipo==='ADRIANO' ? totRmb : (o._tipo==='OD') ? (o.valuta==='EUR' ? totRmb : (o.gbpEur>0?totRmb*o.gbpEur:0)) : (o._tipo==='INNOCENT') ? (o.gbpEur>0?totRmb*o.gbpEur:0) : (o._tipo==='DF'||o._tipo==='PR') ? (o.rmbEur>0?totRmb/o.rmbEur:0) : totUsd*(o.usdEur||0);
     const statoClass = {bozza:'stato-bozza',confermato:'stato-confermato',ricevuto:'stato-ricevuto',in_stock:'stato-in_stock'}[o.stato||'bozza'];
     const totDovuto = (() => {
       if(o._tipo==='PR'||o._tipo==='DF') {
@@ -3160,7 +3160,11 @@ function renderOrdiniLista() {
         const trasportoEurLoc = o.rmbUsd ? (o.trasportoRmb||0)/o.rmbUsd*(o.usdEur||0) : 0;
         return totMerceEurLoc + trasportoEurLoc;
       }
-      if(o._tipo==='OD'||o._tipo==='INNOCENT') return (totRmb+(o.trasporto||0))*(o.gbpEur||0);
+      if(o._tipo==='OD') {
+        const totBase = totRmb + (o.trasporto||0);
+        return o.valuta==='EUR' ? totBase : totBase*(o.gbpEur||0);
+      }
+      if(o._tipo==='INNOCENT') return (totRmb+(o.trasporto||0))*(o.gbpEur||0);
       if(o._tipo==='ADRIANO') return totRmb + (o.trasporto||0);
       return null;
     })();
