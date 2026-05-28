@@ -1399,6 +1399,10 @@
           <div class="evento-bar" id="tx-cassa-ev-bar" style="margin-bottom:12px">
             <span>🇬🇧</span>
             <span class="evento-bar-nome" id="tx-cassa-ev-nome">Nessun evento attivo</span>
+            <div id="tx-valuta-sel" style="display:none;gap:6px">
+              <button id="tx-btn-eur" class="btn btn-sm btn-primary" onclick="setTxValuta('EUR')">€ EUR</button>
+              <button id="tx-btn-czk" class="btn btn-sm" onclick="setTxValuta('CZK')">Kč CZK</button>
+            </div>
             <button class="btn btn-sm" onclick="showSection('eventi',document.querySelector('.nav-item:nth-child(8)'))">Cambia evento</button>
           </div>
           <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
@@ -1543,9 +1547,13 @@
         <!-- Evento attivo -->
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg)">
           <label style="font-size:13px;font-weight:600;white-space:nowrap">🎪 Evento attivo:</label>
-          <select id="tar-evento-sel" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+          <select id="tar-evento-sel" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px" onchange="initTarValuta(this.value)">
             <option value="">— Seleziona evento —</option>
           </select>
+          <div id="tar-valuta-sel" style="display:none;gap:6px">
+            <button id="tar-btn-eur" class="btn btn-sm btn-primary" onclick="setTarValuta('EUR')">€ EUR</button>
+            <button id="tar-btn-czk" class="btn btn-sm" onclick="setTarValuta('CZK')">Kč CZK</button>
+          </div>
         </div>
 
         <div class="tab-bar" style="margin-bottom:16px">
@@ -7216,6 +7224,59 @@ function calcolaValoreMagazzino() {
 window.calcolaValoreMagazzino = calcolaValoreMagazzino;
 
 
+// ── TOXICO VALUTA CZK ──
+let txValuta = 'EUR';
+
+function setTxValuta(val) {
+  txValuta = val;
+  const btnEur = document.getElementById('tx-btn-eur');
+  const btnCzk = document.getElementById('tx-btn-czk');
+  if(btnEur) btnEur.className = val==='EUR'?'btn btn-sm btn-primary':'btn btn-sm';
+  if(btnCzk) btnCzk.className = val==='CZK'?'btn btn-sm btn-primary':'btn btn-sm';
+  renderTxScontrino();
+}
+window.setTxValuta = setTxValuta;
+
+function initTxValuta(evId) {
+  const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
+  const isCz = isCzEvent(ev);
+  const sel = document.getElementById('tx-valuta-sel');
+  if(sel) sel.style.display = isCz ? 'flex' : 'none';
+  txValuta = 'EUR';
+  setTxValuta('EUR');
+}
+
+function getTxPrezzo(prod) {
+  if(txValuta==='CZK') return prod.prezzoCzk || 0;
+  return prod.prezzoEur || 0;
+}
+
+// ── TAROCCHI VALUTA CZK ──
+let tarValuta = 'EUR';
+
+function setTarValuta(val) {
+  tarValuta = val;
+  const btnEur = document.getElementById('tar-btn-eur');
+  const btnCzk = document.getElementById('tar-btn-czk');
+  if(btnEur) btnEur.className = val==='EUR'?'btn btn-sm btn-primary':'btn btn-sm';
+  if(btnCzk) btnCzk.className = val==='CZK'?'btn btn-sm btn-primary':'btn btn-sm';
+  renderTarScontrino();
+}
+window.setTarValuta = setTarValuta;
+
+function initTarValuta(evId) {
+  const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
+  const isCz = isCzEvent(ev);
+  const sel = document.getElementById('tar-valuta-sel');
+  if(sel) sel.style.display = isCz ? 'flex' : 'none';
+  tarValuta = 'EUR';
+  setTarValuta('EUR');
+}
+
+function getTarPrezzo() {
+  return tarValuta==='CZK' ? TAR_PREZZO_CZK : TAR_PREZZO;
+}
+
 const TAR_CATALOG = [
   { id:'TOPPEDT.THEFOOL',      nome:'The Fool' },
   { id:'TOPPEDT.THEHERMIT',    nome:'The Hermit' },
@@ -7239,6 +7300,7 @@ const TAR_STOCK_INIT = {
 };
 
 const TAR_PREZZO = 5;
+const TAR_PREZZO_CZK = 100;
 const TAR_COSTO  = 1;
 const TAR_QUOTA_CARLOTTA = 1; // €1 per pezzo — rimborso capitale
 const TAR_QUOTA_PSYCHO   = 1; // €1 per pezzo — rimborso spese
@@ -7249,6 +7311,7 @@ let tarScontrino = []; // [{id, nome, qta}]
 
 function initTarocchi() {
   if(!db.tarocchi) db.tarocchi = { stock:{}, vendite:[], pagamenti:[], nextVendId:1 };
+  initTarValuta(document.getElementById('tar-evento-sel')?.value||cassaEventoId);
   renderTarProdotti();
   renderTarScontrino();
   // Popola select evento
@@ -7334,7 +7397,11 @@ function renderTarScontrino() {
       </div>
     </div>`).join('');
   const tot = tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO,0);
-  totEl.textContent = '€ '+tot.toFixed(2);
+  const prezzoUnit = tarValuta==='CZK' ? TAR_PREZZO_CZK : TAR_PREZZO;
+  const totDisplay = tarValuta==='CZK'
+    ? tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO_CZK,0)+' Kč'
+    : '€ '+tot.toFixed(2);
+  totEl.textContent = totDisplay;
 }
 
 function tarSvuota() { tarScontrino=[]; renderTarScontrino(); }
@@ -7349,6 +7416,8 @@ async function tarConcludi() {
   const now = new Date();
   tarScontrino.forEach(it=>{
     const tot = it.qta * TAR_PREZZO;
+    const prezzoEffettivo = tarValuta==='CZK' ? TAR_PREZZO_CZK : TAR_PREZZO;
+    const totEffettivo = it.qta * prezzoEffettivo;
     db.tarocchi.vendite.push({
       id: db.tarocchi.nextVendId++,
       eventoId: parseInt(evId),
@@ -7356,7 +7425,10 @@ async function tarConcludi() {
       nome: it.nome,
       qta: it.qta,
       prezzoEur: TAR_PREZZO,
-      totEur: tot,
+      prezzoCzk: TAR_PREZZO_CZK,
+      totEur: tarValuta==='CZK' ? 0 : tot,
+      totCzk: tarValuta==='CZK' ? totEffettivo : 0,
+      valuta: tarValuta,
       quotaCarlotta: it.qta * TAR_QUOTA_CARLOTTA,
       quotaPsycho:   it.qta * TAR_QUOTA_PSYCHO,
       quotaBand:     it.qta * TAR_QUOTA_BAND,
@@ -7614,35 +7686,35 @@ window.stampaEtichetteExtra = stampaEtichetteExtra;
 // Catalogo prodotti Toxico con prezzi
 const TOXICO_CATALOG = [
   // T-Shirts
-  { id:'DOLLY-TSHIRT',              nome:'DOLLY',                      cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'WORMS-TSHIRT',              nome:'WORMS',                      cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'ANTISOCIAL-TSHIRT',         nome:'ANTISOCIAL ALIENATION',      cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'WARPIG-TSHIRT',             nome:'WAR PIG',                    cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'PESTPROBLEM-TSHIRT',        nome:'PEST PROBLEM RED',           cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'MUMMYSAID-TSHIRT',          nome:'MUMMY SAID WHITE',           cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'AASYMBOLS-TSHIRT',          nome:'AA SYMBOLS',                 cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'HILLBILLY-TSHIRT',          nome:'HILLBILLY WOODS',            cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'TIMEWILL-TSHIRT',           nome:'TIME WILL COME',             cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'STOPPEDKILLIN-TSHIRT',      nome:"STOPPED KILLIN'",            cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'PSYCHOPIG-TSHIRT',          nome:'PSYCHO PIG WHITE',           cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'CHURCHBURNER-TSHIRT',       nome:'CHURCH BURNER',              cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
-  { id:'WISHYOUWERE-TSHIRT',        nome:'WISH YOU WERE HERE',         cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90 },
+  { id:'DOLLY-TSHIRT',              nome:'DOLLY',                      cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'WORMS-TSHIRT',              nome:'WORMS',                      cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'ANTISOCIAL-TSHIRT',         nome:'ANTISOCIAL ALIENATION',      cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'WARPIG-TSHIRT',             nome:'WAR PIG',                    cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'PESTPROBLEM-TSHIRT',        nome:'PEST PROBLEM RED',           cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'MUMMYSAID-TSHIRT',          nome:'MUMMY SAID WHITE',           cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'AASYMBOLS-TSHIRT',          nome:'AA SYMBOLS',                 cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'HILLBILLY-TSHIRT',          nome:'HILLBILLY WOODS',            cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'TIMEWILL-TSHIRT',           nome:'TIME WILL COME',             cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'STOPPEDKILLIN-TSHIRT',      nome:"STOPPED KILLIN'",            cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'PSYCHOPIG-TSHIRT',          nome:'PSYCHO PIG WHITE',           cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'CHURCHBURNER-TSHIRT',       nome:'CHURCH BURNER',              cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
+  { id:'WISHYOUWERE-TSHIRT',        nome:'WISH YOU WERE HERE',         cat:'T-Shirts',       taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:27, prezzoGbp:9.90, prezzoCzk:650 },
   // Hoodies
-  { id:'ANTISOCIAL-HOODIE',         nome:'ANTISOCIAL ALIENATION',      cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
-  { id:'SKULLY-HOODIE',             nome:'SKULLY GREY',                cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
-  { id:'WARPIG-HOODIE',             nome:'WARPIG',                     cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25 },
+  { id:'ANTISOCIAL-HOODIE',         nome:'ANTISOCIAL ALIENATION',      cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25, prezzoCzk:1500 },
+  { id:'SKULLY-HOODIE',             nome:'SKULLY GREY',                cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25, prezzoCzk:1500 },
+  { id:'WARPIG-HOODIE',             nome:'WARPIG',                     cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25, prezzoCzk:1500 },
   // Mesh Shorts
-  { id:'DFB-SHORTS',                nome:'DFB',                        cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16 },
-  { id:'GASMASK-SHORTS',            nome:'GAS MASK',                   cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16 },
+  { id:'DFB-SHORTS',                nome:'DFB',                        cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1100 },
+  { id:'GASMASK-SHORTS',            nome:'GAS MASK',                   cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1100 },
   // Bandana
   { id:'SUERTE-BANDANA',            nome:'SUERTE GREY',                cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
   { id:'FTW-BANDANA',               nome:'FTW RED',                    cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
   { id:'ROTTINGSKULL-BANDANA',      nome:'ROTTING SKULL BLACK',        cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
   // Mesh Tanks
-  { id:'METALSKULL-TANK',           nome:'METAL SKULL',                cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
-  { id:'DFB-TANK',                  nome:'DFB',                        cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
-  { id:'BOLTSKULL-TANK',            nome:'BOLT SKULL',                 cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
-  { id:'GASMASK-TANK',              nome:'GAS MASK',                   cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16 },
+  { id:'METALSKULL-TANK',           nome:'METAL SKULL',                cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'DFB-TANK',                  nome:'DFB',                        cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'BOLTSKULL-TANK',            nome:'BOLT SKULL',                 cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'GASMASK-TANK',              nome:'GAS MASK',                   cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
   // New Mesh Tanks
   { id:'DETHSQUAD-NEWTANK',         nome:'DETH SQUAD',                 cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
   { id:'VOMIT13-NEWTANK',           nome:'VOMIT 13',                   cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
@@ -7652,14 +7724,14 @@ const TOXICO_CATALOG = [
   // Retro Sweat Shorts
   { id:'SKULLY-RETROSHORTS',        nome:'SKULLY',                     cat:'Retro Sweat Shorts', taglie:['XS','S','M','L','XL'], prezzoEur:29, prezzoGbp:12.5 },
   // Socks
-  { id:'DUSTER-SOCKS',              nome:'DUSTER Socks',               cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
-  { id:'LOGOBLACK-SOCKS',           nome:'LOGO Socks Black',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
-  { id:'LOGOWHITE-SOCKS',           nome:'LOGO Socks White',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
-  { id:'BOLTSKULLFWTBLACK-SOCKS',   nome:'BOLT SKULL FWT Socks Black', cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
-  { id:'BOLTSKULLFWTGREEN-SOCKS',   nome:'BOLT SKULL FWT Socks Green', cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5 },
+  { id:'DUSTER-SOCKS',              nome:'DUSTER Socks',               cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
+  { id:'LOGOBLACK-SOCKS',           nome:'LOGO Socks Black',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
+  { id:'LOGOWHITE-SOCKS',           nome:'LOGO Socks White',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
+  { id:'BOLTSKULLFWTBLACK-SOCKS',   nome:'BOLT SKULL FWT Socks Black', cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
+  { id:'BOLTSKULLFWTGREEN-SOCKS',   nome:'BOLT SKULL FWT Socks Green', cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
   // Patches & Stickers
-  { id:'PATCHES',                   nome:'Patches',                    cat:'Patches',        taglie:['NO'], prezzoEur:5,  prezzoGbp:2.5 },
-  { id:'STICKERS',                  nome:'Stickers',                   cat:'Stickers',       taglie:['NO'], prezzoEur:3,  prezzoGbp:1 },
+  { id:'PATCHES',                   nome:'Patches',                    cat:'Patches',        taglie:['NO'], prezzoEur:5,  prezzoGbp:2.5, prezzoCzk:100 },
+  { id:'STICKERS',                  nome:'Stickers',                   cat:'Stickers',       taglie:['NO'], prezzoEur:3,  prezzoGbp:1, prezzoCzk:80 },
 ];
 
 // Stock iniziale dal file Excel
@@ -7753,6 +7825,8 @@ window.toxicoTab = toxicoTab;
 // ── RENDER TOXICO (entry point) ──
 function renderToxico() {
   if(!db.toxico) db.toxico = {stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  // Init CZK valuta based on active event
+  initTxValuta(cassaEventoId);
   // Mostra evento attivo (stesso di Psycho-Store)
   const evAttivo = getEvento(cassaEventoId);
   document.getElementById('tx-cassa-ev-nome').textContent = evAttivo ? evAttivo.nome : 'Nessun evento attivo';
@@ -7864,6 +7938,7 @@ function txAggiungiScontrino() {
       qta,
       prezzoEur: txCassaProdSel.prezzoEur,
       prezzoGbp: txCassaProdSel.prezzoGbp,
+      prezzoCzk: txCassaProdSel.prezzoCzk||0,
       nome: txCassaProdSel.nome,
     });
   }
@@ -7877,15 +7952,23 @@ function renderTxScontrino() {
   const cont = document.getElementById('tx-scontrino-righe');
   if(!txScontrino.length) {
     cont.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Scontrino vuoto</div>';
-    document.getElementById('tx-sc-eur').textContent = '€ 0.00';
+    document.getElementById('tx-sc-eur').textContent = txValuta==='CZK'?'0 Kč':'€ 0.00';
     document.getElementById('tx-sc-gbp').textContent = '£ 0.00';
     return;
   }
-  let totEur=0, totGbp=0;
+  let totEur=0, totGbp=0, totCzk=0;
   let html='';
   txScontrino.forEach((r,i)=>{
-    const eur=r.qta*r.prezzoEur, gbp=r.qta*r.prezzoGbp;
-    totEur+=eur; totGbp+=gbp;
+    const eur=r.qta*r.prezzoEur, gbp=r.qta*r.prezzoGbp, czk=r.qta*(r.prezzoCzk||0);
+    totEur+=eur; totGbp+=gbp; totCzk+=czk;
+    const prezzoDisplay = txValuta==='CZK'
+      ? `<div style="display:flex;align-items:center;gap:3px"><span style="font-size:11px;color:var(--text3)">Kč</span><input type="number" step="1" min="0" value="${r.prezzoCzk||0}" onchange="txAggiornaCzk(${i},this.value)" style="width:70px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center;font-family:monospace"></div>`
+      : `<div style="display:flex;align-items:center;gap:3px"><span style="font-size:11px;color:var(--text3)">€</span><input type="number" step="0.01" min="0" value="${r.prezzoEur}" onchange="txAggiornaPrezzoEur(${i},this.value)" style="width:60px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center;font-family:monospace"></div>
+        <span style="font-size:11px;color:var(--text3)">/</span>
+        <div style="display:flex;align-items:center;gap:3px"><span style="font-size:11px;color:#7F1D1D">£</span><input type="number" step="0.01" min="0" value="${r.prezzoGbp}" onchange="txAggiornaPrezzoGbp(${i},this.value)" style="width:60px;padding:2px 5px;border:1px solid #FCA5A5;border-radius:4px;font-size:12px;text-align:center;font-family:monospace;color:#7F1D1D"></div>`;
+    const totDisplay = txValuta==='CZK'
+      ? `<span class="mono" style="font-weight:600">${czk} Kč</span>`
+      : `<span class="mono" style="font-weight:600">€${eur.toFixed(2)}</span><span style="font-size:11px;color:#7F1D1D;display:block" class="mono">£${gbp.toFixed(2)}</span>`;
     html+=`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-weight:500;flex:1">${r.nome}${r.taglia!=='NO'?' — '+r.taglia:''}</div>
@@ -7893,24 +7976,13 @@ function renderTxScontrino() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--text3)">${r.qta} × </span>
-        <div style="display:flex;align-items:center;gap:3px">
-          <span style="font-size:11px;color:var(--text3)">€</span>
-          <input type="number" step="0.01" min="0" value="${r.prezzoEur}" onchange="txAggiornaPrezzoEur(${i},this.value)" style="width:60px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center;font-family:monospace">
-        </div>
-        <span style="font-size:11px;color:var(--text3)">/</span>
-        <div style="display:flex;align-items:center;gap:3px">
-          <span style="font-size:11px;color:#7F1D1D">£</span>
-          <input type="number" step="0.01" min="0" value="${r.prezzoGbp}" onchange="txAggiornaPrezzoGbp(${i},this.value)" style="width:60px;padding:2px 5px;border:1px solid #FCA5A5;border-radius:4px;font-size:12px;text-align:center;font-family:monospace;color:#7F1D1D">
-        </div>
-        <div style="margin-left:auto;text-align:right">
-          <span class="mono" style="font-weight:600">€${eur.toFixed(2)}</span>
-          <span style="font-size:11px;color:#7F1D1D;display:block" class="mono">£${gbp.toFixed(2)}</span>
-        </div>
+        ${prezzoDisplay}
+        <div style="margin-left:auto;text-align:right">${totDisplay}</div>
       </div>
     </div>`;
   });
   cont.innerHTML = html;
-  document.getElementById('tx-sc-eur').textContent = '€ '+totEur.toFixed(2);
+  document.getElementById('tx-sc-eur').textContent = txValuta==='CZK' ? totCzk+' Kč' : '€ '+totEur.toFixed(2);
   document.getElementById('tx-sc-gbp').textContent = '£ '+totGbp.toFixed(2);
 }
 window.renderTxScontrino = renderTxScontrino;
@@ -7932,6 +8004,12 @@ function txAggiornaPrezzoGbp(i, val) {
   if(!isNaN(v) && v>=0) { txScontrino[i].prezzoGbp = v; renderTxScontrino(); }
 }
 window.txAggiornaPrezzoGbp = txAggiornaPrezzoGbp;
+
+function txAggiornaCzk(i, val) {
+  const v = parseInt(val)||0;
+  if(v>=0) { txScontrino[i].prezzoCzk = v; renderTxScontrino(); }
+}
+window.txAggiornaCzk = txAggiornaCzk;
 
 function txSvuotaScontrino() {
   txScontrino=[]; txCassaProdSel=null; txCassaTaglia=null;
@@ -7958,8 +8036,10 @@ async function txConfermaVendita() {
       qta: r.qta,
       prezzoEur: r.prezzoEur,
       prezzoGbp: r.prezzoGbp,
-      totEur: r.qta*r.prezzoEur,
+      prezzoCzk: r.prezzoCzk||0,
+      totEur: txValuta==='CZK' ? (r.qta*(r.prezzoCzk||0)) : r.qta*r.prezzoEur,
       totGbp: r.qta*r.prezzoGbp,
+      valuta: txValuta,
       pagamento: pay,
       nota: nota,
       ts: now,
