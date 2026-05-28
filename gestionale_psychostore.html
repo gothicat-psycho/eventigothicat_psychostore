@@ -277,6 +277,13 @@
           <button class="btn btn-primary" style="white-space:nowrap;background:#F59E0B" onclick="fixCostoDILMAG2026()">🔧 Correggi costi</button>
         </div>
 
+        <div id="fix-inno-banner" style="background:#FEE2E2;border:2px solid #EF4444;border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-weight:700;color:#991B1B">🚨 URGENTE — Stock INNO_MAG2026 mancante</div>
+            <div style="font-size:13px;color:#B91C1C;margin-top:2px">L'ordine risulta "In stock" ma i prodotti non sono stati caricati correttamente. Clicca per caricarli ora.</div>
+          </div>
+          <button class="btn btn-primary" style="white-space:nowrap;background:#EF4444" onclick="ricaricaStockINNOMAG2026()">🔧 Carica stock ora</button>
+        </div>
         <div class="grid4" id="dash-metrics" style="margin-bottom:16px"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="card">
@@ -5811,7 +5818,7 @@ window.cambiaStatoOrdineINNOCENT = cambiaStatoOrdineINNOCENT;
 async function caricaAMagazzinoINNOCENT(ordineId) {
   const o=(db.ordiniINNOCENT||[]).find(x=>x.id===ordineId);
   if(!o) return;
-  if(o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
+  if(o.stato==='in_stock'||o.stato==='ricevuto'){showToast('Ordine già caricato in stock','amber');return;}
   if(!confirm(`Confermi il carico in stock dell'ordine "${o.riferimento}"?\nQuesta operazione aggiorna lo stock ed è difficilmente reversibile.`)) return;
   const gbpEur=o.gbpEur||0;
   const toEur = v => gbpEur>0?v*gbpEur:0;
@@ -5824,7 +5831,7 @@ async function caricaAMagazzinoINNOCENT(ordineId) {
   const ivaDiritti=diritti*0.22;
   const totImportazione=dazio+iva+diritti+ivaDiritti;
   const dazioPz=totPezzi>0?totImportazione/totPezzi:0;
-  let caricati=0, nonTrovati=[];
+  let caricati=0, nonTrovati=[], czkMancanti=[];
   const taglieMap=[{t:'xs',suf:'XS'},{t:'s',suf:'S'},{t:'m',suf:'M'},{t:'l',suf:'L'},{t:'xl',suf:'XL'},{t:'xxl',suf:'XXL'}];
   const bcKeyMap={XS:'bcXs',S:'bcS',M:'bcM',L:'bcL',XL:'bcXl',XXL:'bcXxl'};
   (o.articoli||[]).forEach(r=>{
@@ -5837,9 +5844,12 @@ async function caricaAMagazzinoINNOCENT(ordineId) {
         const candidates=[r.codice+'.'+suf,r.codice+suf,r.codice+'F.'+suf];
         for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
       }
+      const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
+      const {prod: prodF, czkMancante}=creaOAggiornaProdottoNuovo(barcode, r.descrizione||r.codice||'', 'INNOCENT', r.vendita||0, costoRiga);
+      prod=prodF;
+      if(czkMancante) czkMancanti.push({barcode, prezzoEur: r.vendita||0});
       if(!prod){nonTrovati.push(r.codice+'-'+suf);return;}
       db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - INNOCENT'});
-      const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
       aggiornaCostoMedioPonderato(prod, qty, costoRiga);
       caricati++;
     });
@@ -6760,6 +6770,58 @@ async function docSalvaCartella(tipo) {
 }
 window.docSalvaCartella = docSalvaCartella;
 
+
+
+// ── FIX RICARICA INNO_MAG2026 ──
+async function ricaricaStockINNOMAG2026() {
+  const o = (db.ordiniINNOCENT||[]).find(x=>x.riferimento==='INNO_MAG2026');
+  if(!o) { alert('Ordine INNO_MAG2026 non trovato'); return; }
+  if(!confirm('Ricaricare lo stock di INNO_MAG2026?\nI movimenti verranno aggiunti nuovamente.')) return;
+
+  const gbpEur=o.gbpEur||0;
+  const toEur = v => gbpEur>0?v*gbpEur:0;
+  const isUK=o.magazzino==='uk';
+  const totPezzi=(o.articoli||[]).reduce((a,r)=>a+r.qty,0);
+  const trasPz=totPezzi>0?(o.trasporto||0)/totPezzi:0;
+  const customsMerce=o.customsMerce||0,diritti=o.diritti||0;
+  const dazio=isUK&&customsMerce?customsMerce*0.12:0;
+  const iva=isUK&&customsMerce?(customsMerce+dazio)*0.22:0;
+  const ivaDiritti=diritti*0.22;
+  const dazioPz=totPezzi>0?(dazio+iva+diritti+ivaDiritti)/totPezzi:0;
+  const taglieMap=[{t:'xs',suf:'XS'},{t:'s',suf:'S'},{t:'m',suf:'M'},{t:'l',suf:'L'},{t:'xl',suf:'XL'},{t:'xxl',suf:'XXL'}];
+  const bcKeyMap={XS:'bcXs',S:'bcS',M:'bcM',L:'bcL',XL:'bcXl',XXL:'bcXxl'};
+  let caricati=0, nonTrovati=[], czkMancanti=[];
+
+  (o.articoli||[]).forEach(r=>{
+    taglieMap.forEach(({t,suf})=>{
+      const qty=r[t]||0; if(!qty) return;
+      const savedBc=r[bcKeyMap[suf]]||'';
+      let prod=null, barcode=savedBc||'';
+      if(barcode) prod=getProdotto(barcode);
+      if(!prod){
+        const candidates=[r.codice+'.'+suf,r.codice+suf,r.codice+'F.'+suf];
+        for(const bc of candidates){prod=getProdotto(bc);if(prod){barcode=bc;break;}}
+      }
+      const costoRiga=toEur(r.prezzoUnit)+toEur(trasPz)+(isUK?dazioPz:0);
+      const {prod: prodF, czkMancante}=creaOAggiornaProdottoNuovo(barcode, r.descrizione||r.codice||'', 'INNOCENT', r.vendita||0, costoRiga);
+      prod=prodF;
+      if(czkMancante) czkMancanti.push({barcode, prezzoEur: r.vendita||0});
+      if(!prod){nonTrovati.push(r.codice+'-'+suf);return;}
+      db.movimenti.push({id:db.nextMovId++,barcode,qty,tipo:'carico',data:new Date().toISOString().split('T')[0],note:'Ordine '+o.riferimento+' - INNOCENT'});
+      aggiornaCostoMedioPonderato(prod, qty, costoRiga);
+      caricati++;
+    });
+  });
+
+  await gestisciCzkMancanti(czkMancanti);
+  await saveDB();
+  document.getElementById('fix-inno-banner').remove();
+  let msg = `✓ ${caricati} articoli caricati in stock per INNO_MAG2026`;
+  if(nonTrovati.length) msg += `\n⚠ Non trovati: ${nonTrovati.join(', ')}`;
+  alert(msg);
+  showToast('Stock INNO_MAG2026 caricato!');
+}
+window.ricaricaStockINNOMAG2026 = ricaricaStockINNOMAG2026;
 
 // ══════════════════════════════════════════
 // FIX COSTO DIL_MAG2026
