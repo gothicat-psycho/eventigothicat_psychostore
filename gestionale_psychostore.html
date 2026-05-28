@@ -7221,7 +7221,9 @@ function setTxValuta(val) {
   const btnCzk = document.getElementById('tx-btn-czk');
   if(btnEur) btnEur.className = val==='EUR'?'btn btn-sm btn-primary':'btn btn-sm';
   if(btnCzk) btnCzk.className = val==='CZK'?'btn btn-sm btn-primary':'btn btn-sm';
-  renderTxScontrino();
+  // Solo renderizza se la tab cassa è visibile
+  const pane = document.getElementById('tx-pane-cassa');
+  if(pane && pane.style.display !== 'none') renderTxScontrino();
 }
 window.setTxValuta = setTxValuta;
 
