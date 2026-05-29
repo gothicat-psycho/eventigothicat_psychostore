@@ -7233,8 +7233,8 @@ function initTxValuta(evId) {
   const isCz = isCzEvent(ev);
   const sel = document.getElementById('tx-valuta-sel');
   if(sel) sel.style.display = isCz ? 'flex' : 'none';
-  txValuta = 'EUR';
-  setTxValuta('EUR');
+  if(!isCz) setTxValuta('EUR');
+  else setTxValuta(txValuta);
 }
 
 function getTxPrezzo(prod) {
@@ -7261,8 +7261,9 @@ function initTarValuta(evId) {
   const isCz = isCzEvent(ev);
   const sel = document.getElementById('tar-valuta-sel');
   if(sel) sel.style.display = isCz ? 'flex' : 'none';
-  tarValuta = 'EUR';
-  setTarValuta('EUR');
+  // Se non è evento CZ, forza EUR; altrimenti mantieni la valuta attuale
+  if(!isCz) setTarValuta('EUR');
+  else setTarValuta(tarValuta); // aggiorna bottoni e griglia senza cambiare valuta
 }
 
 function getTarPrezzo() {
