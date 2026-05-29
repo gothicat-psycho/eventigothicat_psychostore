@@ -7264,13 +7264,17 @@ window.initTarValuta = initTarValuta;
 
 function initTarValuta(evId) {
   const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
-  console.log('initTarValuta evId:', evId, 'ev:', ev?.nome, 'nazione:', ev?.nazione);
   const isCz = isCzEvent(ev);
-  console.log('isCz:', isCz);
   const sel = document.getElementById('tar-valuta-sel');
   if(sel) sel.style.display = isCz ? 'flex' : 'none';
-  if(!isCz) setTarValuta('EUR');
-  else setTarValuta(tarValuta);
+  if(!isCz) { tarValuta='EUR'; }
+  renderTarProdotti(isCz);
+  renderTarScontrino();
+  // Aggiorna bottoni valuta
+  const btnEur = document.getElementById('tar-btn-eur');
+  const btnCzk = document.getElementById('tar-btn-czk');
+  if(btnEur) btnEur.className = tarValuta==='EUR'?'btn btn-sm btn-primary':'btn btn-sm';
+  if(btnCzk) btnCzk.className = tarValuta==='CZK'?'btn btn-sm btn-primary':'btn btn-sm';
 }
 
 function getTarPrezzo() {
@@ -7345,11 +7349,15 @@ function getTarStock(id) {
 }
 
 // ── CASSA ──
-function renderTarProdotti() {
+function renderTarProdotti(forceCz) {
   const grid = document.getElementById('tar-prodotti-grid');
   if(!grid) return;
   const sortedCatalog = [...TAR_CATALOG].sort((a,b)=>a.nome.localeCompare(b.nome));
-  const isCz = isCzEvent(getEvento(document.getElementById('tar-evento-sel')?.value||cassaEventoId));
+  let isCz = forceCz;
+  if(isCz === undefined) {
+    const evId = document.getElementById('tar-evento-sel')?.value || '';
+    isCz = isCzEvent((db.eventi||[]).find(e=>String(e.id)===String(evId)));
+  }
   const prezzoLabel = isCz
     ? `${TAR_PREZZO} € · ${TAR_PREZZO_CZK} CZK`
     : `€${TAR_PREZZO}`;
