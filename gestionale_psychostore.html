@@ -7251,6 +7251,7 @@ function setTarValuta(val) {
   const btnCzk = document.getElementById('tar-btn-czk');
   if(btnEur) btnEur.className = val==='EUR'?'btn btn-sm btn-primary':'btn btn-sm';
   if(btnCzk) btnCzk.className = val==='CZK'?'btn btn-sm btn-primary':'btn btn-sm';
+  renderTarProdotti();
   renderTarScontrino();
 }
 window.setTarValuta = setTarValuta;
@@ -7340,13 +7341,17 @@ function renderTarProdotti() {
   const grid = document.getElementById('tar-prodotti-grid');
   if(!grid) return;
   const sortedCatalog = [...TAR_CATALOG].sort((a,b)=>a.nome.localeCompare(b.nome));
+  const isCz = isCzEvent(getEvento(document.getElementById('tar-evento-sel')?.value||cassaEventoId));
+  const prezzoLabel = isCz
+    ? `${TAR_PREZZO} € · ${TAR_PREZZO_CZK} CZK`
+    : `€${TAR_PREZZO}`;
   grid.innerHTML = sortedCatalog.map(p=>{
     const st = getTarStock(p.id);
     const cls = st<=0?'background:#FEE2E2;opacity:.6':'background:#F0FDF4';
     const dis = st<=0?'disabled':'';
     return `<button ${dis} onclick="tarAggiungi('${p.id}')"
       style="padding:12px 8px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;${cls};text-align:center;font-size:13px;font-weight:600;line-height:1.3">
-      ${p.nome}<br><span style="font-size:11px;font-weight:400;color:var(--text3)">Stock: ${st} · €${TAR_PREZZO}</span>
+      ${p.nome}<br><span style="font-size:11px;font-weight:400;color:var(--text3)">Stock: ${st} · ${prezzoLabel}</span>
     </button>`;
   }).join('');
 }
@@ -7376,7 +7381,12 @@ function renderTarScontrino() {
   const el = document.getElementById('tar-sc-items');
   const totEl = document.getElementById('tar-sc-tot');
   if(!el) return;
-  if(!tarScontrino.length) { el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">Nessun prodotto</div>'; totEl.textContent='€ 0.00'; return; }
+  if(!tarScontrino.length) {
+    el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">Nessun prodotto</div>';
+    totEl.textContent = tarValuta==='CZK' ? '0 CZK' : '€ 0.00';
+    return;
+  }
+  const isCzk = tarValuta==='CZK';
   el.innerHTML = tarScontrino.map(it=>`
     <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px">${it.nome}</span>
@@ -7384,14 +7394,12 @@ function renderTarScontrino() {
         <button onclick="tarRimuovi('${it.id}')" style="width:22px;height:22px;border:1px solid var(--border);border-radius:50%;cursor:pointer;background:var(--surface2);font-size:14px;line-height:1">−</button>
         <span style="font-size:14px;font-weight:600;min-width:20px;text-align:center">${it.qta}</span>
         <button onclick="tarAggiungi('${it.id}')" style="width:22px;height:22px;border:1px solid var(--border);border-radius:50%;cursor:pointer;background:var(--surface2);font-size:14px;line-height:1">+</button>
-        <span style="font-size:13px;font-weight:600;min-width:40px;text-align:right">€ ${(it.qta*TAR_PREZZO).toFixed(2)}</span>
+        <span style="font-size:13px;font-weight:600;min-width:60px;text-align:right">${isCzk ? (it.qta*TAR_PREZZO_CZK)+' CZK' : '€ '+(it.qta*TAR_PREZZO).toFixed(2)}</span>
       </div>
     </div>`).join('');
-  const tot = tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO,0);
-  const prezzoUnit = tarValuta==='CZK' ? TAR_PREZZO_CZK : TAR_PREZZO;
-  const totDisplay = tarValuta==='CZK'
-    ? tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO_CZK,0)+' Kč'
-    : '€ '+tot.toFixed(2);
+  const totDisplay = isCzk
+    ? tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO_CZK,0)+' CZK'
+    : '€ '+tarScontrino.reduce((a,it)=>a+it.qta*TAR_PREZZO,0).toFixed(2);
   totEl.textContent = totDisplay;
 }
 
