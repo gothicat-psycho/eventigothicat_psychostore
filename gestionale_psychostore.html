@@ -1459,7 +1459,7 @@
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Data/Ora</th><th>Evento</th><th>Prodotto</th><th>Taglia</th><th>Qta</th><th>Pag.</th><th style="text-align:right">€</th><th style="text-align:right">£</th><th>Note</th><th></th>
+                  <th>Data/Ora</th><th>Evento</th><th>Prodotto</th><th>Taglia</th><th>Qta</th><th>Pag.</th><th style="text-align:right">€</th><th style="text-align:right">£</th><th style="text-align:right">CZK</th><th>Note</th><th></th>
                 </tr></thead>
                 <tbody id="tx-storico-tbody"></tbody>
               </table>
@@ -8180,25 +8180,34 @@ function renderTxStorico() {
   const vendite = (db.toxico.vendite||[]).filter(v=>!evId||String(v.eventoId)===String(evId));
   
   // Metrics
-  const totEur = vendite.reduce((a,v)=>a+v.totEur,0);
+  const totEur = vendite.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totEur,0);
   const totGbp = vendite.reduce((a,v)=>a+v.totGbp,0);
-  const pos = vendite.filter(v=>v.pagamento==='POS').reduce((a,v)=>a+v.totEur,0);
-  const cont = vendite.filter(v=>v.pagamento==='Contanti').reduce((a,v)=>a+v.totEur,0);
+  const totCzk = vendite.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+(v.totEur||v.totCzk||0),0);
+  const pos = vendite.filter(v=>v.pagamento==='POS'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totEur,0);
+  const cont = vendite.filter(v=>v.pagamento==='Contanti'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totEur,0);
+  const posCzk = vendite.filter(v=>v.pagamento==='POS'&&v.valuta==='CZK').reduce((a,v)=>a+(v.totEur||v.totCzk||0),0);
+  const contCzk = vendite.filter(v=>v.pagamento==='Contanti'&&v.valuta==='CZK').reduce((a,v)=>a+(v.totEur||v.totCzk||0),0);
   const nPezzi = vendite.reduce((a,v)=>a+v.qta,0);
   document.getElementById('tx-storico-metrics').innerHTML=`
     <div class="metric"><div class="metric-label">Pezzi venduti</div><div class="metric-value">${nPezzi}</div></div>
-    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div></div>
-    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:16px;font-weight:600">€ ${pos.toFixed(2)}</span></div><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti</span><span style="font-size:16px;font-weight:600">€ ${cont.toFixed(2)}</span></div></div></div>
+    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div>${totCzk>0?`<div style="font-size:13px;color:#6D28D9;font-weight:600;margin-top:2px">${totCzk} CZK</div>`:''}</div>
+    <div class="metric"><div class="metric-label">💳 POS / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:16px;font-weight:600">€ ${pos.toFixed(2)}${posCzk>0?' / '+posCzk+' CZK':''}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti</span><span style="font-size:16px;font-weight:600">€ ${cont.toFixed(2)}${contCzk>0?' / '+contCzk+' CZK':''}</span></div>
+    </div></div>
     <div class="metric"><div class="metric-label">Dovuto a Toxico £</div><div class="metric-value" style="color:#7F1D1D">£ ${totGbp.toFixed(2)}</div></div>
   `;
 
   // Table
   const sorted=[...vendite].sort((a,b)=>b.ts.localeCompare(a.ts));
   const tbody=document.getElementById('tx-storico-tbody');
-  if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
+  if(!sorted.length){ tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:20px">Nessuna vendita</td></tr>`; return; }
   tbody.innerHTML=sorted.map(v=>{
     const ev=(db.eventi||[]).find(e=>String(e.id)===String(v.eventoId));
     const dt=new Date(v.ts);
+    const isCzk = v.valuta==='CZK';
+    const eurDisplay = isCzk ? '—' : `€ ${v.totEur.toFixed(2)}`;
+    const czkDisplay = isCzk ? `${v.totEur||v.totCzk||0} CZK` : '—';
     return `<tr>
       <td class="mono" style="font-size:12px;white-space:nowrap">${dt.toLocaleDateString('it-IT')} ${dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</td>
       <td style="font-weight:500">${ev?ev.nome:'—'}</td>
@@ -8206,8 +8215,9 @@ function renderTxStorico() {
       <td>${v.taglia==='NO'?'—':v.taglia}</td>
       <td class="mono">${v.qta}</td>
       <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:${v.pagamento==='POS'?'#DBEAFE':'#D1FAE5'};color:${v.pagamento==='POS'?'#1E40AF':'#065F46'}">${v.pagamento}</span></td>
-      <td class="mono" style="text-align:right;font-weight:600">€ ${v.totEur.toFixed(2)}</td>
+      <td class="mono" style="text-align:right;font-weight:600">${eurDisplay}</td>
       <td class="mono" style="text-align:right;color:#7F1D1D;font-weight:600">£ ${v.totGbp.toFixed(2)}</td>
+      <td class="mono" style="text-align:right;color:#6D28D9;font-weight:600">${czkDisplay}</td>
       <td style="font-size:12px;color:var(--text3);max-width:140px">${v.nota?`<span title="${v.nota}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${v.nota}</span>`:'—'}</td>
       <td><button class="btn btn-sm" onclick="txModificaVendita(${v.id})">Modifica</button> <button class="btn btn-sm btn-danger" onclick="txElimVendita(${v.id})">Elimina</button></td>
     </tr>`;
