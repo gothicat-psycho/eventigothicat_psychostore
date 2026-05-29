@@ -1974,6 +1974,7 @@ function showSection(s, el) {
   if(s==='report') initReport();
   if(s==='bilancioeventi') renderBilancioEventiPage();
   if(s==='pepito') renderPepito();
+  if(s==='toxico') renderToxico();
   if(s==='storicostock') initStoricoStock();
   if(s==='tarocchi') initTarocchi();
   if(s==='etichette') initEtichette();
@@ -7852,7 +7853,6 @@ const TX_CAT_COLORS = {
 function renderTxProdotti() {
   // Categorie in ordine alfabetico
   const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))].sort();
-  console.log('renderTxProdotti called, cats:', cats, 'grid:', !!document.getElementById('tx-prodotti-grid'));
   let html = '';
   cats.forEach(cat => {
     // Prodotti in ordine alfabetico per nome
