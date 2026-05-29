@@ -7864,7 +7864,7 @@ function renderTxProdotti() {
     prods.forEach(p => {
       const isSel = txCassaProdSel && txCassaProdSel.id===p.id;
       html += `<button onclick="txSelProdotto('${p.id}')" style="padding:8px 14px;border:2px solid ${isSel?'var(--accent)':c.border};border-radius:var(--radius);background:${isSel?'var(--accent-light)':'white'};cursor:pointer;font-size:13px;font-weight:${isSel?'600':'400'};color:${isSel?'var(--accent)':c.color};white-space:nowrap">
-        ${p.nome}<br><span style="font-size:11px;opacity:0.7">€${p.prezzoEur} / £${p.prezzoGbp}</span>
+        ${p.nome}<br><span style="font-size:11px;opacity:0.7">€${p.prezzoEur} / £${p.prezzoGbp}${isCzEvent(getEvento(cassaEventoId))&&p.prezzoCzk?' / '+p.prezzoCzk+' Kč':''}</span>
       </button>`;
     });
     html += `</div>`;
