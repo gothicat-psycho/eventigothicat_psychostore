@@ -7872,7 +7872,8 @@ function renderTxProdotti() {
     }
     html += `</div>`;
   });
-  document.getElementById('tx-prodotti-grid').innerHTML = html;
+  const grid = document.getElementById('tx-prodotti-grid');
+  if(grid) grid.innerHTML = html;;
 }
 
 function renderTxTagliePicker() {
@@ -7940,6 +7941,7 @@ window.txAggiungiScontrino = txAggiungiScontrino;
 
 function renderTxScontrino() {
   const cont = document.getElementById('tx-scontrino-righe');
+  if(!cont) return;
   if(!txScontrino.length) {
     cont.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Scontrino vuoto</div>';
     document.getElementById('tx-sc-eur').textContent = txValuta==='CZK'?'0 Kč':'€ 0.00';
