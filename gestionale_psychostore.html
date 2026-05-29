@@ -7231,6 +7231,7 @@ function setTxValuta(val) {
   if(pane && pane.style.display !== 'none') renderTxScontrino();
 }
 window.setTxValuta = setTxValuta;
+window.initTxValuta = initTxValuta;
 
 function initTxValuta(evId) {
   const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
@@ -7259,6 +7260,7 @@ function setTarValuta(val) {
   renderTarScontrino();
 }
 window.setTarValuta = setTarValuta;
+window.initTarValuta = initTarValuta;
 
 function initTarValuta(evId) {
   const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
