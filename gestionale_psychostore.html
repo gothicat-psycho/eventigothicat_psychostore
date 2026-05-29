@@ -2355,7 +2355,11 @@ function attivaEvento(id) {
 }
 window.attivaEvento = attivaEvento;
 
-function isCzEvent(ev) { return ev && (ev.nazione||'').toLowerCase().includes('cec'); }
+function isCzEvent(ev) {
+  if(!ev) return false;
+  const n = (ev.nazione||'').toLowerCase();
+  return n.includes('cec') || n.includes('czech') || n.includes('cechia') || n.includes('repubblica') || n === 'cz';
+}
 
 // ── CASSA ──
 function getEvento(id) { return (db.eventi||[]).find(e=>e.id===id); }
@@ -7258,12 +7262,13 @@ window.setTarValuta = setTarValuta;
 
 function initTarValuta(evId) {
   const ev = (db.eventi||[]).find(e=>String(e.id)===String(evId));
+  console.log('initTarValuta evId:', evId, 'ev:', ev?.nome, 'nazione:', ev?.nazione);
   const isCz = isCzEvent(ev);
+  console.log('isCz:', isCz);
   const sel = document.getElementById('tar-valuta-sel');
   if(sel) sel.style.display = isCz ? 'flex' : 'none';
-  // Se non è evento CZ, forza EUR; altrimenti mantieni la valuta attuale
   if(!isCz) setTarValuta('EUR');
-  else setTarValuta(tarValuta); // aggiorna bottoni e griglia senza cambiare valuta
+  else setTarValuta(tarValuta);
 }
 
 function getTarPrezzo() {
