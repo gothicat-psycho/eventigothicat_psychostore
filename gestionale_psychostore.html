@@ -7852,6 +7852,7 @@ const TX_CAT_COLORS = {
 function renderTxProdotti() {
   // Categorie in ordine alfabetico
   const cats = [...new Set(TOXICO_CATALOG.map(p=>p.cat))].sort();
+  console.log('renderTxProdotti called, cats:', cats, 'grid:', !!document.getElementById('tx-prodotti-grid'));
   let html = '';
   cats.forEach(cat => {
     // Prodotti in ordine alfabetico per nome
