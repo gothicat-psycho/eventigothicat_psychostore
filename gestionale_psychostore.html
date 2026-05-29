@@ -7698,22 +7698,22 @@ const TOXICO_CATALOG = [
   { id:'DFB-SHORTS',                nome:'DFB',                        cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1100 },
   { id:'GASMASK-SHORTS',            nome:'GAS MASK',                   cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1100 },
   // Bandana
-  { id:'SUERTE-BANDANA',            nome:'SUERTE GREY',                cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
-  { id:'FTW-BANDANA',               nome:'FTW RED',                    cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
-  { id:'ROTTINGSKULL-BANDANA',      nome:'ROTTING SKULL BLACK',        cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75 },
+  { id:'SUERTE-BANDANA',            nome:'SUERTE GREY',                cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75, prezzoCzk:250 },
+  { id:'FTW-BANDANA',               nome:'FTW RED',                    cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75, prezzoCzk:250 },
+  { id:'ROTTINGSKULL-BANDANA',      nome:'ROTTING SKULL BLACK',        cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75, prezzoCzk:250 },
   // Mesh Tanks
   { id:'METALSKULL-TANK',           nome:'METAL SKULL',                cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
   { id:'DFB-TANK',                  nome:'DFB',                        cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
   { id:'BOLTSKULL-TANK',            nome:'BOLT SKULL',                 cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
   { id:'GASMASK-TANK',              nome:'GAS MASK',                   cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
   // New Mesh Tanks
-  { id:'DETHSQUAD-NEWTANK',         nome:'DETH SQUAD',                 cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
-  { id:'VOMIT13-NEWTANK',           nome:'VOMIT 13',                   cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
-  { id:'BURN25-NEWTANK',            nome:'BURN 25',                    cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5 },
+  { id:'DETHSQUAD-NEWTANK',         nome:'DETH SQUAD',                 cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5, prezzoCzk:1400 },
+  { id:'VOMIT13-NEWTANK',           nome:'VOMIT 13',                   cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5, prezzoCzk:1400 },
+  { id:'BURN25-NEWTANK',            nome:'BURN 25',                    cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5, prezzoCzk:1400 },
   // Truckers
-  { id:'TRUCKER',                   nome:'Trucker Hat',                cat:'Truckers',       taglie:['NO'], prezzoEur:25, prezzoGbp:9 },
+  { id:'TRUCKER',                   nome:'Trucker Hat',                cat:'Truckers',       taglie:['NO'], prezzoEur:25, prezzoGbp:9, prezzoCzk:600 },
   // Retro Sweat Shorts
-  { id:'SKULLY-RETROSHORTS',        nome:'SKULLY',                     cat:'Retro Sweat Shorts', taglie:['XS','S','M','L','XL'], prezzoEur:29, prezzoGbp:12.5 },
+  { id:'SKULLY-RETROSHORTS',        nome:'SKULLY',                     cat:'Retro Sweat Shorts', taglie:['XS','S','M','L','XL'], prezzoEur:29, prezzoGbp:12.5, prezzoCzk:800 },
   // Socks
   { id:'DUSTER-SOCKS',              nome:'DUSTER Socks',               cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
   { id:'LOGOBLACK-SOCKS',           nome:'LOGO Socks Black',           cat:'Socks',          taglie:['S/M','M/L','L/XL'], prezzoEur:10, prezzoGbp:4.5, prezzoCzk:250 },
@@ -7863,8 +7863,12 @@ function renderTxProdotti() {
       <div style="display:flex;flex-wrap:wrap;gap:8px">`;
     prods.forEach(p => {
       const isSel = txCassaProdSel && txCassaProdSel.id===p.id;
+      const isCz = isCzEvent(getEvento(cassaEventoId));
+      const priceLabel = isCz
+        ? `${p.prezzoCzk ? p.prezzoCzk+' Kč' : '— Kč'}`
+        : `€${p.prezzoEur} / £${p.prezzoGbp}`;
       html += `<button onclick="txSelProdotto('${p.id}')" style="padding:8px 14px;border:2px solid ${isSel?'var(--accent)':c.border};border-radius:var(--radius);background:${isSel?'var(--accent-light)':'white'};cursor:pointer;font-size:13px;font-weight:${isSel?'600':'400'};color:${isSel?'var(--accent)':c.color};white-space:nowrap">
-        ${p.nome}<br><span style="font-size:11px;opacity:0.7">€${p.prezzoEur} / £${p.prezzoGbp}${isCzEvent(getEvento(cassaEventoId))&&p.prezzoCzk?' / '+p.prezzoCzk+' Kč':''}</span>
+        ${p.nome}<br><span style="font-size:11px;opacity:0.7">${priceLabel}</span>
       </button>`;
     });
     html += `</div>`;
