@@ -2607,7 +2607,7 @@ function renderStorico() {
     (!pagFilt||v.pagamento===pagFilt)
   ).sort((a,b)=>b.dataOra.localeCompare(a.dataOra));
   const totEur = list.filter(v=>!v.valuta||v.valuta==='EUR').reduce((a,v)=>a+v.totale,0);
-  const totCzk = list.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  const totCzk = list.filter(v=>v.valuta==='CZK'&&v.pagamento!=='pos').reduce((a,v)=>a+v.totale,0);
   const nArt = list.reduce((a,v)=>a+(v.items||[]).length,0);
   // POS = solo EUR; Contanti = EUR separati da CZK
   const posEur  = list.filter(v=>v.pagamento==='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
@@ -2651,7 +2651,7 @@ function renderStorico() {
       <td class="mono" style="font-weight:500">${totFmt}</td>
       <td class="mono" style="font-size:12px;color:var(--text3)">${costoMerce>0?fmt(costoMerce):'—'}</td>
       <td class="mono" style="font-size:12px;${margineClass}">${margine!==null?Math.round(margine)+'%':'—'}</td>
-      <td style="font-size:12px;color:var(--text3);max-width:130px">${v.nota?'<span title="'+v.nota+'" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 '+v.nota+'</span>':'—'}</td>
+      <td style="font-size:12px;color:var(--text3);max-width:220px">${v.nota?`<span title="${v.nota}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help">📝 ${v.nota}</span>`:'—'}</td>
       <td><button class="btn btn-sm" onclick="modificaVendita(${v.id})">Modifica</button> <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dtFmt}')">Elimina</button></td>
     </tr>`;
   }).join('') : '<tr><td colspan="10" class="empty">Nessuna vendita trovata</td></tr>';
@@ -2716,7 +2716,10 @@ function modificaVendita(id) {
           <option value="">— Nessun evento —</option>
           ${(db.eventi||[]).map(e=>`<option value="${e.id}" ${v.eventoId===e.id?'selected':''}>${e.nome}</option>`).join('')}
         </select>
-        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Note</label>
+        <textarea id="mv-note" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;resize:vertical;min-height:70px">${v.nota||''}</textarea>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('modal-mod-vendita').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px">Annulla</button>
@@ -2781,6 +2784,7 @@ async function salvaModificaVendita(id) {
   v.valuta = document.getElementById('mv-valuta').value;
   const eventoVal = document.getElementById('mv-evento').value;
   if(eventoVal) v.eventoId = parseInt(eventoVal); else delete v.eventoId;
+  v.nota = document.getElementById('mv-note')?.value?.trim()||'';
   await saveDB();
   document.getElementById('modal-mod-vendita')?.remove();
   showToast('Vendita aggiornata ✓');
