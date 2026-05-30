@@ -2606,12 +2606,12 @@ function renderStorico() {
     (!datFilt||v.dataOra.startsWith(datFilt)) &&
     (!pagFilt||v.pagamento===pagFilt)
   ).sort((a,b)=>b.dataOra.localeCompare(a.dataOra));
-  const totEur = list.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  const totEur = list.filter(v=>!v.valuta||v.valuta==='EUR').reduce((a,v)=>a+v.totale,0);
   const totCzk = list.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const nArt = list.reduce((a,v)=>a+(v.items||[]).length,0);
-  // POS = solo EUR; Contanti = EUR + CZK separati
-  const posEur  = list.filter(v=>v.pagamento==='pos').reduce((a,v)=>a+v.totale,0);
-  const contEur = list.filter(v=>v.pagamento!=='pos'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  // POS = solo EUR; Contanti = EUR separati da CZK
+  const posEur  = list.filter(v=>v.pagamento==='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const contEur = list.filter(v=>v.pagamento!=='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
   const contCzk = list.filter(v=>v.pagamento!=='pos'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const costoMerceTot = list.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
   const margTot = totEur>0&&costoMerceTot>0 ? (totEur-costoMerceTot)/totEur*100 : null;
