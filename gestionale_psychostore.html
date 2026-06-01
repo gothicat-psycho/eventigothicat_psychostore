@@ -2865,7 +2865,13 @@ function renderREvento() {
   const czkInEur = czkRate && czk ? czk / czkRate : null;
   const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
   const prodCount = {};
-  vend.forEach(v=>(v.items||[]).forEach(it=>{ prodCount[it.barcode]=(prodCount[it.barcode]||{qty:0,fatturato:0}); prodCount[it.barcode].qty+=(it.qty||1); prodCount[it.barcode].fatturato+=(it.prezzo||0); }));
+  vend.forEach(v=>(v.items||[]).forEach(it=>{
+    if(!prodCount[it.barcode]) prodCount[it.barcode]={qty:0,fatturatoEur:0,fatturatoCzk:0,fatturato:0};
+    prodCount[it.barcode].qty+=(it.qty||1);
+    if(v.valuta==='CZK') prodCount[it.barcode].fatturatoCzk+=(it.prezzo||0);
+    else prodCount[it.barcode].fatturatoEur+=(it.prezzo||0);
+    prodCount[it.barcode].fatturato=prodCount[it.barcode].fatturatoEur+(czkRate?prodCount[it.barcode].fatturatoCzk/czkRate:0);
+  }));
   const sortEv = document.getElementById('r-ev-sort')?.value||'qty';
   let top = Object.entries(prodCount);
   if(sortEv==='fatturato') top.sort((a,b)=>b[1].fatturato-a[1].fatturato);
@@ -2894,7 +2900,11 @@ function renderREvento() {
         <td style="font-size:11px;color:var(--text3)">${p?.categoria||'—'}</td>
         <td style="font-weight:${i<3?700:400}">${p?getNomeProdotto(p)||p.descrizione:b}</td>
         <td class="mono">${d.qty}</td>
-        <td class="mono">${fmt(d.fatturato)}</td>
+        <td class="mono">
+          ${d.fatturatoEur>0?fmt(d.fatturatoEur):''}
+          ${d.fatturatoCzk>0?`<div style="font-size:11px;color:#6D28D9;font-weight:600">${Math.round(d.fatturatoCzk).toLocaleString('it')} CZK${czkRate?' ≈ '+fmt(d.fatturatoCzk/czkRate):''}</div>`:''}
+          ${d.fatturatoEur===0&&d.fatturatoCzk===0?fmt(0):''}
+        </td>
         <td style="width:20%"><div class="report-bar-wrap"><div class="report-bar" style="width:${Math.round(barVal/barMax*100)}%"></div></div></td>
       </tr>`; }).join('')}</tbody></table>
     </div>`;
