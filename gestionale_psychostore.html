@@ -2851,11 +2851,11 @@ function initReport() {
 }
 
 function renderREvento() {
-  const evId = parseInt(document.getElementById('r-ev').value)||0;
+  const evId = document.getElementById('r-ev').value;
   const el = document.getElementById('r-ev-content');
   if(!evId) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Seleziona un evento.</p></div>'; return; }
-  const vend = (db.vendite||[]).filter(v=>v.eventoId===evId);
-  const ev = getEvento(evId);
+  const vend = (db.vendite||[]).filter(v=>String(v.eventoId)===String(evId));
+  const ev = getEvento(parseInt(evId));
   const eur = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
   const czk = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const pos = vend.filter(v=>v.pagamento==='pos').reduce((a,v)=>a+v.totale,0);
