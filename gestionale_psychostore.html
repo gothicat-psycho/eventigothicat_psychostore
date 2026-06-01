@@ -2856,10 +2856,11 @@ function renderREvento() {
   if(!evId) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Seleziona un evento.</p></div>'; return; }
   const vend = (db.vendite||[]).filter(v=>String(v.eventoId)===String(evId));
   const ev = getEvento(parseInt(evId));
-  const eur = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
-  const czk = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
-  const pos = vend.filter(v=>v.pagamento==='pos').reduce((a,v)=>a+v.totale,0);
-  const cont = vend.filter(v=>v.pagamento!=='pos').reduce((a,v)=>a+v.totale,0);
+  const eur = vend.filter(v=>!v.valuta||v.valuta==='EUR').reduce((a,v)=>a+v.totale,0);
+  const czk = vend.filter(v=>v.valuta==='CZK'&&v.pagamento!=='pos').reduce((a,v)=>a+v.totale,0);
+  const posEur  = vend.filter(v=>v.pagamento==='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const contEur = vend.filter(v=>v.pagamento!=='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const contCzk = vend.filter(v=>v.pagamento!=='pos'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
   const prodCount = {};
   vend.forEach(v=>(v.items||[]).forEach(it=>{ prodCount[it.barcode]=(prodCount[it.barcode]||{qty:0,fatturato:0}); prodCount[it.barcode].qty+=(it.qty||1); prodCount[it.barcode].fatturato+=(it.prezzo||0); }));
