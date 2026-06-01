@@ -2861,6 +2861,8 @@ function renderREvento() {
   const posEur  = vend.filter(v=>v.pagamento==='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
   const contEur = vend.filter(v=>v.pagamento!=='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
   const contCzk = vend.filter(v=>v.pagamento!=='pos'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  const czkRate = ev?.czkRate || null;
+  const czkInEur = czkRate && czk ? czk / czkRate : null;
   const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
   const prodCount = {};
   vend.forEach(v=>(v.items||[]).forEach(it=>{ prodCount[it.barcode]=(prodCount[it.barcode]||{qty:0,fatturato:0}); prodCount[it.barcode].qty+=(it.qty||1); prodCount[it.barcode].fatturato+=(it.prezzo||0); }));
@@ -2876,6 +2878,7 @@ function renderREvento() {
       <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${vend.length}</div><div class="metric-sub">${nArt} articoli</div></div>
       <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(eur)}</div></div>
       ${czk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(czk).toLocaleString('it')} CZK</div></div>`:''}
+      ${czkInEur?`<div class="metric"><div class="metric-label">CZK → € (cambio ${czkRate})</div><div class="metric-value" style="color:#6D28D9">${fmt(czkInEur)}</div></div>`:''}
       <div class="metric"><div class="metric-label">💳 POS (€) / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
       <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:15px;font-weight:600">${fmt(posEur)}</span></div>
       <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti €</span><span style="font-size:15px;font-weight:600">${fmt(contEur)}</span></div>
