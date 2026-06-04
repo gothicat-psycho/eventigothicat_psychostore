@@ -4145,7 +4145,7 @@ function rettificaAccStock(catId, mag, el) {
     if (!db.movimentiAcc) db.movimentiAcc = [];
     if (!db.nextMovAccId) db.nextMovAccId = 1;
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty: Math.abs(delta), tipo: delta > 0 ? 'carico' : 'scarico', data: today(), note: 'Rettifica manuale' });
-    await saveDBFields({ nextMovAccId: db.nextMovAccId, accPrezzi: db.accPrezzi||{} });
+    await saveDBFields({ movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId });
     renderAccessori();
     renderAccTour();
     showToast(`Stock aggiornato: ${attuale} → ${nuovo}`);
