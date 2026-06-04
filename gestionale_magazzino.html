@@ -2207,6 +2207,7 @@ function renderStock() {
       const catTl = cat.taglieLista || TAGLIE;
       const catTot = getTotaleStock(l.id, cat.id, magFilter);
       const lblCls = catLabelClass[cat.id] || 'cat-shop';
+      const setAllId = `sall_${l.id}_${cat.id}_${magFilter}`;
       if (cat.taglie) {
         const cells = catTl.map(t => {
           const s = getStock(l.id, cat.id, t, magFilter);
@@ -2216,10 +2217,16 @@ function renderStock() {
             onclick="apriEditStock(this,${l.id},'${cat.id}','${t}','${magFilter}')">${s}</div>`;
         }).join('');
         const hdrs = catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('');
+        const setAllBtn = isTotale ? '' : `
+          <div style="display:flex;align-items:center;gap:4px;margin-top:5px">
+            <input type="number" id="${setAllId}" min="0" placeholder="0" style="width:52px;padding:2px 4px;font-size:11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);text-align:center">
+            <button onclick="impostaTutteTaglie(${l.id},'${cat.id}','${magFilter}','${setAllId}')" style="font-size:10px;padding:2px 7px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;white-space:nowrap">Imposta tutto</button>
+          </div>`;
         return `<div class="stock-cat-block">
           <div style="margin-bottom:2px"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
           <div class="stock-taglia-headers">${hdrs}</div>
           <div class="stock-taglia-row">${cells}</div>
+          ${setAllBtn}
         </div>`;
       } else {
         const s = getStock(l.id, cat.id, null, magFilter);
@@ -2313,6 +2320,32 @@ function renderStock() {
 // ─────────────────────────────────────────────
 // EDIT STOCK INLINE
 // ─────────────────────────────────────────────
+async function impostaTutteTaglie(logoId, catId, mag, inputId) {
+  const val = parseInt(document.getElementById(inputId)?.value);
+  if (isNaN(val) || val < 0) { showToast('Inserisci un valore valido', 'red'); return; }
+  const logo = getLogo(logoId);
+  const cat = getCat(catId);
+  const taglie = cat?.taglieLista || TAGLIE;
+  const nuoviMov = [];
+  taglie.forEach(t => {
+    const attuale = getStock(logoId, catId, t, mag);
+    const delta = val - attuale;
+    if (delta === 0) return;
+    const m = {
+      id: db.nextMovId++, logoId, catId, taglia: t,
+      magazzino: mag, qty: Math.abs(delta),
+      tipo: delta > 0 ? 'carico' : 'scarico',
+      data: today(), note: `Imposta tutto a ${val}`
+    };
+    db.movimenti.push(m);
+    nuoviMov.push(m);
+  });
+  if (nuoviMov.length === 0) { showToast('Nessuna variazione necessaria'); return; }
+  await Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })]);
+  renderStock();
+  showToast(`${logo?.nome} — ${cat?.label}: tutte le taglie impostate a ${val} pz ✓`);
+}
+
 function apriEditStock(el, logoId, catId, taglia, mag) {
   if (el.querySelector('input')) return;
   const stockAttuale = getStock(logoId, catId, taglia, mag);
