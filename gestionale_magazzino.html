@@ -711,12 +711,20 @@
       <!-- RIENTRO POST-EVENTO -->
       <div class="card">
         <div class="card-title" style="color:var(--orange, #E65100)">📦 Rientro post-evento — Tour → Magazzini</div>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Distribuisci lo stock rimanente del Tour tra Napoli e Avigliana a fine evento.</p>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Distribuisci lo stock rimanente del Tour tra Napoli e Avigliana a fine evento.</p>
+
+        <!-- Bottoni rapidi -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);width:100%;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Trasferimento rapido</div>
+          <button class="btn" style="border-color:#5B3DB5;color:#5B3DB5" onclick="rientroRapido('napoli')">⚡ Tutto a Napoli</button>
+          <button class="btn" style="border-color:var(--accent);color:var(--accent)" onclick="rientroRapido('avigliana')">⚡ Tutto ad Avigliana</button>
+        </div>
+
         <div class="form-row cols3" style="margin-bottom:12px">
           <div class="form-group"><label>Data rientro</label><input id="rientro-data" type="date"></div>
           <div class="form-group"><label>Note</label><input id="rientro-note" placeholder="es. Rientro WGT 2026"></div>
           <div class="form-group" style="align-self:flex-end">
-            <button class="btn" onclick="caricaStockTourRientro()">Carica stock Tour attuale</button>
+            <button class="btn" onclick="caricaStockTourRientro()">Carica stock Tour (manuale)</button>
           </div>
         </div>
         <div id="rientro-items" style="display:none">
@@ -2771,6 +2779,79 @@ function apriReportSnapshot(eventoId) {
 }
 
 // Reminder nel rientro post-evento
+async function rientroRapido(destinazione) {
+  const data = document.getElementById('rientro-data').value || today();
+  const note = document.getElementById('rientro-note').value.trim() || `Rientro rapido → ${destinazione}`;
+  const destLabel = destinazione === 'napoli' ? 'Napoli' : 'Avigliana';
+
+  // Raccoglie tutto lo stock tour > 0
+  const items = [];
+  (db.loghi||[]).forEach(logo => {
+    const cats = getCatPerLogo(logo.nome);
+    cats.forEach(cat => {
+      if (cat.taglie) {
+        (cat.taglieLista||TAGLIE).forEach(t => {
+          const s = getStock(logo.id, cat.id, t, 'tour');
+          if (s > 0) items.push({ logoId: logo.id, catId: cat.id, taglia: t, qty: s });
+        });
+      } else {
+        const s = getStock(logo.id, cat.id, null, 'tour');
+        if (s > 0) items.push({ logoId: logo.id, catId: cat.id, taglia: null, qty: s });
+      }
+    });
+  });
+
+  // Accessori
+  const accItems = [];
+  ACC_CATS.forEach(c => {
+    const s = getAccStock(c.id, 'tour');
+    if (s > 0) accItems.push({ catId: c.id, qty: s });
+  });
+
+  const totale = items.length + accItems.length;
+  if (totale === 0) { showToast('Nessuno stock nel magazzino Tour'); return; }
+
+  // Snapshot reminder
+  const eventoAttivoId = cassaEventoId || parseInt(localStorage.getItem('cassaEventoId'));
+  if (eventoAttivoId) {
+    const hasChiusura = (db.snapshots||[]).some(s => s.eventoId === eventoAttivoId && s.tipo === 'chiusura');
+    if (!hasChiusura) {
+      const conf = confirm(`⚠️ Nessuna fotografia di chiusura per questo evento!\n\nVuoi farne una ora prima di eseguire il rientro?\n\nOK = Fotografa\nAnnulla = Procedi senza`);
+      if (conf) await faiSnapshot(eventoAttivoId, 'chiusura');
+    }
+  }
+
+  if (!confirm(`Sposta TUTTO lo stock Tour (${totale} righe) a ${destLabel}?\n\nData: ${data}\nNota: ${note}`)) return;
+
+  const nuoviMov = [];
+
+  // Movimenti tessile
+  items.forEach(it => {
+    const mOut = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'scarico', magazzino: 'tour', data, note };
+    const mIn  = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'carico', magazzino: destinazione, data, note };
+    db.movimenti.push(mOut, mIn);
+    nuoviMov.push(mOut, mIn);
+  });
+
+  // Movimenti accessori
+  accItems.forEach(it => {
+    if (!db.movimentiAcc) db.movimentiAcc = [];
+    if (!db.nextMovAccId) db.nextMovAccId = 1;
+    db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.catId, mag: 'tour', magazzino: 'tour', qty: it.qty, tipo: 'scarico', data, note });
+    db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.catId, mag: destinazione, magazzino: destinazione, qty: it.qty, tipo: 'carico', data, note });
+  });
+
+  await Promise.all([
+    ...nuoviMov.map(m => saveMovimento(m)),
+    saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
+  ]);
+
+  renderTrasferimenti();
+  renderAccessori();
+  renderAccTour();
+  showToast(`✓ Tutto lo stock Tour spostato a ${destLabel} — ${totale} righe`);
+}
+
 function caricaStockTourRientro() {
   // Raccoglie tutti gli articoli con stock tour > 0
   const items = [];
