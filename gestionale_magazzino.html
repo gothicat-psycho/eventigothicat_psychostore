@@ -1480,7 +1480,6 @@ async function saveDB() {
   try {
     isSaving = true;
     showSyncStatus('Salvataggio...');
-    // Salva solo dati leggeri nel documento principale
     const { vendite, movimenti, ...dbLight } = db;
     await DOC_REF.set(dbLight);
     updateFooter();
@@ -1490,6 +1489,27 @@ async function saveDB() {
     console.error('Errore salvataggio:', e);
     showSyncStatus('Errore salvataggio!', true);
     isSaving = false;
+  }
+}
+
+// Salvataggio parziale — aggiorna solo i campi specificati (molto più veloce)
+async function saveDBFields(fields) {
+  try {
+    isSaving = true;
+    showSyncStatus('Salvataggio...');
+    await DOC_REF.update(fields);
+    updateFooter();
+    showSyncStatus('');
+    isSaving = false;
+  } catch(e) {
+    // Se il documento non esiste ancora, usa set
+    if (e.code === 'not-found') {
+      await saveDB();
+    } else {
+      console.error('Errore salvataggio:', e);
+      showSyncStatus('Errore salvataggio!', true);
+      isSaving = false;
+    }
   }
 }
 
@@ -1742,7 +1762,7 @@ function aggiungiForn() {
     piva: document.getElementById('f-piva').value.trim(),
     note: document.getElementById('f-note').value.trim(),
   });
-  saveDB();
+  saveDBFields({ fornitori: db.fornitori, nextFornId: db.nextFornId });
   ['f-nome','f-ref','f-email','f-tel','f-piva','f-note'].forEach(id => document.getElementById(id).value = '');
   renderFornitori();
   showToast('Fornitore aggiunto');
@@ -1803,7 +1823,7 @@ function aggiungiLogo() {
     note: document.getElementById('l-note').value.trim(),
     stato: document.getElementById('l-stato').value,
   });
-  saveDB();
+  saveDBFields({ loghi: db.loghi, nextLogoId: db.nextLogoId });
   ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-costo-tshirt-bambino','l-prezzo-tshirt',
    'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers',
    'l-costo-felpe','l-prezzo-felpe','l-minimo','l-note','l-immagine-url']
@@ -1981,7 +2001,7 @@ function salvaOrdine() {
     items: loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())) })),
     stato: 'in attesa',
   });
-  saveDB();
+  saveDBFields({ ordini: db.ordini, nextOrdId: db.nextOrdId });
   ['o-ref','o-note'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('o-fornitore').value = '';
   loghiOrdine = [];
@@ -2096,7 +2116,7 @@ function riceviOrdine() {
     });
   });
   ordineAperto.stato = 'ricevuto';
-  saveDB();
+  saveDBFields({ ordini: db.ordini, nextMovId: db.nextMovId });
   closeModal('modal-ordine');
   renderOrdini();
   renderDashboard();
@@ -2323,7 +2343,7 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
       note: 'Rettifica manuale',
     };
     db.movimenti.push(m);
-    await Promise.all([saveMovimento(m), saveDB()]);
+    await Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })]);
     renderStock();
     showToast(`Stock ${mag} aggiornato: ${stockAttuale} → ${nuovoStock}`);
   }
@@ -2418,7 +2438,7 @@ async function salvaTrasferimento() {
       qty: it.qty
     }))
   });
-  await saveDB();
+  await saveDBFields({ nextMovId: db.nextMovId });
   trItems = [];
   document.getElementById('tr-da').value = 'avigliana';
   document.getElementById('tr-a').value = 'napoli';
@@ -2507,7 +2527,7 @@ async function salvaTourgCell(input, logoId, catId, taglia, stockAttuale) {
     note: 'Carico manuale tour'
   };
   db.movimenti.push(m);
-  await Promise.all([saveMovimento(m), saveDB()]);
+  await Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })]);
   renderTourGrid();
   showToast('Stock tour aggiornato ✓');
 }
@@ -2571,7 +2591,7 @@ async function faiSnapshot(eventoId, tipo) {
   if (!db.snapshots) db.snapshots = [];
   const snap = creaSnapshot(eventoId, tipo);
   db.snapshots.push(snap);
-  await saveDB();
+  await saveDBFields({ snapshots: db.snapshots });
 
   const nLoghi = Object.keys(snap.stock).length;
   const nAcc = Object.keys(snap.accessori).length;
@@ -2841,7 +2861,7 @@ async function eseguiRientro() {
     }
   }
 
-  await Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDB()]);
+  await Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })]);
   document.getElementById('rientro-items').style.display = 'none';
   showToast(`Rientro eseguito — ${nuoviMov.length} movimenti registrati ✓`);
 }
@@ -2911,7 +2931,7 @@ function salvaForn() {
   f.tel = document.getElementById('ef-tel').value.trim();
   f.piva = document.getElementById('ef-piva').value.trim();
   f.note = document.getElementById('ef-note').value.trim();
-  saveDB();
+  saveDBFields({ fornitori: db.fornitori });
   closeModal('modal-edit-forn');
   renderFornitori();
   showToast('Fornitore aggiornato');
@@ -2980,7 +3000,7 @@ function salvaLogo() {
     felpe:        { costo: parseFloat((document.getElementById('el-costo-felpe')||{}).value)||0, prezzo: parseFloat((document.getElementById('el-prezzo-felpe')||{}).value)||0 },
   };
   delete l.costo; delete l.prezzo;
-  saveDB();
+  saveDBFields({ loghi: db.loghi, nextLogoId: db.nextLogoId });
   closeModal('modal-edit-logo');
   renderLoghi();
   showToast('Logo aggiornato');
@@ -3097,7 +3117,7 @@ function salvaEvento() {
   ev.fine = document.getElementById('ee-fine').value;
   ev.magazzino = document.getElementById('ee-mag').value;
   ev.czkRate = parseFloat(document.getElementById('ee-czk').value) || null;
-  saveDB();
+  saveDBFields({ eventi: db.eventi, nextEvId: db.nextEvId });
   closeModal('modal-edit-evento');
   renderEventi();
   showToast('Evento aggiornato');
@@ -3121,7 +3141,7 @@ function aggiungiEvento() {
     magazzino: document.getElementById('ev-mag').value,
     czkRate: parseFloat(document.getElementById('ev-czk').value) || null,
   });
-  saveDB();
+  saveDBFields({ eventi: db.eventi, nextEvId: db.nextEvId });
   ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine','ev-czk'].forEach(id => document.getElementById(id).value = '');
   renderEventi();
   showToast('Evento aggiunto');
@@ -3144,7 +3164,7 @@ function salvaPrezzicCzk() {
     tappeti: parseFloat(document.getElementById('czk-tappeti').value) || 0,
     mousepad: parseFloat(document.getElementById('czk-mousepad').value) || 0,
   };
-  saveDB();
+  saveDBFields({ prezziCzk: db.prezziCzk });
   showToast('Prezzi CZK salvati');
 }
 
@@ -4055,7 +4075,7 @@ async function salvaAccessori() {
       prezzo: parseFloat(document.getElementById(`acc-prezzo-${c.id}`).value) || 0,
     };
   });
-  await saveDB();
+  await saveDBFields({ accPrezzi: db.accPrezzi });
   showToast('Prezzi accessori salvati');
 }
 
@@ -4069,7 +4089,7 @@ async function registraMovAccessori() {
   if (!db.movimentiAcc) db.movimentiAcc = [];
   if (!db.nextMovAccId) db.nextMovAccId = 1;
   db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty, tipo, data: today(), note: '' });
-  await saveDB();
+  await saveDBFields({ movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId });
   document.getElementById('acc-qty').value = '';
   renderAccessori();
   showToast('Movimento registrato');
@@ -4092,7 +4112,7 @@ function rettificaAccStock(catId, mag, el) {
     if (!db.movimentiAcc) db.movimentiAcc = [];
     if (!db.nextMovAccId) db.nextMovAccId = 1;
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty: Math.abs(delta), tipo: delta > 0 ? 'carico' : 'scarico', data: today(), note: 'Rettifica manuale' });
-    await saveDB();
+    await saveDBFields({ nextMovAccId: db.nextMovAccId, accPrezzi: db.accPrezzi||{} });
     renderAccessori();
     renderAccTour();
     showToast(`Stock aggiornato: ${attuale} → ${nuovo}`);
@@ -4801,7 +4821,7 @@ async function migraXXLto2XL() {
   });
   if (count === 0) { showToast('Nessuna taglia XXL trovata nel database', 'green'); return; }
   if (!confirm(`Trovati ${count} elementi con taglia "XXL". Verranno rinominati in "2XL". Continuare?`)) return;
-  await saveDB();
+  await saveDB(); // migrazione XXL - full save necessario
   renderStock();
   showToast(`Migrazione completata: ${count} elementi aggiornati`, 'green');
 }
@@ -4811,7 +4831,7 @@ async function pulisciImmaginiBase64() {
   if (base64Loghi.length === 0) { showToast('Nessuna immagine base64 trovata', 'green'); return; }
   if (!confirm(`Trovate ${base64Loghi.length} immagini base64. Verranno rimosse dal database (puoi poi aggiungere gli URL GitHub). Continuare?`)) return;
   base64Loghi.forEach(l => { l.immagine = null; });
-  await saveDB();
+  await saveDBFields({ loghi: db.loghi });
   renderLoghi();
   showToast(`${base64Loghi.length} immagini rimosse — ora puoi aggiungere gli URL GitHub`, 'green');
 }
@@ -4862,7 +4882,7 @@ async function impostaStockMassa() {
     });
   });
 
-  await saveDB();
+  await saveDBFields({ nextMovId: db.nextMovId });
   renderStock();
   showToast(`Stock aggiornato: ${count} varianti impostate a ${qty} pz`);
 }
