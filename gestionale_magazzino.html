@@ -235,12 +235,12 @@
   .cassa-main { display: flex; flex-direction: column; gap: 12px; }
   .cassa-sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; max-height: calc(100vh - 100px); }
   .cassa-step { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); margin-bottom: 10px; }
-  .logo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .logo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .logo-btn { padding: 12px 10px 10px; border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; font-size: 14px; font-weight: 600; background: var(--surface); color: var(--text); text-align: center; transition: all .15s; line-height: 1.3; position: relative; }
   .logo-btn:hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
   .logo-btn.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .logo-btn.esaurito { opacity: .35; }
-  .logo-btn-img { width: 100%; height: 110px; object-fit: contain; margin-bottom: 8px; border-radius: 6px; }
+  .logo-btn-img { width: 100%; height: 140px; object-fit: contain; margin-bottom: 8px; border-radius: 6px; }
   /* POPUP */
   .logo-popup-overlay { display:none; position:fixed; inset:0; z-index:300; }
   .logo-popup-overlay.open { display:block; }
@@ -3470,18 +3470,57 @@ function initCassa() {
 function buildLoghiGrid() {
   const ev = getEvento(cassaEventoId);
   const mag = ev ? ev.magazzino : null;
-  const loghi = [...db.loghi].filter(l => l.stato !== 'archiviato').sort((a,b) => a.nome.localeCompare(b.nome,'it'));
-  const loghiHtml = loghi.map(l => {
+  const isHellfest = ev && ev.nome && ev.nome.toUpperCase().includes('HELLFEST');
+
+  const HELLCATS_PINNED = [
+    'HELLCATS ARCOBALENO',
+    'HELLCATS BASSO',
+    'HELLCATS BATTERIA',
+    'HELLCATS BLACK METAL',
+    'HELLCATS CHITARRA',
+    'HELLCATS MARSHALL',
+    'HELLCATS PALCO (AZZURRA/VIOLA)',
+    'HELLCATS PALCO (GIALLA/ROSSA)',
+  ];
+
+  const allLoghi = [...db.loghi].filter(l => l.stato !== 'archiviato');
+
+  let sortedLoghi;
+  if (isHellfest) {
+    const pinned = HELLCATS_PINNED
+      .map(nome => allLoghi.find(l => l.nome.toUpperCase() === nome.toUpperCase()))
+      .filter(Boolean);
+    const rest = allLoghi
+      .filter(l => !HELLCATS_PINNED.some(n => n.toUpperCase() === l.nome.toUpperCase()))
+      .sort((a,b) => a.nome.localeCompare(b.nome,'it'));
+    sortedLoghi = [...pinned, ...rest];
+  } else {
+    sortedLoghi = allLoghi.sort((a,b) => a.nome.localeCompare(b.nome,'it'));
+  }
+
+  const makeLogoBtn = (l) => {
     const tot = getTotaleLogoStock(l.id, mag);
     const imgHtml = l.immagine
       ? `<img src="${l.immagine}" class="logo-btn-img" alt="${l.nome}">`
       : `<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text3)">🎨</div>`;
-    return `<button class="logo-btn ${tot===0?'esaurito':''}" onclick="cassaSelLogo(${l.id}, this)" ${tot===0?'disabled':''}>
+    const isPinned = isHellfest && HELLCATS_PINNED.some(n => n.toUpperCase() === l.nome.toUpperCase());
+    const pinnedStyle = isPinned ? 'border-color:#E65100;box-shadow:0 0 0 2px #FEF3C7' : '';
+    return `<button class="logo-btn ${tot===0?'esaurito':''}" onclick="cassaSelLogo(${l.id}, this)" ${tot===0?'disabled':''} style="${pinnedStyle}">
+      ${isPinned ? '<div style="font-size:9px;font-weight:700;color:#E65100;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🔥 Hellcats</div>' : ''}
       ${imgHtml}
       ${l.nome}
       <div style="font-size:11px;font-weight:400;margin-top:4px;opacity:.7">${tot} pz</div>
     </button>`;
-  }).join('');
+  };
+
+  const pinnedSep = isHellfest ? `<div style="grid-column:1/-1;height:1px;background:#F97316;margin:4px 0;opacity:.4"></div>
+    <div style="grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#E65100;margin-bottom:2px">🔥 Hellcats — tutti gli altri loghi</div>` : '';
+
+  const loghiHtml = isHellfest
+    ? sortedLoghi.slice(0, HELLCATS_PINNED.length).map(makeLogoBtn).join('') +
+      pinnedSep +
+      sortedLoghi.slice(HELLCATS_PINNED.length).map(makeLogoBtn).join('')
+    : sortedLoghi.map(makeLogoBtn).join('');
 
   // Accessori buttons
   const accHtml = ACC_CATS.map(c => {
