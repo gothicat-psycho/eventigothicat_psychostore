@@ -3484,10 +3484,10 @@ function buildLoghiGrid() {
   ];
 
   const allLoghi = [...db.loghi].filter(l => l.stato !== 'archiviato');
-
+  let pinned = [];
   let sortedLoghi;
   if (isHellfest) {
-    const pinned = HELLCATS_PINNED
+    pinned = HELLCATS_PINNED
       .map(nome => allLoghi.find(l => l.nome.toUpperCase() === nome.toUpperCase()))
       .filter(Boolean);
     const rest = allLoghi
