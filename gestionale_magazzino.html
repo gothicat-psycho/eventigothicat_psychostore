@@ -3517,9 +3517,9 @@ function buildLoghiGrid() {
     <div style="grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#E65100;margin-bottom:2px">🔥 Hellcats — tutti gli altri loghi</div>` : '';
 
   const loghiHtml = isHellfest
-    ? sortedLoghi.slice(0, HELLCATS_PINNED.length).map(makeLogoBtn).join('') +
+    ? sortedLoghi.slice(0, pinned.length).map(makeLogoBtn).join('') +
       pinnedSep +
-      sortedLoghi.slice(HELLCATS_PINNED.length).map(makeLogoBtn).join('')
+      sortedLoghi.slice(pinned.length).map(makeLogoBtn).join('')
     : sortedLoghi.map(makeLogoBtn).join('');
 
   // Accessori buttons
