@@ -1174,7 +1174,7 @@
             <div class="form-group"><label>Data inizio</label><input id="ev-inizio" type="date"></div>
             <div class="form-group"><label>Data fine</label><input id="ev-fine" type="date"></div>
             <div class="form-group"><label>Tasso CZK/EUR <span style="font-size:10px;color:var(--text3)">(eventi CZ)</span></label><input id="ev-czk" type="number" min="0" step="0.01" placeholder="es. 25.50"></div>
-            <div></div>
+            <div class="form-group"><label>Cashless <span style="font-size:10px;color:var(--text3)">(prepagato)</span></label><select id="ev-cashless"><option value="">No</option><option value="CZK">CZK</option><option value="EUR">EUR</option></select></div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn btn-primary" id="ev-btn-salva" onclick="aggiungiEvento()">Aggiungi evento</button>
@@ -1272,10 +1272,7 @@
               </div>
               <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
                 <label style="font-size:12px;color:var(--text2);white-space:nowrap">Pagamento:</label>
-                <select id="pagamento-tipo" style="flex:1">
-                  <option value="contanti">💵 Contanti</option>
-                  <option value="pos">💳 POS</option>
-                </select>
+                <select id="pagamento-tipo" style="flex:1" onchange="onPagamentoChange()"></select>
               </div>
               <div style="margin-top:8px">
                 <label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Note</label>
@@ -1807,6 +1804,7 @@ let db = {
 let scontrino = [];
 let cassaEventoId = null;
 let cassaValuta = 'EUR';
+let cassaPagamento = 'contanti';
 let catPage = 0;
 let stockPage = 0;
 const PAGE_SIZE = 50;
@@ -2005,6 +2003,7 @@ async function loadDB() {
         await batch.commit();
       }
     }
+    await migraCashless();
     setDbStatus(db.prodotti.length + ' prodotti · Firebase');
   } catch(e) {
     console.error(e);
@@ -2030,6 +2029,35 @@ async function saveVendita(v){ try{ await setDoc(doc(VEND_COL, String(v.id)), v)
 async function saveMovimento(m){ try{ await setDoc(doc(MOV_COL, String(m.id)), m); }catch(e){ console.error(e); } }
 async function deleteVendita(id){ try{ await deleteDoc(doc(VEND_COL, String(id))); }catch(e){ console.error(e); } }
 async function deleteMovimento(id){ try{ await deleteDoc(doc(MOV_COL, String(id))); }catch(e){ console.error(e); } }
+
+// Migrazione una-tantum CASHLESS:
+// 1) pre-imposta il metodo cashless sui 3 eventi noti (se non ancora impostato)
+// 2) riclassifica le vendite POS in CZK degli eventi cashless-CZK -> 'cashless'
+//    (le vendite in EUR restano invariate: il POS resta solo in euro)
+async function migraCashless() {
+  if(db._cashlessMigrDone) return;
+  let modificato = false;
+  (db.eventi||[]).forEach(ev=>{
+    if(ev.cashless===undefined || ev.cashless===null || ev.cashless==='') {
+      const n=(ev.nome||'').toUpperCase();
+      if(n.includes('METALFEST')) { ev.cashless='CZK'; modificato=true; }
+      else if(n.includes('MASTERS OF ROCK')) { ev.cashless='CZK'; modificato=true; }
+      else if(n.includes('SUMMER BREEZE')) { ev.cashless='EUR'; modificato=true; }
+    }
+  });
+  const eventiClCzk = new Set((db.eventi||[]).filter(e=>e.cashless==='CZK').map(e=>String(e.id)));
+  const daSalvare = [];
+  (db.vendite||[]).forEach(v=>{
+    if(v.pagamento==='pos' && v.valuta==='CZK' && eventiClCzk.has(String(v.eventoId))) {
+      v.pagamento='cashless';
+      daSalvare.push(v);
+    }
+  });
+  for(const v of daSalvare){ await saveVendita(v); }
+  db._cashlessMigrDone = true;
+  await saveDB();
+  if(modificato || daSalvare.length) console.log('Migrazione cashless: '+daSalvare.length+' vendite riclassificate');
+}
 
 // ── NAV ──
 function showSection(s, el) {
@@ -2369,6 +2397,7 @@ async function aggiungiEvento() {
       ev.inizio = document.getElementById('ev-inizio').value;
       ev.fine = document.getElementById('ev-fine').value;
       ev.czkRate = parseFloat(document.getElementById('ev-czk').value)||null;
+      ev.cashless = document.getElementById('ev-cashless').value || null;
       await saveDB();
       showToast('Evento aggiornato ✓');
       annullaModificaEvento();
@@ -2385,9 +2414,10 @@ async function aggiungiEvento() {
     inizio: document.getElementById('ev-inizio').value,
     fine: document.getElementById('ev-fine').value,
     czkRate: parseFloat(document.getElementById('ev-czk').value)||null,
+    cashless: document.getElementById('ev-cashless').value || null,
   });
   await saveDB();
-  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine','ev-czk'].forEach(id=>document.getElementById(id).value='');
+  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine','ev-czk','ev-cashless'].forEach(id=>document.getElementById(id).value='');
   renderEventi();
   showToast('Evento aggiunto');
 }
@@ -2403,6 +2433,7 @@ function apriModificaEvento(id) {
   document.getElementById('ev-inizio').value = ev.inizio||'';
   document.getElementById('ev-fine').value = ev.fine||'';
   document.getElementById('ev-czk').value = ev.czkRate||'';
+  document.getElementById('ev-cashless').value = ev.cashless||'';
   document.getElementById('ev-form-title').textContent = 'Modifica evento — '+ev.nome;
   document.getElementById('ev-btn-salva').textContent = '💾 Salva modifiche';
   document.getElementById('ev-btn-annulla').style.display = '';
@@ -2412,7 +2443,7 @@ window.apriModificaEvento = apriModificaEvento;
 
 function annullaModificaEvento() {
   editingEventoId = null;
-  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine','ev-czk'].forEach(id=>{
+  ['ev-nome','ev-localita','ev-nazione','ev-inizio','ev-fine','ev-czk','ev-cashless'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('ev-form-title').textContent = 'Nuovo evento';
@@ -2439,19 +2470,48 @@ function isCzEvent(ev) {
 // ── CASSA ──
 function getEvento(id) { return (db.eventi||[]).find(e=>e.id===id); }
 
+function metodiPerEvento(ev) {
+  const cz = isCzEvent(ev);
+  const cl = ev && ev.cashless ? ev.cashless : null; // 'CZK' | 'EUR' | null
+  const M = {
+    cashlessCZK: { v:'cashless_CZK', l:'💳 Cashless CZK', p:'cashless', val:'CZK' },
+    cashlessEUR: { v:'cashless_EUR', l:'💳 Cashless €', p:'cashless', val:'EUR' },
+    contantiCZK: { v:'contanti_CZK', l:'💵 Contanti CZK', p:'contanti', val:'CZK' },
+    contantiEUR: { v:'contanti_EUR', l:'💵 Contanti €', p:'contanti', val:'EUR' },
+    posEUR:      { v:'pos_EUR', l:'💳 POS €', p:'pos', val:'EUR' },
+  };
+  if(cl==='CZK') return [M.cashlessCZK, M.contantiCZK, M.contantiEUR, M.posEUR];
+  if(cl==='EUR') return [M.cashlessEUR, M.contantiEUR, M.posEUR, M.contantiCZK];
+  if(cz)         return [M.contantiEUR, M.contantiCZK, M.posEUR];
+  return [M.contantiEUR, M.posEUR];
+}
+
 function initCassa() {
   const ev = getEvento(cassaEventoId);
   document.getElementById('cassa-ev-nome').textContent = ev ? ev.nome : 'Nessun evento attivo';
+  // I vecchi bottoni valuta sono sostituiti dal selettore unico del metodo di pagamento
   const valSel = document.getElementById('cassa-valuta-sel');
-  if(ev && isCzEvent(ev)) {
-    valSel.style.display='flex';
-    setCassaValuta('EUR');
-  } else {
-    valSel.style.display='none';
-    cassaValuta='EUR';
-  }
+  if(valSel) valSel.style.display='none';
+  const sel = document.getElementById('pagamento-tipo');
+  const metodi = metodiPerEvento(ev);
+  sel.innerHTML = metodi.map(m=>`<option value="${m.v}">${m.l}</option>`).join('');
+  sel.value = metodi[0].v;
+  cassaPagamento = metodi[0].p;
+  cassaValuta = metodi[0].val;
   svuotaScontrino();
 }
+
+function onPagamentoChange() {
+  const ev = getEvento(cassaEventoId);
+  const m = metodiPerEvento(ev).find(x=>x.v===document.getElementById('pagamento-tipo').value);
+  if(!m) return;
+  const cambioValuta = (m.val !== cassaValuta);
+  cassaPagamento = m.p;
+  cassaValuta = m.val;
+  if(cambioValuta) { scontrino=[]; }
+  renderScontrino();
+}
+window.onPagamentoChange = onPagamentoChange;
 
 function setCassaValuta(val) {
   cassaValuta = val;
@@ -2617,7 +2677,7 @@ window.svuotaScontrino = svuotaScontrino;
 async function concludiVendita() {
   if(!scontrino.length) return;
   if(!cassaEventoId) { showToast('⚠ Nessun evento attivo — attiva un evento prima di vendere','red'); return; }
-  const pagamento = document.getElementById('pagamento-tipo').value;
+  const pagamento = cassaPagamento;
   const nota = document.getElementById('cassa-note').value.trim();
   const sconto = getScontoTot();
   const scontoPerc = parseFloat(document.getElementById('sconto-perc').value)||0;
@@ -2687,20 +2747,24 @@ function renderStorico() {
     (!pagFilt||v.pagamento===pagFilt)
   ).sort((a,b)=>b.dataOra.localeCompare(a.dataOra));
   const totEur = list.filter(v=>!v.valuta||v.valuta==='EUR').reduce((a,v)=>a+v.totale,0);
-  const totCzk = list.filter(v=>v.valuta==='CZK'&&v.pagamento!=='pos').reduce((a,v)=>a+v.totale,0);
+  const totCzk = list.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const nArt = list.reduce((a,v)=>a+(v.items||[]).length,0);
   // POS = solo EUR; Contanti = EUR separati da CZK
+  const cashEur = list.filter(v=>v.pagamento==='cashless'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const cashCzk = list.filter(v=>v.pagamento==='cashless'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const posEur  = list.filter(v=>v.pagamento==='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
-  const contEur = list.filter(v=>v.pagamento!=='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
-  const contCzk = list.filter(v=>v.pagamento!=='pos'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  const contEur = list.filter(v=>v.pagamento==='contanti'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const contCzk = list.filter(v=>v.pagamento==='contanti'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const costoMerceTot = list.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
   const margTot = totEur>0&&costoMerceTot>0 ? (totEur-costoMerceTot)/totEur*100 : null;
   document.getElementById('storico-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${list.length}</div><div class="metric-sub">${nArt} articoli</div></div>
     <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div></div>
     ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
-    <div class="metric"><div class="metric-label">💳 POS (€) / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
-      <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:15px;font-weight:600">${fmt(posEur)}</span></div>
+    <div class="metric"><div class="metric-label">💳 Incassi per metodo</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
+      ${cashEur>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless €</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${fmt(cashEur)}</span></div>`:''}
+      ${cashCzk>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless CZK</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${Math.round(cashCzk).toLocaleString('it')} CZK</span></div>`:''}
+      ${posEur>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS €</span><span style="font-size:15px;font-weight:600">${fmt(posEur)}</span></div>`:''}
       <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti €</span><span style="font-size:15px;font-weight:600">${fmt(contEur)}</span></div>
       ${contCzk>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti CZK</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${Math.round(contCzk).toLocaleString('it')} CZK</span></div>`:''}
     </div></div>
@@ -2726,7 +2790,7 @@ function renderStorico() {
       <td class="mono" style="font-size:12px;white-space:nowrap">${dtFmt}</td>
       <td style="font-weight:500">${ev?ev.nome:'-'}</td>
       <td style="font-size:12px;color:var(--text2);max-width:300px">${arts}</td>
-      <td><span class="badge ${v.pagamento==='pos'?'badge-blue':'badge-gray'}">${v.pagamento==='pos'?'💳 POS':'💵 Contanti'}</span></td>
+      <td><span class="badge ${v.pagamento==='contanti'?'badge-gray':'badge-blue'}">${v.pagamento==='cashless'?'💳 Cashless':(v.pagamento==='pos'?'💳 POS':'💵 Contanti')}</span></td>
       <td><span class="badge ${v.valuta==='CZK'?'badge-blue':'badge-gray'}">${v.valuta==='CZK'?'CZK':'€ EUR'}</span></td>
       <td class="mono" style="font-weight:500">${totFmt}</td>
       <td class="mono" style="font-size:12px;color:var(--text3)">${costoMerce>0?fmt(costoMerce):'—'}</td>
@@ -2779,6 +2843,7 @@ function modificaVendita(id) {
           <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Metodo di pagamento</label>
           <select id="mv-pag" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
             <option value="contanti" ${v.pagamento==='contanti'?'selected':''}>💵 Contanti</option>
+            <option value="cashless" ${v.pagamento==='cashless'?'selected':''}>💳 Cashless</option>
             <option value="pos" ${v.pagamento==='pos'?'selected':''}>💳 POS</option>
           </select>
         </div>
@@ -2937,10 +3002,12 @@ function renderREvento() {
   const vend = (db.vendite||[]).filter(v=>String(v.eventoId)===String(evId));
   const ev = getEvento(parseInt(evId));
   const eur = vend.filter(v=>!v.valuta||v.valuta==='EUR').reduce((a,v)=>a+v.totale,0);
-  const czk = vend.filter(v=>v.valuta==='CZK'&&v.pagamento!=='pos').reduce((a,v)=>a+v.totale,0);
+  const czk = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  const cashEur = vend.filter(v=>v.pagamento==='cashless'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const cashCzk = vend.filter(v=>v.pagamento==='cashless'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const posEur  = vend.filter(v=>v.pagamento==='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
-  const contEur = vend.filter(v=>v.pagamento!=='pos'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
-  const contCzk = vend.filter(v=>v.pagamento!=='pos'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+  const contEur = vend.filter(v=>v.pagamento==='contanti'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
+  const contCzk = vend.filter(v=>v.pagamento==='contanti'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const czkRate = ev?.czkRate || null;
   const czkInEur = czkRate && czk ? czk / czkRate : null;
   const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
@@ -2965,8 +3032,10 @@ function renderREvento() {
       <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(eur)}</div></div>
       ${czk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(czk).toLocaleString('it')} CZK</div></div>`:''}
       ${czkInEur?`<div class="metric"><div class="metric-label">CZK → € (cambio ${czkRate})</div><div class="metric-value" style="color:#6D28D9">${fmt(czkInEur)}</div></div>`:''}
-      <div class="metric"><div class="metric-label">💳 POS (€) / 💵 Contanti</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
-      <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:15px;font-weight:600">${fmt(posEur)}</span></div>
+      <div class="metric"><div class="metric-label">💳 Incassi per metodo</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
+      ${cashEur>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless €</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${fmt(cashEur)}</span></div>`:''}
+      ${cashCzk>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless CZK</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${Math.round(cashCzk).toLocaleString('it')} CZK</span></div>`:''}
+      ${posEur>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS €</span><span style="font-size:15px;font-weight:600">${fmt(posEur)}</span></div>`:''}
       <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti €</span><span style="font-size:15px;font-weight:600">${fmt(contEur)}</span></div>
       ${contCzk>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💵 Contanti CZK</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${Math.round(contCzk).toLocaleString('it')} CZK</span></div>`:''}
     </div></div>
