@@ -2517,8 +2517,7 @@ function renderPulsantiRapidi() {
 function aggiungiRapido(barcode) {
   const p = getProdotto(barcode);
   if(!p) { showToast('Prodotto non trovato: '+barcode,'red'); return; }
-  aggiungiAlScontrino(p);
-  showToast('Aggiunto: '+p.descrizione);
+  if(aggiungiAlScontrino(p)) showToast('Aggiunto: '+p.descrizione);
 }
 window.aggiungiRapido = aggiungiRapido;
 
@@ -2562,8 +2561,7 @@ function aggiungiDeadlyTarot() {
   // fallback per la grafia legacy di THE SORCERESS nello stock (THSORCERESS)
   if(!prod && dtSelLogo==='THESORCERESS') { const alt='DT.THSORCERESS.'+taglia; prod=getProdotto(alt); if(prod) bc=alt; }
   if(!prod) { showToast('Prodotto non trovato: '+bc,'red'); return; }
-  aggiungiAlScontrino(prod);
-  showToast('Aggiunto: '+prod.descrizione+' ('+taglia+')');
+  if(aggiungiAlScontrino(prod)) showToast('Aggiunto: '+prod.descrizione+' ('+taglia+')');
 }
 window.aggiungiDeadlyTarot = aggiungiDeadlyTarot;
 
@@ -2674,8 +2672,8 @@ window.renderRicercaCassa = renderRicercaCassa;
 window.getProdottoDaBarcode = getProdotto;
 
 function aggiungiAlScontrino(p) {
-  if(!p) return;
-  if(!cassaEventoId) { showToast('⚠ Nessun evento attivo — attivane uno prima di aggiungere prodotti','red'); return; }
+  if(!p) return false;
+  if(!cassaEventoId) { showToast('⚠ Nessun evento attivo — attivane uno prima di aggiungere prodotti','red'); return false; }
   const prezzo = getPrezzoBarcode(p.barcode);
   // Check if already in scontrino, increase qty
   const existing = scontrino.find(it=>it.barcode===p.barcode);
@@ -2686,6 +2684,7 @@ function aggiungiAlScontrino(p) {
     scontrino.push({ id:Date.now(), barcode:p.barcode, descrizione:p.descrizione, qty:1, prezzoUnit:prezzo, prezzo, valuta:cassaValuta });
   }
   renderScontrino();
+  return true;
 }
 window.aggiungiAlScontrino = aggiungiAlScontrino;
 
