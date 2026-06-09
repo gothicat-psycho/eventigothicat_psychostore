@@ -1255,6 +1255,16 @@
               </div>
             </div>
             <div class="card" style="margin-top:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">🃏 Deadly Tarot</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <label style="font-size:12px;font-weight:600;color:var(--text2)">Taglia:</label>
+                  <select id="dt-taglia" style="width:84px"><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>XXL</option></select>
+                </div>
+              </div>
+              <div id="dt-buttons" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            </div>
+            <div class="card" style="margin-top:0">
               <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px">Ricerca manuale</div>
               <input id="search-cassa" placeholder="Cerca per descrizione o barcode..." oninput="renderRicercaCassa()" style="margin-bottom:8px">
               <div id="risultati-cassa" style="max-height:300px;overflow-y:auto"></div>
@@ -2511,6 +2521,41 @@ function aggiungiRapido(barcode) {
 }
 window.aggiungiRapido = aggiungiRapido;
 
+// ====== DEADLY TAROT: bottoni rapidi (barcode DT.<LOGO>.<TAGLIA>) ======
+const DEADLY_TAROT = [
+  { logo:'DEATH', label:'Death' },
+  { logo:'THEDEVIL', label:'The Devil' },
+  { logo:'THEEMPRESS', label:'The Empress' },
+  { logo:'THEFAMILIAR', label:'The Familiar' },
+  { logo:'THEFOOL', label:'The Fool' },
+  { logo:'THEHANGEDMAN', label:'The Hanged Man' },
+  { logo:'THEHERMIT', label:'The Hermit' },
+  { logo:'THEHIEROPHANT', label:'The Hierophant' },
+  { logo:'THEHIGHPRIESTESS', label:'The High Priestess' },
+  { logo:'THEMAGICIAN', label:'The Magician' },
+  { logo:'THEMOON', label:'The Moon' },
+  { logo:'THEVAMPYRE', label:'The Vampyre' },
+  { logo:'THESORCERESS', label:'The Sorceress' },
+];
+function renderDeadlyTarot() {
+  const el = document.getElementById('dt-buttons');
+  if(!el) return;
+  el.innerHTML = DEADLY_TAROT.map(d=>
+    `<button onclick="aggiungiDeadlyTarot('${d.logo}')" style="flex:1 1 auto;min-width:108px;padding:9px 8px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer">${d.label}</button>`
+  ).join('');
+}
+function aggiungiDeadlyTarot(logo) {
+  const taglia = document.getElementById('dt-taglia').value;
+  let bc = 'DT.'+logo+'.'+taglia;
+  let prod = getProdotto(bc);
+  // fallback per la grafia legacy di THE SORCERESS nello stock (THSORCERESS)
+  if(!prod && logo==='THESORCERESS') { const alt='DT.THSORCERESS.'+taglia; prod=getProdotto(alt); if(prod) bc=alt; }
+  if(!prod) { showToast('Prodotto non trovato: '+bc,'red'); return; }
+  aggiungiAlScontrino(prod);
+  showToast('Aggiunto: '+prod.descrizione);
+}
+window.aggiungiDeadlyTarot = aggiungiDeadlyTarot;
+
 function initCassa() {
   const ev = getEvento(cassaEventoId);
   document.getElementById('cassa-ev-nome').textContent = ev ? ev.nome : 'Nessun evento attivo';
@@ -2524,6 +2569,7 @@ function initCassa() {
   cassaPagamento = metodi[0].p;
   cassaValuta = metodi[0].val;
   renderPulsantiRapidi();
+  renderDeadlyTarot();
   svuotaScontrino();
 }
 
