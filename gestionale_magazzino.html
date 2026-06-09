@@ -2505,6 +2505,7 @@ function renderTourGrid() {
   const cats = getCatPerLogo(logo.nome);
   const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
 
+  let totaleGlobale = 0;
   let html = `<div style="margin-bottom:10px;font-weight:700;font-size:18px">${logo.nome}</div>`;
   html += `<div style="display:flex;flex-direction:column;gap:12px">`;
 
@@ -2512,8 +2513,13 @@ function renderTourGrid() {
     const lblCls = catLabelClass[cat.id] || 'cat-shop';
     if (cat.taglie) {
       const taglie = cat.taglieLista || TAGLIE;
+      const totCat = taglie.reduce((a, t) => a + getStock(logoId, cat.id, t, 'tour'), 0);
+      totaleGlobale += totCat;
       html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:14px 16px">
-        <div style="margin-bottom:10px"><span class="stock-cat-label ${lblCls}" style="font-size:13px;padding:4px 10px">${cat.label}</span></div>
+        <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
+          <span class="stock-cat-label ${lblCls}" style="font-size:13px;padding:4px 10px">${cat.label}</span>
+          <span style="font-size:15px;font-weight:700;color:var(--text2)">TOT: ${totCat}</span>
+        </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">`;
       taglie.forEach(t => {
         const s = getStock(logoId, cat.id, t, 'tour');
@@ -2528,9 +2534,13 @@ function renderTourGrid() {
       html += `</div></div>`;
     } else {
       const s = getStock(logoId, cat.id, null, 'tour');
+      totaleGlobale += s;
       const cls = getStockClass(s, logo.minimo||3);
       html += `<div style="background:var(--surface2);border-radius:var(--radius);padding:14px 16px">
-        <div style="margin-bottom:10px"><span class="stock-cat-label ${lblCls}" style="font-size:13px;padding:4px 10px">${cat.label}</span></div>
+        <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
+          <span class="stock-cat-label ${lblCls}" style="font-size:13px;padding:4px 10px">${cat.label}</span>
+          <span style="font-size:15px;font-weight:700;color:var(--text2)">TOT: ${s}</span>
+        </div>
         <div class="stock-cell editable ${cls}" title="Clicca per modificare"
           style="font-size:20px;font-weight:700;min-width:56px;padding:10px 6px;display:inline-flex;align-items:center;justify-content:center"
           onclick="editTourCell(this,${logoId},'${cat.id}',null,${s})">${s}</div>
@@ -2539,6 +2549,13 @@ function renderTourGrid() {
   });
 
   html += `</div>`;
+
+  // Totale globale
+  html += `<div style="margin-top:16px;padding:14px 16px;background:var(--accent-light);border-radius:var(--radius);border:1px solid var(--accent);display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:14px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">🎒 Totale globale On Tour</span>
+    <span style="font-size:24px;font-weight:800;color:var(--accent)">${totaleGlobale} pz</span>
+  </div>`;
+
   grid.innerHTML = html;
 }
 
