@@ -1262,7 +1262,7 @@
                   <select id="dt-taglia" style="width:84px"><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>XXL</option></select>
                 </div>
               </div>
-              <div id="dt-buttons" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+              <div id="dt-buttons" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
               <button class="btn btn-primary" onclick="aggiungiDeadlyTarot()" style="width:100%;margin-top:10px">＋ Aggiungi allo scontrino</button>
             </div>
             <div class="card" style="margin-top:0">
@@ -2546,7 +2546,7 @@ function renderDeadlyTarot() {
   const lista = [...DEADLY_TAROT].sort((a,b)=>a.label.replace(/^The /i,'').localeCompare(b.label.replace(/^The /i,'')));
   el.innerHTML = lista.map(d=>{
     const sel = dtSelLogo===d.logo;
-    return `<button onclick="selDeadlyTarot('${d.logo}')" style="flex:1 1 auto;min-width:108px;padding:9px 8px;border:2px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent-light)':'var(--surface)'};color:${sel?'var(--accent)':'var(--text)'};border-radius:var(--radius);font-size:12px;font-weight:${sel?'700':'600'};cursor:pointer">${d.label}</button>`;
+    return `<button onclick="selDeadlyTarot('${d.logo}')" style="flex:1 1 auto;min-width:108px;max-width:170px;padding:9px 8px;border:2px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent-light)':'var(--surface)'};color:${sel?'var(--accent)':'var(--text)'};border-radius:var(--radius);font-size:12px;font-weight:${sel?'700':'600'};cursor:pointer">${d.label}</button>`;
   }).join('');
 }
 function selDeadlyTarot(logo) {
@@ -2675,6 +2675,7 @@ window.getProdottoDaBarcode = getProdotto;
 
 function aggiungiAlScontrino(p) {
   if(!p) return;
+  if(!cassaEventoId) { showToast('⚠ Nessun evento attivo — attivane uno prima di aggiungere prodotti','red'); return; }
   const prezzo = getPrezzoBarcode(p.barcode);
   // Check if already in scontrino, increase qty
   const existing = scontrino.find(it=>it.barcode===p.barcode);
