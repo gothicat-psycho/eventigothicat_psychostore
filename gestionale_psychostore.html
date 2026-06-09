@@ -2352,7 +2352,21 @@ async function eseguiDel() {
   const {tipo, id} = pendingDel;
   if(tipo==='prodotto') { db.prodotti = db.prodotti.filter(p=>p.barcode!==id); const _movDel=(db.movimenti||[]).filter(m=>m.barcode===id); db.movimenti = db.movimenti.filter(m=>m.barcode!==id); await Promise.all(_movDel.map(m=>deleteMovimento(m.id))); }
   if(tipo==='evento') { db.eventi = db.eventi.filter(e=>e.id!==id); }
-  if(tipo==='vendita') { db.vendite = db.vendite.filter(v=>v.id!==id); await deleteVendita(id); }
+  if(tipo==='vendita') {
+    // Storno: rimette in stock i prodotti della vendita eliminata (movimento di carico per ogni articolo)
+    const vd = (db.vendite||[]).find(x=>x.id===id);
+    if(vd && Array.isArray(vd.items)) {
+      const oggi = new Date().toISOString().split('T')[0];
+      for(const it of vd.items) {
+        if(!it.barcode || !it.qty) continue;
+        const m = { id: db.nextMovId++, barcode: it.barcode, qty: it.qty, tipo: 'carico', data: oggi, note: 'Storno vendita #'+id };
+        db.movimenti.push(m);
+        await saveMovimento(m);
+      }
+    }
+    db.vendite = db.vendite.filter(v=>v.id!==id);
+    await deleteVendita(id);
+  }
   if(tipo==='ordineDIL') { db.ordiniDIL = (db.ordiniDIL||[]).filter(o=>o.id!==id); }
   if(tipo==='ordineDF') { db.ordiniDF = (db.ordiniDF||[]).filter(o=>o.id!==id); }
   if(tipo==='ordinePR') { db.ordiniPR = (db.ordiniPR||[]).filter(o=>o.id!==id); }
