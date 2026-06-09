@@ -1249,6 +1249,10 @@
                 <div style="font-size:12px;color:var(--text3);margin-top:2px" id="preview-info"></div>
                 <div style="font-size:16px;font-weight:700;color:var(--green);margin-top:6px" id="preview-prezzo"></div>
               </div>
+              <div id="pulsanti-rapidi-wrap" style="margin-top:14px">
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px">Aggiunta rapida (senza barcode)</div>
+                <div id="pulsanti-rapidi" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+              </div>
             </div>
             <div class="card" style="margin-top:0">
               <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px">Ricerca manuale</div>
@@ -2486,6 +2490,27 @@ function metodiPerEvento(ev) {
   return [M.contantiEUR, M.posEUR];
 }
 
+// ====== BOTTONI AGGIUNTA RAPIDA (prodotti senza barcode) ======
+// Per aggiungerne altri in futuro basta aggiungere una riga qui sotto: { barcode:'CODICE', label:'Etichetta' }
+const PULSANTI_RAPIDI = [
+  { barcode:'BIMBITSHIRT', label:'👶 T-Shirt Bimbi' },
+  { barcode:'BIMBITUTINE', label:'👶 Tutina Bimbi' },
+];
+function renderPulsantiRapidi() {
+  const el = document.getElementById('pulsanti-rapidi');
+  if(!el) return;
+  el.innerHTML = PULSANTI_RAPIDI.map(b=>
+    `<button onclick="aggiungiRapido('${b.barcode}')" style="flex:1 1 auto;min-width:130px;padding:12px;border:2px dashed var(--accent);background:var(--accent-light);color:var(--accent);border-radius:var(--radius-lg);font-weight:600;font-size:13px;cursor:pointer">${b.label}</button>`
+  ).join('');
+}
+function aggiungiRapido(barcode) {
+  const p = getProdotto(barcode);
+  if(!p) { showToast('Prodotto non trovato: '+barcode,'red'); return; }
+  aggiungiAlScontrino(p);
+  showToast('Aggiunto: '+p.descrizione);
+}
+window.aggiungiRapido = aggiungiRapido;
+
 function initCassa() {
   const ev = getEvento(cassaEventoId);
   document.getElementById('cassa-ev-nome').textContent = ev ? ev.nome : 'Nessun evento attivo';
@@ -2498,6 +2523,7 @@ function initCassa() {
   sel.value = metodi[0].v;
   cassaPagamento = metodi[0].p;
   cassaValuta = metodi[0].val;
+  renderPulsantiRapidi();
   svuotaScontrino();
 }
 
