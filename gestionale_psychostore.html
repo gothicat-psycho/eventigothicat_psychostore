@@ -4799,13 +4799,19 @@ async function salvaOrdinePR() {
     createdAt: new Date().toISOString(),
     articoli:righe,
   };
-  if(editingOrdinePR){
-    const idx=db.ordiniPR.findIndex(o=>o.id===editingOrdinePR);
-    if(idx>=0) db.ordiniPR[idx]=ordine;
-    editingOrdinePR=null;
+  // Aggiorna l'ordine esistente: prima per id (confronto robusto String), poi come
+  // rete di sicurezza per riferimento -> non crea mai un duplicato con lo stesso nome.
+  let idx = -1;
+  if(editingOrdinePR) idx = db.ordiniPR.findIndex(o=>String(o.id)===String(editingOrdinePR));
+  if(idx<0) idx = db.ordiniPR.findIndex(o=>(o.riferimento||'').trim().toLowerCase()===ref.toLowerCase());
+  if(idx>=0){
+    ordine.id = db.ordiniPR[idx].id;                          // preserva id originale (link documenti)
+    ordine.createdAt = db.ordiniPR[idx].createdAt || ordine.createdAt;
+    db.ordiniPR[idx] = ordine;
   } else {
     db.ordiniPR.push(ordine);
   }
+  editingOrdinePR = null;
   await saveDB();
   showToast('Ordine Punk Rave salvato ✓');
   switchOrdiniTab('lista');
