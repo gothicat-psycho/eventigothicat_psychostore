@@ -3369,7 +3369,9 @@ function renderRBilancio(targetEl) {
   const evData = eventi.map(ev => {
     const bil = ev.bilancio||{};
     const vend = (db.vendite||[]).filter(v=>v.eventoId===ev.id);
-    const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+    const czkRate = ev.czkRate || 0;
+    const incassoCzkEur = czkRate>0 ? (vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0)/czkRate) : 0;
+    const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0) + incassoCzkEur;
     const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
     const incasso = bil.incassoManuale > 0 ? bil.incassoManuale : incassoVendite;
     const costoMerce = bil.costoMerceManuale > 0 ? bil.costoMerceManuale : costoMerceVendite;
@@ -6498,7 +6500,10 @@ function aggiornaBilancio() {
   const incassoManuale = parseFloat(document.getElementById('bil-incasso-manuale')?.value)||0;
   const costoMerceManuale = parseFloat(document.getElementById('bil-costo-merce-manuale')?.value)||0;
   const vend = (db.vendite||[]).filter(v=>v.eventoId===bilancioEventoId);
-  const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+  const evBil = (db.eventi||[]).find(e=>String(e.id)===String(bilancioEventoId));
+  const czkRateBil = evBil && evBil.czkRate ? evBil.czkRate : 0;
+  const incassoCzkEur = czkRateBil>0 ? (vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0)/czkRateBil) : 0;
+  const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0) + incassoCzkEur;
   const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
   const incasso = incassoManuale > 0 ? incassoManuale : incassoVendite;
   const costoMerce = costoMerceManuale > 0 ? costoMerceManuale : costoMerceVendite;
