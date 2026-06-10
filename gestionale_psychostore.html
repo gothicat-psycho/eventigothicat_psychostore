@@ -8659,6 +8659,12 @@ function renderTxStorico() {
   const totEur = vendite.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totEur,0);
   const totGbp = vendite.reduce((a,v)=>a+v.totGbp,0);
   const totCzk = vendite.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+(v.totEur||v.totCzk||0),0);
+  // Equivalente in euro delle vendite CZK, in base al tasso czkRate dell'evento di ciascuna vendita
+  const totCzkEur = vendite.filter(v=>v.valuta==='CZK').reduce((a,v)=>{
+    const ev=(db.eventi||[]).find(e=>String(e.id)===String(v.eventoId));
+    const rate = ev && ev.czkRate ? ev.czkRate : 0;
+    return a + (rate>0 ? (v.totEur||v.totCzk||0)/rate : 0);
+  }, 0);
   const pg = v=>(v.pagamento||'').toLowerCase();
   const pos = vendite.filter(v=>pg(v)==='pos'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totEur,0);
   const cont = vendite.filter(v=>pg(v)==='contanti'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totEur,0);
@@ -8669,7 +8675,7 @@ function renderTxStorico() {
   const nPezzi = vendite.reduce((a,v)=>a+v.qta,0);
   document.getElementById('tx-storico-metrics').innerHTML=`
     <div class="metric"><div class="metric-label">Pezzi venduti</div><div class="metric-value">${nPezzi}</div></div>
-    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div>${totCzk>0?`<div style="font-size:13px;color:#6D28D9;font-weight:600;margin-top:2px">${totCzk} CZK</div>`:''}</div>
+    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div>${totCzk>0?`<div style="font-size:13px;color:#6D28D9;font-weight:600;margin-top:2px">${totCzk} CZK${totCzkEur>0?` <span style="color:var(--text3);font-weight:500">(≈ € ${totCzkEur.toFixed(2)})</span>`:''}</div>`:''}${(totCzk>0&&totCzkEur>0)?`<div style="font-size:12px;color:var(--text3);margin-top:4px;border-top:1px solid var(--border);padding-top:4px">Totale ≈ € ${(totEur+totCzkEur).toFixed(2)}</div>`:''}</div>
     <div class="metric"><div class="metric-label">💳 Incassi per metodo</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
       ${(cash>0||cashCzk>0)?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless</span><span style="font-size:16px;font-weight:600;color:#6D28D9">€ ${cash.toFixed(2)}${cashCzk>0?' / '+cashCzk+' CZK':''}</span></div>`:''}
       <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 POS</span><span style="font-size:16px;font-weight:600">€ ${pos.toFixed(2)}${posCzk>0?' / '+posCzk+' CZK':''}</span></div>
