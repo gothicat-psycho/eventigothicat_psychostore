@@ -3370,8 +3370,10 @@ function renderRBilancio(targetEl) {
     const bil = ev.bilancio||{};
     const vend = (db.vendite||[]).filter(v=>v.eventoId===ev.id);
     const czkRate = ev.czkRate || 0;
-    const incassoCzkEur = czkRate>0 ? (vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0)/czkRate) : 0;
-    const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0) + incassoCzkEur;
+    const incassoEurPart = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
+    const incassoCzkRaw = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
+    const incassoCzkEur = czkRate>0 ? incassoCzkRaw/czkRate : 0;
+    const incassoVendite = incassoEurPart + incassoCzkEur;
     const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
     const incasso = bil.incassoManuale > 0 ? bil.incassoManuale : incassoVendite;
     const costoMerce = bil.costoMerceManuale > 0 ? bil.costoMerceManuale : costoMerceVendite;
@@ -3403,7 +3405,7 @@ function renderRBilancio(targetEl) {
     perCat["VITTO"] = (bil.voci||[]).filter(v=>v.cat==="VITTO").reduce((a,v)=>a+v.importo,0);
     perCat["VOLI"] = (bil.voci||[]).filter(v=>v.cat==="VOLI").reduce((a,v)=>a+v.importo,0);
 
-    return { ev, incasso, costoMerce, ricaviExtra, costiTot, quotaGothicat, costiNetti, utile, margine, perCat, bil };
+    return { ev, incasso, incassoEurPart, incassoCzkRaw, incassoCzkEur, czkRate, costoMerce, pos, cont, ricaviExtra, costiTot, quotaGothicat, costiNetti, utile, margine, perCat, bil };
   });
 
   // Build table
@@ -3456,7 +3458,14 @@ function renderRBilancio(targetEl) {
       <tbody>
         <tr style="background:var(--green-light)">
           <td style="${tdLabelGreen}">💰 Incasso vendite</td>
-          ${evData.map(d=>`<td style="${tdStyle('var(--green)')};font-weight:600">${fmt(d.incasso)}</td>`).join('')}
+          ${evData.map(d=>{
+            let sub='';
+            if(d.bil.incassoManuale>0){ sub=`<div style="font-size:10px;color:#B45309;font-weight:500">incasso manuale</div>`; }
+            else if(d.incassoCzkRaw>0){ sub = d.czkRate>0
+              ? `<div style="font-size:10px;color:var(--text3);font-weight:400">€${d.incassoEurPart.toFixed(0)} + ${d.incassoCzkRaw.toLocaleString('it-IT')} CZK</div>`
+              : `<div style="font-size:10px;color:#B91C1C;font-weight:500">⚠ ${d.incassoCzkRaw.toLocaleString('it-IT')} CZK non convertiti (manca il cambio)</div>`; }
+            return `<td style="${tdStyle('var(--green)')};font-weight:600">${fmt(d.incasso)}${sub}</td>`;
+          }).join('')}
           <td style="${tdStyle('var(--green)')};font-weight:700">${fmt(totali.incasso)}</td>
         </tr>
         <tr>
