@@ -3956,8 +3956,9 @@ async function salvaOrdineDIL() {
     db.ordiniDIL.push(ordine);
   }
 
+  const prezziAggiornati = applicaPrezziAlCatalogo(righe);
   await saveDB();
-  showToast('Ordine salvato ✓');
+  showToast('Ordine salvato ✓' + (prezziAggiornati?` · ${prezziAggiornati} prezzi aggiornati a listino`:''));
   switchOrdiniTab('lista');
 }
 window.salvaOrdineDIL = salvaOrdineDIL;
@@ -4613,8 +4614,9 @@ async function salvaOrdineDF() {
   } else {
     db.ordiniDF.push(ordine);
   }
+  const prezziAggiornati = applicaPrezziAlCatalogo(righe);
   await saveDB();
-  showToast('Ordine Devil Fashion salvato ✓');
+  showToast('Ordine Devil Fashion salvato ✓' + (prezziAggiornati?` · ${prezziAggiornati} prezzi aggiornati a listino`:''));
   switchOrdiniTab('lista');
 }
 window.salvaOrdineDF = salvaOrdineDF;
@@ -5087,11 +5089,36 @@ async function salvaOrdinePR() {
     db.ordiniPR.push(ordine);
   }
   editingOrdinePR = null;
+  const prezziAggiornati = applicaPrezziAlCatalogo(righe);
   await saveDB();
-  showToast('Ordine Punk Rave salvato ✓');
+  showToast('Ordine Punk Rave salvato ✓' + (prezziAggiornati?` · ${prezziAggiornati} prezzi aggiornati a listino`:''));
   switchOrdiniTab('lista');
 }
 window.salvaOrdinePR = salvaOrdinePR;
+
+// L'ordine ha PRIORITÀ sul prezzo di vendita: se una riga ha un prezzo di vendita
+// forzato e diverso dal listino, aggiorna il prezzo del prodotto a catalogo (per ogni taglia/barcode).
+function applicaPrezziAlCatalogo(righe){
+  const taglie=[{t:'xs',bc:'bcXs'},{t:'s',bc:'bcS'},{t:'m',bc:'bcM'},{t:'l',bc:'bcL'},{t:'xl',bc:'bcXl'},{t:'xxl',bc:'bcXxl'},{t:'xxxl',bc:'bcXxxl'}];
+  let aggiornati=0;
+  (righe||[]).forEach(r=>{
+    const v=parseFloat(r.vendita)||0;
+    if(v<=0) return;
+    taglie.forEach(({bc})=>{
+      const barcode=r[bc];
+      if(!barcode) return;
+      const prod=getProdotto(barcode);
+      if(prod && Math.round((parseFloat(prod.prezzo)||0)*100)!==Math.round(v*100)){
+        prod.prezzo=v;
+        const czk=eurToCzk(v);            // se cambia l'euro, ricalcola anche il prezzo in CZK
+        if(czk>0) prod.prezzoCzk=czk;
+        aggiornati++;
+      }
+    });
+  });
+  return aggiornati;
+}
+window.applicaPrezziAlCatalogo = applicaPrezziAlCatalogo;
 
 function modificaOrdinePR(id) {
   const o=(db.ordiniPR||[]).find(x=>x.id===id);
@@ -5637,8 +5664,9 @@ async function salvaOrdineOD() {
   } else {
     db.ordiniOD.push(ordine);
   }
+  const prezziAggiornati = applicaPrezziAlCatalogo(righe);
   await saveDB();
-  showToast('Ordine One Direction salvato ✓');
+  showToast('Ordine One Direction salvato ✓' + (prezziAggiornati?` · ${prezziAggiornati} prezzi aggiornati a listino`:''));
   switchOrdiniTab('lista');
 }
 window.salvaOrdineOD = salvaOrdineOD;
@@ -6154,8 +6182,9 @@ async function salvaOrdineINNOCENT() {
   } else {
     db.ordiniINNOCENT.push(ordine);
   }
+  const prezziAggiornati = applicaPrezziAlCatalogo(righe);
   await saveDB();
-  showToast('Ordine Innocent salvato ✓');
+  showToast('Ordine Innocent salvato ✓' + (prezziAggiornati?` · ${prezziAggiornati} prezzi aggiornati a listino`:''));
   switchOrdiniTab('lista');
 }
 window.salvaOrdineINNOCENT = salvaOrdineINNOCENT;
@@ -6811,8 +6840,9 @@ async function salvaOrdineADRIANO() {
   } else {
     db.ordiniADRIANO.push(ordine);
   }
+  const prezziAggiornati = applicaPrezziAlCatalogo(righe);
   await saveDB();
-  showToast('Ordine Adriano salvato ✓');
+  showToast('Ordine Adriano salvato ✓' + (prezziAggiornati?` · ${prezziAggiornati} prezzi aggiornati a listino`:''));
   switchOrdiniTab('lista');
 }
 window.salvaOrdineADRIANO = salvaOrdineADRIANO;
