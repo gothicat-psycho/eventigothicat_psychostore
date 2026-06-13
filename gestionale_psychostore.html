@@ -3373,9 +3373,11 @@ function renderRBilancio(targetEl) {
     const incassoEurPart = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
     const incassoCzkRaw = vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
     const incassoCzkEur = czkRate>0 ? incassoCzkRaw/czkRate : 0;
+    const incassoCzkExtra = parseFloat(bil.incassoCzkExtra)||0;
+    const incassoCzkExtraEur = czkRate>0 ? incassoCzkExtra/czkRate : 0;
     const incassoVendite = incassoEurPart + incassoCzkEur;
     const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
-    const incasso = bil.incassoManuale > 0 ? bil.incassoManuale : incassoVendite;
+    const incasso = (bil.incassoManuale > 0 ? bil.incassoManuale : incassoVendite) + incassoCzkExtraEur;
     const costoMerce = bil.costoMerceManuale > 0 ? bil.costoMerceManuale : costoMerceVendite;
     const pos = vend.filter(v=>v.pagamento==='pos'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
     const cont = vend.filter(v=>v.pagamento!=='pos'&&v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0);
@@ -3405,7 +3407,7 @@ function renderRBilancio(targetEl) {
     perCat["VITTO"] = (bil.voci||[]).filter(v=>v.cat==="VITTO").reduce((a,v)=>a+v.importo,0);
     perCat["VOLI"] = (bil.voci||[]).filter(v=>v.cat==="VOLI").reduce((a,v)=>a+v.importo,0);
 
-    return { ev, incasso, incassoEurPart, incassoCzkRaw, incassoCzkEur, czkRate, costoMerce, pos, cont, ricaviExtra, costiTot, quotaGothicat, costiNetti, utile, margine, perCat, bil };
+    return { ev, incasso, incassoEurPart, incassoCzkRaw, incassoCzkEur, incassoCzkExtra, czkRate, costoMerce, pos, cont, ricaviExtra, costiTot, quotaGothicat, costiNetti, utile, margine, perCat, bil };
   });
 
   // Build table
@@ -3460,10 +3462,12 @@ function renderRBilancio(targetEl) {
           <td style="${tdLabelGreen}">💰 Incasso vendite</td>
           ${evData.map(d=>{
             let sub='';
-            if(d.bil.incassoManuale>0){ sub=`<div style="font-size:10px;color:#B45309;font-weight:500">incasso manuale</div>`; }
-            else if(d.incassoCzkRaw>0){ sub = d.czkRate>0
-              ? `<div style="font-size:10px;color:var(--text3);font-weight:400">€${d.incassoEurPart.toFixed(0)} + ${d.incassoCzkRaw.toLocaleString('it-IT')} CZK</div>`
-              : `<div style="font-size:10px;color:#B91C1C;font-weight:500">⚠ ${d.incassoCzkRaw.toLocaleString('it-IT')} CZK non convertiti (manca il cambio)</div>`; }
+            const _czkTot = (d.incassoCzkRaw||0) + (d.incassoCzkExtra||0);
+            const _extraTxt = d.incassoCzkExtra>0 ? ` (di cui ${d.incassoCzkExtra.toLocaleString('it-IT')} extra)` : '';
+            if(d.bil.incassoManuale>0){ sub=`<div style="font-size:10px;color:#B45309;font-weight:500">incasso manuale${d.incassoCzkExtra>0?` + ${d.incassoCzkExtra.toLocaleString('it-IT')} CZK extra`:''}</div>`; }
+            else if(_czkTot>0){ sub = d.czkRate>0
+              ? `<div style="font-size:10px;color:var(--text3);font-weight:400">€${d.incassoEurPart.toFixed(0)} + ${_czkTot.toLocaleString('it-IT')} CZK${_extraTxt}</div>`
+              : `<div style="font-size:10px;color:#B91C1C;font-weight:500">⚠ ${_czkTot.toLocaleString('it-IT')} CZK non convertiti (manca il cambio)</div>`; }
             return `<td style="${tdStyle('var(--green)')};font-weight:600">${fmt(d.incasso)}${sub}</td>`;
           }).join('')}
           <td style="${tdStyle('var(--green)')};font-weight:700">${fmt(totali.incasso)}</td>
@@ -6518,6 +6522,8 @@ function apriBilancioEvento(id) {
   const costoManualeEl = document.getElementById('bil-costo-merce-manuale');
   if(manualeEl) manualeEl.value = bil.incassoManuale||'';
   if(costoManualeEl) costoManualeEl.value = bil.costoMerceManuale||'';
+  const czkExtraEl = document.getElementById('bil-incasso-czk-extra');
+  if(czkExtraEl) czkExtraEl.value = bil.incassoCzkExtra||'';
   renderBilancioVoci(bil);
   aggiornaBilancio();
   document.getElementById('modal-bilancio-evento').classList.add('open');
@@ -6568,7 +6574,9 @@ function aggiornaBilancio() {
   const incassoCzkEur = czkRateBil>0 ? (vend.filter(v=>v.valuta==='CZK').reduce((a,v)=>a+v.totale,0)/czkRateBil) : 0;
   const incassoVendite = vend.filter(v=>v.valuta!=='CZK').reduce((a,v)=>a+v.totale,0) + incassoCzkEur;
   const costoMerceVendite = vend.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
-  const incasso = incassoManuale > 0 ? incassoManuale : incassoVendite;
+  const incassoCzkExtra = parseFloat(document.getElementById('bil-incasso-czk-extra')?.value)||0;
+  const incassoCzkExtraEur = czkRateBil>0 ? incassoCzkExtra/czkRateBil : 0;
+  const incasso = (incassoManuale > 0 ? incassoManuale : incassoVendite) + incassoCzkExtraEur;
   const costoMerce = costoMerceManuale > 0 ? costoMerceManuale : costoMerceVendite;
   const utile = incasso + ricaviExtra - costoMerce - costiNetti;
   const margine = incasso>0 ? utile/incasso*100 : null;
@@ -6694,6 +6702,8 @@ async function salvaBilancio() {
   const cm = parseFloat(document.getElementById('bil-costo-merce-manuale')?.value)||0;
   if(im) ev.bilancio.incassoManuale = im; else delete ev.bilancio.incassoManuale;
   if(cm) ev.bilancio.costoMerceManuale = cm; else delete ev.bilancio.costoMerceManuale;
+  const ce = parseFloat(document.getElementById('bil-incasso-czk-extra')?.value)||0;
+  if(ce) ev.bilancio.incassoCzkExtra = ce; else delete ev.bilancio.incassoCzkExtra;
   await saveDB();
   closeModal('modal-bilancio-evento');
   renderEventi();
@@ -9157,6 +9167,8 @@ window.eseguiRettificaMassiva = eseguiRettificaMassiva;
     <input type="number" step="0.01" id="bil-incasso-manuale" placeholder="es. 1992.00" oninput="aggiornaBilancio()" style="width:140px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
     <label style="font-size:13px;margin-left:8px">Costo merce manuale (€):</label>
     <input type="number" step="0.01" id="bil-costo-merce-manuale" placeholder="es. 701.00" oninput="aggiornaBilancio()" style="width:140px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+    <label style="font-size:13px;margin-left:8px" title="Vendite cashless in CZK non registrate singolarmente. Vengono convertite in € col cambio dell'evento e SOMMATE all'incasso.">Incasso CZK extra (cashless):</label>
+    <input type="number" step="1" id="bil-incasso-czk-extra" placeholder="es. 20880" oninput="aggiornaBilancio()" style="width:140px;padding:6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
     <span style="font-size:11px;color:var(--text3)">(lascia vuoto se le vendite sono nel sistema)</span>
   </div>
 </div>
