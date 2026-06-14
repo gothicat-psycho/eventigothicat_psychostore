@@ -2330,7 +2330,7 @@ function renderStock() {
 // ─────────────────────────────────────────────
 // EDIT STOCK INLINE
 // ─────────────────────────────────────────────
-async function impostaTutteTaglie(logoId, catId, mag, inputId) {
+function impostaTutteTaglie(logoId, catId, mag, inputId) {
   const val = parseInt(document.getElementById(inputId)?.value);
   if (isNaN(val) || val < 0) { showToast('Inserisci un valore valido', 'red'); return; }
   const logo = getLogo(logoId);
@@ -2351,9 +2351,10 @@ async function impostaTutteTaglie(logoId, catId, mag, inputId) {
     nuoviMov.push(m);
   });
   if (nuoviMov.length === 0) { showToast('Nessuna variazione necessaria'); return; }
-  await Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })]);
   renderStock();
   showToast(`${logo?.nome} — ${cat?.label}: tutte le taglie impostate a ${val} pz ✓`);
+  Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })])
+    .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
 }
 
 function apriEditStock(el, logoId, catId, taglia, mag) {
@@ -2370,7 +2371,7 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
   input.focus();
   input.select();
 
-  async function conferma() {
+  function conferma() {
     const nuovoStock = parseInt(input.value);
     if (isNaN(nuovoStock) || nuovoStock < 0) { el.innerHTML = originalHtml; return; }
     if (nuovoStock === stockAttuale) { el.innerHTML = originalHtml; return; }
@@ -2386,9 +2387,10 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
       note: 'Rettifica manuale',
     };
     db.movimenti.push(m);
-    await Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })]);
     renderStock();
     showToast(`Stock ${mag} aggiornato: ${stockAttuale} → ${nuovoStock}`);
+    Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })])
+      .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
   }
 
   input.addEventListener('blur', conferma);
@@ -2573,7 +2575,7 @@ function editTourCell(el, logoId, catId, taglia, stockAttuale) {
   input.select();
 }
 
-async function salvaTourgCell(input, logoId, catId, taglia, stockAttuale) {
+function salvaTourgCell(input, logoId, catId, taglia, stockAttuale) {
   const nuovo = parseInt(input.value);
   if (isNaN(nuovo) || nuovo < 0 || nuovo === stockAttuale) { renderTourGrid(); return; }
   const delta = nuovo - stockAttuale;
@@ -2587,9 +2589,10 @@ async function salvaTourgCell(input, logoId, catId, taglia, stockAttuale) {
     note: 'Carico manuale tour'
   };
   db.movimenti.push(m);
-  await Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })]);
   renderTourGrid();
   showToast('Stock tour aggiornato ✓');
+  Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })])
+    .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
 }
 
 // ─────────────────────────────────────────────
@@ -4362,7 +4365,7 @@ function rettificaAccStock(catId, mag, el) {
   input.type = 'number'; input.min = '0'; input.value = attuale;
   input.className = 'taglia-stock-editing'; input.style.width = '60px';
   el.appendChild(input); input.focus(); input.select();
-  async function conferma() {
+  function conferma() {
     const nuovo = parseInt(input.value);
     if (isNaN(nuovo) || nuovo < 0) { el.innerHTML = orig; return; }
     if (nuovo === attuale) { el.innerHTML = orig; return; }
@@ -4370,10 +4373,11 @@ function rettificaAccStock(catId, mag, el) {
     if (!db.movimentiAcc) db.movimentiAcc = [];
     if (!db.nextMovAccId) db.nextMovAccId = 1;
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty: Math.abs(delta), tipo: delta > 0 ? 'carico' : 'scarico', data: today(), note: 'Rettifica manuale' });
-    await saveDBFields({ movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId });
     renderAccessori();
     renderAccTour();
     showToast(`Stock aggiornato: ${attuale} → ${nuovo}`);
+    saveDBFields({ movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId })
+      .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
   }
   input.addEventListener('blur', conferma);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { el.innerHTML = orig; input.removeEventListener('blur', conferma); } });
