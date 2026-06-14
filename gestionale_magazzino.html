@@ -676,7 +676,8 @@
         <div id="tr-items"></div>
         <button class="btn btn-ghost" onclick="addTrItem()" style="margin-bottom:12px">+ Aggiungi articolo</button>
         <div class="sep"></div>
-        <div style="display:flex;justify-content:flex-end">
+        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+          <button class="btn" style="border-color:#E65100;color:#E65100" onclick="trasferimentoTotale()">⚡ Sposta TUTTO lo stock</button>
           <button class="btn btn-primary" onclick="salvaTrasferimento()">Esegui trasferimento</button>
         </div>
       </div>
@@ -2797,6 +2798,88 @@ function apriReportSnapshot(eventoId) {
 }
 
 // Reminder nel rientro post-evento
+async function trasferimentoTotale() {
+  const da = document.getElementById('tr-da').value;
+  const a = document.getElementById('tr-a').value;
+  const data = document.getElementById('tr-data').value || today();
+  const note = document.getElementById('tr-note').value.trim() || `Trasferimento totale ${da} → ${a}`;
+
+  if (da === a) { showToast('I magazzini di partenza e destinazione devono essere diversi'); return; }
+
+  const magLabel = m => m === 'tour' ? '🎒 Adriano On Tour' : m.charAt(0).toUpperCase() + m.slice(1);
+
+  // Raccoglie tutto lo stock > 0 nel magazzino di partenza
+  const items = [];
+  (db.loghi||[]).forEach(logo => {
+    const cats = getCatPerLogo(logo.nome);
+    cats.forEach(cat => {
+      if (cat.taglie) {
+        (cat.taglieLista||TAGLIE).forEach(t => {
+          const s = getStock(logo.id, cat.id, t, da);
+          if (s > 0) items.push({ logoId: logo.id, catId: cat.id, taglia: t, qty: s, logoNome: logo.nome, catLabel: cat.label });
+        });
+      } else {
+        const s = getStock(logo.id, cat.id, null, da);
+        if (s > 0) items.push({ logoId: logo.id, catId: cat.id, taglia: null, qty: s, logoNome: logo.nome, catLabel: cat.label });
+      }
+    });
+  });
+
+  // Accessori
+  const accItems = [];
+  ACC_CATS.forEach(c => {
+    const s = getAccStock(c.id, da);
+    if (s > 0) accItems.push({ catId: c.id, qty: s, label: c.label });
+  });
+
+  const totale = items.length + accItems.length;
+  if (totale === 0) { showToast(`Nessuno stock presente in ${magLabel(da)}`); return; }
+
+  // Snapshot reminder se la partenza è 'tour'
+  if (da === 'tour') {
+    const eventoAttivoId = cassaEventoId || parseInt(localStorage.getItem('cassaEventoId'));
+    if (eventoAttivoId) {
+      const hasChiusura = (db.snapshots||[]).some(s => s.eventoId === eventoAttivoId && s.tipo === 'chiusura');
+      if (!hasChiusura) {
+        const conf = confirm(`⚠️ Nessuna fotografia di chiusura per questo evento!\n\nVuoi farne una ora prima di eseguire il trasferimento?\n\nOK = Fotografa\nAnnulla = Procedi senza`);
+        if (conf) await faiSnapshot(eventoAttivoId, 'chiusura');
+      }
+    }
+  }
+
+  if (!confirm(`Sposta TUTTO lo stock di ${magLabel(da)} (${totale} righe) a ${magLabel(a)}?\n\nData: ${data}\nNota: ${note}`)) return;
+
+  const nuoviMov = [];
+
+  // Movimenti tessile
+  items.forEach(it => {
+    const mOut = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'scarico', magazzino: da, data, note };
+    const mIn  = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'carico', magazzino: a, data, note };
+    db.movimenti.push(mOut, mIn);
+    nuoviMov.push(mOut, mIn);
+  });
+
+  // Movimenti accessori
+  accItems.forEach(it => {
+    if (!db.movimentiAcc) db.movimentiAcc = [];
+    if (!db.nextMovAccId) db.nextMovAccId = 1;
+    db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.catId, mag: da, magazzino: da, qty: it.qty, tipo: 'scarico', data, note });
+    db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.catId, mag: a, magazzino: a, qty: it.qty, tipo: 'carico', data, note });
+  });
+
+  await Promise.all([
+    ...nuoviMov.map(m => saveMovimento(m)),
+    saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
+  ]);
+
+  renderStock();
+  renderTrasferimenti();
+  renderTourGrid();
+  renderAccessori();
+  renderAccTour();
+  showToast(`✓ Tutto lo stock di ${magLabel(da)} spostato a ${magLabel(a)} — ${totale} righe`);
+}
+
 async function rientroRapido(destinazione) {
   const data = document.getElementById('rientro-data').value || today();
   const note = document.getElementById('rientro-note').value.trim() || `Rientro rapido → ${destinazione}`;
