@@ -3020,11 +3020,17 @@ function renderStorico() {
   const contEur = list.filter(v=>v.pagamento==='contanti'&&(!v.valuta||v.valuta==='EUR')).reduce((a,v)=>a+v.totale,0);
   const contCzk = list.filter(v=>v.pagamento==='contanti'&&v.valuta==='CZK').reduce((a,v)=>a+v.totale,0);
   const costoMerceTot = list.reduce((a,v)=>a+(v.items||[]).reduce((b,it)=>{ const p=getProdotto(it.barcode); return b+(p&&p.costo?p.costo*(it.qty||1):0); },0),0);
-  const margTot = totEur>0&&costoMerceTot>0 ? (totEur-costoMerceTot)/totEur*100 : null;
+  const totCzkEur = list.filter(v=>v.valuta==='CZK').reduce((a,v)=>{
+    const ev=(db.eventi||[]).find(e=>String(e.id)===String(v.eventoId));
+    const rate = ev && ev.czkRate ? ev.czkRate : 0;
+    return a + (rate>0 ? v.totale/rate : 0);
+  }, 0);
+  const incassoTotEur = totEur + totCzkEur;
+  const margTot = incassoTotEur>0&&costoMerceTot>0 ? (incassoTotEur-costoMerceTot)/incassoTotEur*100 : null;
   document.getElementById('storico-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Scontrini</div><div class="metric-value">${list.length}</div><div class="metric-sub">${nArt} articoli</div></div>
     <div class="metric"><div class="metric-label">Incasso € EUR</div><div class="metric-value green">${fmt(totEur)}</div></div>
-    ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
+    ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div>${totCzkEur>0?`<div class="metric-sub">≈ ${fmt(totCzkEur)}</div>`:''}</div>`:''}
     <div class="metric"><div class="metric-label">💳 Incassi per metodo</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
       ${cashEur>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless €</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${fmt(cashEur)}</span></div>`:''}
       ${cashCzk>0?`<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--text3)">💳 Cashless CZK</span><span style="font-size:15px;font-weight:600;color:#6D28D9">${Math.round(cashCzk).toLocaleString('it')} CZK</span></div>`:''}
