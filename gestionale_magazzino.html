@@ -3256,7 +3256,7 @@ async function executeDel() {
     await Promise.all([
       deleteVendita(id),
       ...nuoviMov.map(m => saveMovimento(m)),
-      saveDB(),
+      saveDBFields({ nextMovId: db.nextMovId }),
     ]);
     renderVendite();
   } else {
@@ -4028,10 +4028,7 @@ async function salvaModificaVendita() {
   } else {
     v.pagContanti = 0; v.pagPos = nuovoTotale;
   }
-  await Promise.all([
-    saveVendita(v),
-    saveDB(),
-  ]);
+  await saveVendita(v);
   document.getElementById('modal-modifica-vendita').classList.remove('open');
   renderVendite();
   showToast('Vendita aggiornata ✓');
@@ -4109,13 +4106,7 @@ async function concludiVendita() {
     }
   });
 
-  // Salva vendita e movimenti nelle collezioni separate + aggiorna contatori nel doc principale
-  await Promise.all([
-    saveVendita(nuovaVendita),
-    ...nuoviMovimenti.map(m => saveMovimento(m)),
-    saveDB(),
-  ]);
-
+  // Reset UI immediato (optimistic) — non aspettare Firebase
   svuotaScontrino();
   const mpEl = document.getElementById('metodo-pagamento');
   if (mpEl) mpEl.value = 'pos';
@@ -4130,6 +4121,16 @@ async function concludiVendita() {
   const noteEl = document.getElementById('scontrino-note');
   if (noteEl) noteEl.value = '';
   showToast('Vendita registrata ✓');
+
+  // Salvataggio Firebase in background — solo campi necessari (no full saveDB)
+  Promise.all([
+    saveVendita(nuovaVendita),
+    ...nuoviMovimenti.map(m => saveMovimento(m)),
+    saveDBFields({ nextVendId: db.nextVendId, nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
+  ]).catch(e => {
+    console.error('Errore salvataggio vendita:', e);
+    showSyncStatus('Errore salvataggio vendita!', true);
+  });
 }
 
 // ─────────────────────────────────────────────
