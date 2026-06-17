@@ -359,7 +359,20 @@
   <div class="topbar">
     <button class="btn-sidebar-toggle" onclick="toggleSidebar()" title="Mostra/nascondi menu">&#9776;</button>
     <span class="topbar-title" id="page-title">Dashboard</span>
+    <span id="conn-indicator" title="Stato connessione Firebase" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--text3);margin-left:12px">
+      <span id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:#9CA3AF;display:inline-block;transition:background .3s"></span>
+      <span id="conn-label">Connessione...</span>
+    </span>
     <div id="topbar-alerts"></div>
+  </div>
+  <!-- Banner persistente vendite non sincronizzate -->
+  <div id="pending-sales-banner" style="display:none;background:#FEE2E2;border-bottom:2px solid #DC2626;padding:10px 20px;align-items:center;gap:12px;position:sticky;top:0;z-index:200">
+    <span style="font-size:20px">⚠️</span>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:13px;color:#991B1B" id="pending-sales-title">Vendite non sincronizzate!</div>
+      <div style="font-size:12px;color:#B91C1C" id="pending-sales-detail">Controlla la connessione e riprova.</div>
+    </div>
+    <button class="btn btn-sm" style="background:#DC2626;color:#fff;border-color:#DC2626" onclick="ritentaPendingSales()">🔄 Riprova ora</button>
   </div>
   <div class="content">
 
@@ -4108,6 +4121,128 @@ function aggiornaMisto() {
   }
 }
 
+// ─────────────────────────────────────────────
+// CODA SALVATAGGI PENDENTI (affidabilità vendite)
+// ─────────────────────────────────────────────
+const PENDING_KEY = 'gothicat_pending_sales';
+
+function getPendingSales() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function setPendingSales(list) {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  updatePendingBanner();
+}
+
+function addPendingSale(payload) {
+  const list = getPendingSales();
+  list.push({ ...payload, _addedAt: Date.now() });
+  setPendingSales(list);
+}
+
+function removePendingSale(ventitaId) {
+  const list = getPendingSales().filter(p => p.vendita.id !== ventitaId);
+  setPendingSales(list);
+}
+
+function updatePendingBanner() {
+  const list = getPendingSales();
+  const banner = document.getElementById('pending-sales-banner');
+  if (!banner) return;
+  if (list.length === 0) {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display = 'flex';
+    document.getElementById('pending-sales-title').textContent =
+      `${list.length} vendita${list.length > 1 ? 'e' : ''} non sincronizzata${list.length > 1 ? 'e' : ''}!`;
+    const tot = list.reduce((a,p) => a + (p.vendita.totale||0), 0);
+    document.getElementById('pending-sales-detail').textContent =
+      `Totale non salvato: ${tot.toFixed(2)} ${list[0].vendita.valuta || '€'} — il gestionale riproverà automaticamente, oppure clicca "Riprova ora"`;
+  }
+}
+
+async function trySaveVenditaPayload(payload) {
+  const { vendita, movimenti, fieldsUpdate } = payload;
+  await Promise.all([
+    saveVendita(vendita),
+    ...movimenti.map(m => saveMovimento(m)),
+    saveDBFields(fieldsUpdate),
+  ]);
+}
+
+async function ritentaPendingSales() {
+  const list = getPendingSales();
+  if (list.length === 0) return;
+  showToast(`Tentativo di sincronizzazione di ${list.length} vendita/e...`);
+  for (const payload of list) {
+    try {
+      await trySaveVenditaPayload(payload);
+      removePendingSale(payload.vendita.id);
+    } catch(e) {
+      console.error('Ritento fallito per vendita', payload.vendita.id, e);
+    }
+  }
+  const stillPending = getPendingSales();
+  if (stillPending.length === 0) {
+    showToast('✓ Tutte le vendite sincronizzate correttamente');
+  } else {
+    showToast(`⚠️ ${stillPending.length} vendita/e ancora non sincronizzate`);
+  }
+}
+
+// Riprova automaticamente ogni 15 secondi se ci sono vendite pendenti
+setInterval(() => {
+  if (getPendingSales().length > 0 && navigator.onLine) {
+    ritentaPendingSales();
+  }
+}, 15000);
+
+// Ritenta anche quando la connessione torna disponibile
+window.addEventListener('online', () => {
+  if (getPendingSales().length > 0) ritentaPendingSales();
+});
+
+// ─────────────────────────────────────────────
+// INDICATORE CONNESSIONE FIREBASE
+// ─────────────────────────────────────────────
+function setConnIndicator(stato) {
+  const dot = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  if (!dot || !label) return;
+  if (stato === 'online') {
+    dot.style.background = '#10B981';
+    label.textContent = 'Connesso';
+    label.style.color = '#10B981';
+  } else if (stato === 'offline') {
+    dot.style.background = '#DC2626';
+    label.textContent = 'Offline';
+    label.style.color = '#DC2626';
+  } else {
+    dot.style.background = '#F59E0B';
+    label.textContent = 'Verifica...';
+    label.style.color = '#F59E0B';
+  }
+}
+
+// Usa il listener del documento principale per dedurre lo stato connessione
+function initConnMonitor() {
+  setConnIndicator(navigator.onLine ? 'checking' : 'offline');
+  window.addEventListener('online', () => setConnIndicator('online'));
+  window.addEventListener('offline', () => setConnIndicator('offline'));
+  // Verifica reale tramite un piccolo ping a Firestore
+  setInterval(async () => {
+    if (!navigator.onLine) { setConnIndicator('offline'); return; }
+    try {
+      await firestore.collection('gestionale').doc('data').get({ source: 'server' });
+      setConnIndicator('online');
+    } catch(e) {
+      setConnIndicator('offline');
+    }
+  }, 10000);
+}
+
 async function concludiVendita() {
   if (!scontrino.length || !cassaEventoId) return;
   const ev = getEvento(cassaEventoId);
@@ -4165,14 +4300,13 @@ async function concludiVendita() {
   if (noteEl) noteEl.value = '';
   showToast('Vendita registrata ✓');
 
-  // Salvataggio Firebase in background — solo campi necessari (no full saveDB)
-  Promise.all([
-    saveVendita(nuovaVendita),
-    ...nuoviMovimenti.map(m => saveMovimento(m)),
-    saveDBFields({ nextVendId: db.nextVendId, nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
-  ]).catch(e => {
-    console.error('Errore salvataggio vendita:', e);
-    showSyncStatus('Errore salvataggio vendita!', true);
+  // Salvataggio Firebase in background — con coda di sicurezza se fallisce
+  const fieldsUpdate = { nextVendId: db.nextVendId, nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId };
+  const payload = { vendita: nuovaVendita, movimenti: nuoviMovimenti, fieldsUpdate };
+  trySaveVenditaPayload(payload).catch(e => {
+    console.error('Errore salvataggio vendita, aggiunta a coda pendenti:', e);
+    addPendingSale(payload);
+    showSyncStatus('⚠️ Vendita non salvata — in coda', true);
   });
 }
 
@@ -4654,6 +4788,9 @@ function completaAccesso(email, adminMode) {
     document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
   }
   avviaListeners();
+  initConnMonitor();
+  updatePendingBanner();
+  if (getPendingSales().length > 0) ritentaPendingSales();
   loadDB().then(() => {
     renderDashboard();
     showSection(adminMode ? 'dashboard' : 'dashboard', document.querySelector('.nav-item'));
