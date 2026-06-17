@@ -2829,7 +2829,7 @@ function psychoSubtotale() {
   return scontrino.filter(it=>!it.fonte||it.fonte==='psycho').reduce((a,i)=>a+i.prezzo, 0);
 }
 function aggiornaSconto() {
-  // Lo sconto si applica ai soli articoli Psycho-Store (Toxico e Toppe a prezzo pieno)
+  // Lo sconto si applica ad articoli Psycho-Store e Toxico (Toppe Tarocchi a prezzo pieno)
   const subTot = scontrino.reduce((a,i)=>a+i.prezzo, 0);
   const sconto = getScontoTot();
   const tot = Math.max(0, subTot - sconto);
@@ -2837,8 +2837,14 @@ function aggiornaSconto() {
 }
 window.aggiornaSconto = aggiornaSconto;
 
+function scontabileSubtotale() {
+  // Base scontabile: Psycho-Store + Toxico (Toppe Tarocchi escluse: prezzo fisso con quote)
+  return scontrino.filter(it=>!it.fonte||it.fonte==='psycho'||it.fonte==='toxico').reduce((a,i)=>a+i.prezzo, 0);
+}
+window.scontabileSubtotale = scontabileSubtotale;
+
 function getScontoTot() {
-  const subP = psychoSubtotale();
+  const subP = scontabileSubtotale();
   const perc = parseFloat(document.getElementById('sconto-perc').value)||0;
   const eur  = parseFloat(document.getElementById('sconto-eur').value)||0;
   return Math.min(subP, (subP * perc / 100) + eur);
@@ -2911,13 +2917,22 @@ async function concludiVendita() {
   const tarItems    = scontrino.filter(it=>it.fonte==='tarocchi');
   const savePromises = [];
 
+  // ── SCONTO ripartito su Psycho + Toxico (Toppe a prezzo pieno) ──
+  const subPsy = psychoItems.reduce((a,i)=>a+i.prezzo,0);
+  const subTox = toxicoItems.reduce((a,i)=>a+i.prezzo,0);
+  const scontoPerc = parseFloat(document.getElementById('sconto-perc').value)||0;
+  const scontoTot = getScontoTot();
+  const baseScont = subPsy + subTox;
+  const scontoPsy = baseScont>0 ? scontoTot*(subPsy/baseScont) : 0;
+  const scontoTox = scontoTot - scontoPsy;
+  const fTox = subTox>0 ? Math.max(0,(subTox - scontoTox)/subTox) : 1;
+
   // ── PSYCHO-STORE ──
   if(psychoItems.length) {
     if(!db.vendite) db.vendite=[];
     if(!db.nextVendId) db.nextVendId=1;
-    const subP = psychoItems.reduce((a,i)=>a+i.prezzo,0);
-    const sconto = getScontoTot();
-    const scontoPerc = parseFloat(document.getElementById('sconto-perc').value)||0;
+    const subP = subPsy;
+    const sconto = scontoPsy;
     const totale = Math.max(0, subP - sconto);
     const nuovaVendita = {
       id: db.nextVendId++, eventoId: cassaEventoId, dataOra: now.toISOString(),
@@ -2940,13 +2955,14 @@ async function concludiVendita() {
     if(!db.toxico.vendite) db.toxico.vendite=[];
     if(!db.toxico.nextVendId) db.toxico.nextVendId=1;
     toxicoItems.forEach(it=>{
-      const prezzoEur = valuta==='CZK' ? (it.prezzoEur||0) : it.prezzoUnit;
-      const prezzoCzk = valuta==='CZK' ? it.prezzoUnit : (it.prezzoCzk||0);
+      const prezzoEur = (valuta==='CZK' ? (it.prezzoEur||0) : it.prezzoUnit) * fTox;
+      const prezzoCzk = (valuta==='CZK' ? it.prezzoUnit : (it.prezzoCzk||0)) * fTox;
       db.toxico.vendite.push({
         id: db.toxico.nextVendId++, eventoId: cassaEventoId, prodId: it.prodId, nome: it.descrizione, taglia: it.taglia, qta: it.qty,
-        prezzoEur, prezzoGbp: it.prezzoGbp||0, prezzoCzk,
+        prezzoEur: parseFloat(prezzoEur.toFixed(2)), prezzoGbp: parseFloat(((it.prezzoGbp||0)*fTox).toFixed(2)), prezzoCzk: Math.round(prezzoCzk),
         totEur: valuta==='CZK' ? (it.qty*prezzoCzk) : (it.qty*prezzoEur),
-        totGbp: it.qty*(it.prezzoGbp||0),
+        totGbp: it.qty*(it.prezzoGbp||0)*fTox,
+        sconto: fTox<1 ? parseFloat((it.prezzo*(1-fTox)).toFixed(2)) : 0,
         valuta, pagamento, nota, ts: now.toISOString(), transId,
       });
     });
@@ -8282,17 +8298,17 @@ const TOXICO_CATALOG = [
   { id:'SKULLY-HOODIE',             nome:'SKULLY GREY',                cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25, prezzoCzk:1500 },
   { id:'WARPIG-HOODIE',             nome:'WARPIG',                     cat:'Hoodies',        taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:60, prezzoGbp:25, prezzoCzk:1500 },
   // Mesh Shorts
-  { id:'DFB-SHORTS',                nome:'DFB',                        cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1100 },
-  { id:'GASMASK-SHORTS',            nome:'GAS MASK',                   cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1100 },
+  { id:'DFB-SHORTS',                nome:'DFB',                        cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1200 },
+  { id:'GASMASK-SHORTS',            nome:'GAS MASK',                   cat:'Mesh Shorts',    taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1200 },
   // Bandana
   { id:'SUERTE-BANDANA',            nome:'SUERTE GREY',                cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75, prezzoCzk:250 },
   { id:'FTW-BANDANA',               nome:'FTW RED',                    cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75, prezzoCzk:250 },
   { id:'ROTTINGSKULL-BANDANA',      nome:'ROTTING SKULL BLACK',        cat:'Bandana',        taglie:['NO'], prezzoEur:10, prezzoGbp:3.75, prezzoCzk:250 },
   // Mesh Tanks
-  { id:'METALSKULL-TANK',           nome:'METAL SKULL',                cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
-  { id:'DFB-TANK',                  nome:'DFB',                        cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
-  { id:'BOLTSKULL-TANK',            nome:'BOLT SKULL',                 cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
-  { id:'GASMASK-TANK',              nome:'GAS MASK',                   cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:42, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'METALSKULL-TANK',           nome:'METAL SKULL',                cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'DFB-TANK',                  nome:'DFB',                        cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'BOLTSKULL-TANK',            nome:'BOLT SKULL',                 cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1050 },
+  { id:'GASMASK-TANK',              nome:'GAS MASK',                   cat:'Mesh Tanks',     taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:38, prezzoGbp:16, prezzoCzk:1050 },
   // New Mesh Tanks
   { id:'DETHSQUAD-NEWTANK',         nome:'DETH SQUAD',                 cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5, prezzoCzk:1400 },
   { id:'VOMIT13-NEWTANK',           nome:'VOMIT 13',                   cat:'New Mesh Tanks', taglie:['XS','S','M','L','XL','2XL','3XL'], prezzoEur:52, prezzoGbp:22.5, prezzoCzk:1400 },
