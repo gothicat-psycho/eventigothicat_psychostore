@@ -1425,7 +1425,7 @@ function avviaListeners() {
     if (!snap.exists) return;
     const nuovi = snap.data();
     // Aggiorna solo i campi leggeri, non sovrascrivere vendite/movimenti in memoria
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     updateFooter();
   });
@@ -4336,7 +4336,7 @@ async function salvaAccessori() {
       prezzo: parseFloat(document.getElementById(`acc-prezzo-${c.id}`).value) || 0,
     };
   });
-  await saveDBFields({ accPrezzi: db.accPrezzi });
+  await saveDBFields({ accessori: db.accessori });
   showToast('Prezzi accessori salvati');
 }
 
