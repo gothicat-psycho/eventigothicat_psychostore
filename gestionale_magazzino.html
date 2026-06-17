@@ -900,8 +900,9 @@
         </div>
         <div class="cassa-layout">
           <div class="cassa-main">
-            <div class="card" style="overflow-y:auto;max-height:calc(100vh - 140px)">
+            <div class="card" style="overflow-y:auto;max-height:calc(100vh - 140px)" id="cassa-scroll-container">
               <div class="cassa-step">Tocca un logo per aggiungere un articolo</div>
+              <div id="cassa-az-index" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:5"></div>
               <div class="logo-grid" id="cassa-loghi-grid"></div>
             </div>
           </div>
@@ -3571,6 +3572,20 @@ function initCassa() {
   resetCassaSteps();
 }
 
+function scrollToLogo(logoId) {
+  const el = document.getElementById(`logo-anchor-${logoId}`);
+  const container = document.getElementById('cassa-scroll-container');
+  if (!el || !container) return;
+  const containerRect = container.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const offset = elRect.top - containerRect.top + container.scrollTop - 50; // -50 per non finire sotto l'indice sticky
+  container.scrollTo({ top: offset, behavior: 'smooth' });
+  // Effetto evidenziazione momentanea
+  el.style.transition = 'box-shadow .3s';
+  el.style.boxShadow = '0 0 0 3px var(--accent)';
+  setTimeout(() => { el.style.boxShadow = ''; }, 1200);
+}
+
 function buildLoghiGrid() {
   const ev = getEvento(cassaEventoId);
   const mag = ev ? ev.magazzino : null;
@@ -3604,14 +3619,15 @@ function buildLoghiGrid() {
     sortedLoghi = allLoghi.sort((a,b) => a.nome.localeCompare(b.nome,'it'));
   }
 
-  const makeLogoBtn = (l) => {
+  const makeLogoBtn = (l, withAnchor) => {
     const tot = getTotaleLogoStock(l.id, mag);
     const imgHtml = l.immagine
       ? `<img src="${l.immagine}" class="logo-btn-img" alt="${l.nome}">`
       : `<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text3)">🎨</div>`;
     const isPinned = isHellfest && HELLCATS_PINNED.some(n => n.toUpperCase() === l.nome.toUpperCase());
     const pinnedStyle = isPinned ? 'border-color:#E65100;box-shadow:0 0 0 2px #FEF3C7' : '';
-    return `<button class="logo-btn ${tot===0?'esaurito':''}" onclick="cassaSelLogo(${l.id}, this)" ${tot===0?'disabled':''} style="${pinnedStyle}">
+    const anchorId = withAnchor ? `id="logo-anchor-${l.id}"` : '';
+    return `<button ${anchorId} class="logo-btn ${tot===0?'esaurito':''}" onclick="cassaSelLogo(${l.id}, this)" ${tot===0?'disabled':''} style="${pinnedStyle}">
       ${isPinned ? '<div style="font-size:9px;font-weight:700;color:#E65100;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🔥 Hellcats</div>' : ''}
       ${imgHtml}
       ${l.nome}
@@ -3622,11 +3638,35 @@ function buildLoghiGrid() {
   const pinnedSep = isHellfest ? `<div style="grid-column:1/-1;height:1px;background:#F97316;margin:4px 0;opacity:.4"></div>
     <div style="grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#E65100;margin-bottom:2px">🔥 Hellcats — tutti gli altri loghi</div>` : '';
 
+  // Parte alfabetica (esclude i pinnati): qui mettiamo gli anchor per l'indice A-Z
+  const alfabeticaLoghi = isHellfest ? sortedLoghi.slice(pinned.length) : sortedLoghi;
+
   const loghiHtml = isHellfest
-    ? sortedLoghi.slice(0, pinned.length).map(makeLogoBtn).join('') +
+    ? sortedLoghi.slice(0, pinned.length).map(l => makeLogoBtn(l, false)).join('') +
       pinnedSep +
-      sortedLoghi.slice(pinned.length).map(makeLogoBtn).join('')
-    : sortedLoghi.map(makeLogoBtn).join('');
+      alfabeticaLoghi.map(l => makeLogoBtn(l, true)).join('')
+    : alfabeticaLoghi.map(l => makeLogoBtn(l, true)).join('');
+
+  // Costruisce indice A-Z: prima lettera di ogni logo nella parte alfabetica
+  const letterePresenti = new Set();
+  const primaLetteraMap = {}; // lettera -> id del primo logo con quella lettera
+  alfabeticaLoghi.forEach(l => {
+    const lettera = l.nome.charAt(0).toUpperCase();
+    if (!letterePresenti.has(lettera)) {
+      letterePresenti.add(lettera);
+      primaLetteraMap[lettera] = l.id;
+    }
+  });
+  const alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const azIndexHtml = alfabeto.map(letra => {
+    const disponibile = letterePresenti.has(letra);
+    if (!disponibile) {
+      return `<span style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3);opacity:.3">${letra}</span>`;
+    }
+    return `<button onclick="scrollToLogo(${primaLetteraMap[letra]})" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border-radius:50%;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer">${letra}</button>`;
+  }).join('');
+  const azIndexEl = document.getElementById('cassa-az-index');
+  if (azIndexEl) azIndexEl.innerHTML = azIndexHtml;
 
   // Accessori buttons
   const accHtml = ACC_CATS.map(c => {
