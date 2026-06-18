@@ -915,7 +915,7 @@
           <div class="cassa-main">
             <div class="card" style="overflow-y:auto;max-height:calc(100vh - 140px)" id="cassa-scroll-container">
               <div class="cassa-step">Tocca un logo per aggiungere un articolo</div>
-              <div id="cassa-az-index" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:5"></div>
+              <div id="cassa-az-index" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:5"></div>
               <div class="logo-grid" id="cassa-loghi-grid"></div>
             </div>
           </div>
@@ -3671,13 +3671,16 @@ function buildLoghiGrid() {
     }
   });
   const alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const azIndexHtml = alfabeto.map(letra => {
+  const buildLetterBtn = (letra) => {
     const disponibile = letterePresenti.has(letra);
     if (!disponibile) {
-      return `<span style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3);opacity:.3">${letra}</span>`;
+      return `<span style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text3);opacity:.3;flex-shrink:0">${letra}</span>`;
     }
-    return `<button onclick="scrollToLogo(${primaLetteraMap[letra]})" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border-radius:50%;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer">${letra}</button>`;
-  }).join('');
+    return `<button onclick="scrollToLogo(${primaLetteraMap[letra]})" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border-radius:50%;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer;flex-shrink:0">${letra}</button>`;
+  };
+  const riga1 = alfabeto.slice(0, 13).map(buildLetterBtn).join('');
+  const riga2 = alfabeto.slice(13).map(buildLetterBtn).join('');
+  const azIndexHtml = `<div style="display:flex;gap:6px;justify-content:space-between">${riga1}</div><div style="display:flex;gap:6px;justify-content:space-between">${riga2}</div>`;
   const azIndexEl = document.getElementById('cassa-az-index');
   if (azIndexEl) azIndexEl.innerHTML = azIndexHtml;
 
