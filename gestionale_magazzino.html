@@ -980,8 +980,8 @@
           <select id="filter-vend-venditore" onchange="renderVendite()" style="max-width:200px">
             <option value="">Tutti i venditori</option>
             <option value="matteo.lassandro@gmail.com">👑 Amministratore</option>
-            <option value="collaboratore1@gothicat.net">👤 Collaboratore 1</option>
-            <option value="collaboratore2@gothicat.net">👤 Collaboratore 2</option>
+            <option value="collaboratore1@gothicat.net">👤 DANILO</option>
+            <option value="collaboratore2@gothicat.net">👤 BOB</option>
           </select>
           <input id="filter-vend-data" type="date" onchange="renderVendite()" style="max-width:160px">
           <button class="btn btn-sm" onclick="document.getElementById('filter-vend-data').value='';document.getElementById('filter-vend-venditore').value='';renderVendite()">Reset</button>
@@ -4199,7 +4199,7 @@ function updatePendingBanner() {
 function apriPannelloSync() {
   const list = getPendingSales();
   const content = document.getElementById('sync-modal-content');
-  const userLabel = currentUser === ADMIN_EMAIL ? '👑 Amministratore' : currentUser === 'collaboratore1@gothicat.net' ? '👤 Collaboratore 1' : currentUser === 'collaboratore2@gothicat.net' ? '👤 Collaboratore 2' : currentUser || 'Sconosciuto';
+  const userLabel = currentUser === ADMIN_EMAIL ? '👑 Amministratore' : currentUser === 'collaboratore1@gothicat.net' ? '👤 DANILO' : currentUser === 'collaboratore2@gothicat.net' ? '👤 BOB' : currentUser || 'Sconosciuto';
 
   let html = `<div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Account attivo su questo device</div>
@@ -4471,7 +4471,7 @@ function renderVendite() {
       const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
         `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
       const noteHtml = v.note ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">📝 ${v.note}</div>` : '';
-      const vLabel = !v.venditore ? '—' : v.venditore === 'matteo.lassandro@gmail.com' ? '👑 Admin' : v.venditore === 'collaboratore1@gothicat.net' ? '👤 Collab. 1' : v.venditore === 'collaboratore2@gothicat.net' ? '👤 Collab. 2' : v.venditore;
+      const vLabel = !v.venditore ? '—' : v.venditore === 'matteo.lassandro@gmail.com' ? '👑 Admin' : v.venditore === 'collaboratore1@gothicat.net' ? '👤 DANILO' : v.venditore === 'collaboratore2@gothicat.net' ? '👤 BOB' : v.venditore;
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
         <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
@@ -4853,7 +4853,7 @@ function completaAccesso(email, adminMode) {
     document.getElementById('ruolo-label').style.color = 'var(--accent)';
     document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'block');
   } else {
-    const nome = email.replace('@gothicat.net','').replace('collaboratore','Collaboratore ');
+    const nome = email === 'collaboratore1@gothicat.net' ? 'DANILO' : email === 'collaboratore2@gothicat.net' ? 'BOB' : email;
     document.getElementById('ruolo-label').textContent = '👤 ' + nome;
     document.getElementById('ruolo-label').style.color = 'var(--text3)';
     document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
