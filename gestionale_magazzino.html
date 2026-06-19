@@ -899,6 +899,10 @@
             <button id="btn-eur" class="btn btn-sm btn-primary" onclick="setCassaValuta('EUR')">€ EUR</button>
             <button id="btn-czk" class="btn btn-sm" onclick="setCassaValuta('CZK')">CZK</button>
           </div>
+          <button class="btn btn-sm" id="btn-sync-status" onclick="apriPannelloSync()" style="margin-left:auto;display:flex;align-items:center;gap:5px">
+            <span id="sync-status-dot" style="width:8px;height:8px;border-radius:50%;background:#10B981;display:inline-block"></span>
+            <span id="sync-status-label">Sync OK</span>
+          </button>
           <button class="btn btn-sm" onclick="doShowEventi(document.getElementById('nav-eventi'))">Cambia evento</button>
         </div>
         <!-- Snapshot reminder banner -->
@@ -1148,6 +1152,18 @@
       </div>
       <div id="login-error" style="color:var(--red);font-size:12px;margin-top:4px;display:none">Password errata. Riprova.</div>
       <button class="btn btn-primary" style="width:100%;margin-top:10px;padding:12px" onclick="verificaLogin()">Entra</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL stato sync -->
+<div class="modal-backdrop" id="modal-sync-status">
+  <div class="modal" style="width:520px;max-height:85vh;overflow-y:auto">
+    <div class="modal-title">📡 Stato sincronizzazione — questo device</div>
+    <div id="sync-modal-content"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn" onclick="document.getElementById('modal-sync-status').classList.remove('open')">Chiudi</button>
+      <button class="btn btn-primary" onclick="ritentaPendingSales()">🔄 Riprova ora</button>
     </div>
   </div>
 </div>
@@ -3564,6 +3580,7 @@ function initCassa() {
   const magBadge = document.getElementById('cassa-evento-mag');
   magBadge.textContent = ev.magazzino === 'tour' ? '🎒 Adriano On Tour' : ev.magazzino.charAt(0).toUpperCase() + ev.magazzino.slice(1);
   magBadge.className = 'mag-badge mag-' + ev.magazzino;
+  updatePendingBanner();
 
   // Snapshot reminder banner
   const snapBanner = document.getElementById('cassa-snapshot-banner');
@@ -4153,17 +4170,68 @@ function removePendingSale(ventitaId) {
 function updatePendingBanner() {
   const list = getPendingSales();
   const banner = document.getElementById('pending-sales-banner');
-  if (!banner) return;
-  if (list.length === 0) {
-    banner.style.display = 'none';
-  } else {
-    banner.style.display = 'flex';
-    document.getElementById('pending-sales-title').textContent =
-      `${list.length} vendita${list.length > 1 ? 'e' : ''} non sincronizzata${list.length > 1 ? 'e' : ''}!`;
-    const tot = list.reduce((a,p) => a + (p.vendita.totale||0), 0);
-    document.getElementById('pending-sales-detail').textContent =
-      `Totale non salvato: ${tot.toFixed(2)} ${list[0].vendita.valuta || '€'} — il gestionale riproverà automaticamente, oppure clicca "Riprova ora"`;
+  if (banner) {
+    if (list.length === 0) {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = 'flex';
+      document.getElementById('pending-sales-title').textContent =
+        `${list.length} vendita${list.length > 1 ? 'e' : ''} non sincronizzata${list.length > 1 ? 'e' : ''}!`;
+      const tot = list.reduce((a,p) => a + (p.vendita.totale||0), 0);
+      document.getElementById('pending-sales-detail').textContent =
+        `Totale non salvato: ${tot.toFixed(2)} ${list[0].vendita.valuta || '€'} — il gestionale riproverà automaticamente, oppure clicca "Riprova ora"`;
+    }
   }
+  // Aggiorna anche il bottone compatto nella barra cassa
+  const dot = document.getElementById('sync-status-dot');
+  const label = document.getElementById('sync-status-label');
+  if (dot && label) {
+    if (list.length === 0) {
+      dot.style.background = '#10B981';
+      label.textContent = 'Sync OK';
+    } else {
+      dot.style.background = '#DC2626';
+      label.textContent = `${list.length} in coda`;
+    }
+  }
+}
+
+function apriPannelloSync() {
+  const list = getPendingSales();
+  const content = document.getElementById('sync-modal-content');
+  const userLabel = currentUser === ADMIN_EMAIL ? '👑 Amministratore' : currentUser === 'collaboratore1@gothicat.net' ? '👤 Collaboratore 1' : currentUser === 'collaboratore2@gothicat.net' ? '👤 Collaboratore 2' : currentUser || 'Sconosciuto';
+
+  let html = `<div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Account attivo su questo device</div>
+    <div style="font-size:15px;font-weight:600">${userLabel}</div>
+  </div>`;
+
+  if (list.length === 0) {
+    html += `<div style="text-align:center;padding:24px 0">
+      <div style="font-size:40px;margin-bottom:8px">✅</div>
+      <div style="font-size:15px;font-weight:600;color:var(--green)">Tutte le vendite sono sincronizzate</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Nessuna vendita in attesa su questo device</div>
+    </div>`;
+  } else {
+    const tot = list.reduce((a,p) => a + (p.vendita.totale||0), 0);
+    html += `<div style="background:#FEE2E2;border:1px solid #DC2626;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px">
+      <div style="font-weight:700;color:#991B1B;font-size:14px">⚠️ ${list.length} vendita${list.length>1?'e':''} non ancora salvata${list.length>1?'e':''} su Firebase</div>
+      <div style="font-size:12px;color:#B91C1C;margin-top:4px">Totale: ${tot.toFixed(2)} ${list[0].vendita.valuta||'€'}</div>
+    </div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:8px">`;
+    list.forEach(p => {
+      const v = p.vendita;
+      const ora = new Date(p._addedAt).toLocaleTimeString('it', {hour:'2-digit', minute:'2-digit'});
+      html += `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:13px">
+        <div style="display:flex;justify-content:space-between"><strong>${v.totale.toFixed(2)} ${v.valuta||'€'}</strong><span style="color:var(--text3);font-size:11px">aggiunta alle ${ora}</span></div>
+        <div style="color:var(--text3);font-size:12px;margin-top:2px">${(v.items||[]).length} articoli — ${v.metodoPagamento||'contanti'}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  content.innerHTML = html;
+  document.getElementById('modal-sync-status').classList.add('open');
 }
 
 async function trySaveVenditaPayload(payload) {
