@@ -1352,6 +1352,7 @@
           <button class="tab-btn" id="rtab-fornitori" onclick="switchReportTab('fornitori')">🏭 Fornitori</button>
           <button class="tab-btn" id="rtab-giornaliero" onclick="switchReportTab('giornaliero')">📆 Giornaliero</button>
           <button class="tab-btn" id="rtab-orario" onclick="switchReportTab('orario')">🕐 Orario</button>
+          <button class="tab-btn" id="rtab-articolo" onclick="switchReportTab('articolo')">🔎 Prodotto</button>
 
         </div>
         <div id="report-evento">
@@ -1397,6 +1398,14 @@
             <select id="r-orario-giorno" onchange="renderROrario()" style="max-width:180px"><option value="">Tutti i giorni</option></select>
           </div></div>
           <div id="r-orario-content"></div>
+        </div>
+
+        <div id="report-articolo" style="display:none">
+          <div class="card"><div class="flex-row" style="gap:8px;flex-wrap:wrap">
+            <input id="r-art-q" oninput="renderRArticolo()" placeholder="Barcode o nome prodotto (es. T285)" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+            <select id="r-art-ev" onchange="renderRArticolo()" style="max-width:300px"><option value="">Tutti gli eventi</option></select>
+          </div></div>
+          <div id="r-art-content"></div>
         </div>
       </div>
 
@@ -3265,8 +3274,8 @@ function switchReportTab(tab) {
   reportTab = tab;
   document.querySelectorAll('.tab-btn[id^="rtab-"]').forEach(b=>b.classList.remove('active'));
   document.getElementById('rtab-'+tab).classList.add('active');
-  ['evento','prodotti','fornitori','giornaliero','orario'].forEach(t=>{ document.getElementById('report-'+t).style.display=t===tab?'block':'none'; });
-  const fns = {evento:renderREvento,prodotti:renderRProdotti,fornitori:renderRFornitori,giornaliero:renderRGiornaliero,orario:renderROrario};
+  ['evento','prodotti','fornitori','giornaliero','orario','articolo'].forEach(t=>{ document.getElementById('report-'+t).style.display=t===tab?'block':'none'; });
+  const fns = {evento:renderREvento,prodotti:renderRProdotti,fornitori:renderRFornitori,giornaliero:renderRGiornaliero,orario:renderROrario,articolo:renderRArticolo};
   if(fns[tab]) fns[tab]();
 }
 window.switchReportTab = switchReportTab;
@@ -3276,6 +3285,7 @@ function initReport() {
   ['r-ev','r-giorn-ev','r-orario-ev'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML='<option value="">Seleziona evento...</option>'+evOpts; });
   const allEv = '<option value="">Tutti gli eventi</option>'+evOpts;
   const rpev = document.getElementById('r-prod-ev'); if(rpev) rpev.innerHTML=allEv;
+  const rart = document.getElementById('r-art-ev'); if(rart) rart.innerHTML=allEv;
   const fornitori = [...new Set((db.prodotti||[]).map(p=>p.fornitore).filter(Boolean))].sort();
   const rpf = document.getElementById('r-prod-forn'); if(rpf) rpf.innerHTML='<option value="">Tutti i fornitori</option>'+fornitori.map(f=>`<option value="${f}">${f}</option>`).join('');
   switchReportTab('evento');
@@ -3374,6 +3384,67 @@ function renderRProdotti() {
     </tr>`; }).join('')}</tbody></table></div>` : '<div class="report-card"><p class="empty">Nessun dato</p></div>';
 }
 window.renderRProdotti = renderRProdotti;
+
+function renderRArticolo() {
+  const q = (document.getElementById('r-art-q').value||'').trim().toLowerCase();
+  const evId = parseInt(document.getElementById('r-art-ev').value)||0;
+  const el = document.getElementById('r-art-content');
+  if(!q) { el.innerHTML='<div class="report-card"><p class="empty">Digita un barcode o un nome prodotto (es. T285).</p></div>'; return; }
+  let vend = (db.vendite||[]);
+  if(evId) vend = vend.filter(v=>v.eventoId===evId);
+  const perVar={}, perEv={}; let totQ=0, totEur=0, totCzk=0;
+  vend.forEach(v=>{
+    const isCzk = v.valuta==='CZK';
+    (v.items||[]).forEach(it=>{
+      const p=getProdotto(it.barcode);
+      const hay=((it.barcode||'')+' '+(it.descrizione||'')+' '+(p?(getNomeProdotto(p)||p.descrizione||''):'')).toLowerCase();
+      if(!hay.includes(q)) return;
+      const qy=it.qty||1, rev=it.prezzo||0;
+      totQ+=qy; if(isCzk) totCzk+=rev; else totEur+=rev;
+      const vk=it.barcode||'?';
+      perVar[vk]=perVar[vk]||{desc:(p?(getNomeProdotto(p)||p.descrizione):it.descrizione)||vk, qty:0, eur:0, czk:0};
+      perVar[vk].qty+=qy; if(isCzk) perVar[vk].czk+=rev; else perVar[vk].eur+=rev;
+      perEv[v.eventoId]=perEv[v.eventoId]||{qty:0,eur:0,czk:0};
+      perEv[v.eventoId].qty+=qy; if(isCzk) perEv[v.eventoId].czk+=rev; else perEv[v.eventoId].eur+=rev;
+    });
+  });
+  if(!totQ){ el.innerHTML='<div class="report-card"><p class="empty">Nessuna vendita trovata per &quot;'+q+'&quot;.</p></div>'; return; }
+  let czkEur=0;
+  Object.entries(perEv).forEach(([eid,d])=>{ const ev=getEvento(parseInt(eid)); const r=ev&&ev.czkRate?ev.czkRate:0; if(r>0) czkEur+=d.czk/r; });
+  const incassoApprox = totEur + czkEur;
+  const varRows = Object.entries(perVar).sort((a,b)=>b[1].qty-a[1].qty).map(([b,d])=>`<tr>
+    <td class="mono" style="font-size:12px">${b}</td>
+    <td>${d.desc}</td>
+    <td class="mono">${d.qty}</td>
+    <td class="mono" style="color:var(--green)">${d.eur>0?fmt(d.eur):'—'}</td>
+    <td class="mono">${d.czk>0?Math.round(d.czk).toLocaleString('it')+' CZK':'—'}</td>
+  </tr>`).join('');
+  const evRows = Object.entries(perEv).sort((a,b)=>b[1].qty-a[1].qty).map(([eid,d])=>{ const ev=getEvento(parseInt(eid)); return `<tr>
+    <td style="font-weight:500">${ev?ev.nome:('Evento '+eid)}</td>
+    <td class="mono">${d.qty}</td>
+    <td class="mono" style="color:var(--green)">${d.eur>0?fmt(d.eur):'—'}</td>
+    <td class="mono">${d.czk>0?Math.round(d.czk).toLocaleString('it')+' CZK':'—'}</td>
+  </tr>`; }).join('');
+  el.innerHTML = `
+    <div class="report-card">
+      <div class="report-card-title">Riepilogo &quot;${q}&quot;${evId?(' · '+((getEvento(evId)||{}).nome||'')):''}</div>
+      <div style="display:flex;gap:28px;flex-wrap:wrap">
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Pezzi venduti</div><div style="font-size:26px;font-weight:700">${totQ}</div></div>
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Incasso €</div><div style="font-size:26px;font-weight:700;color:var(--green)">${fmt(totEur)}</div></div>
+        ${totCzk>0?`<div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Incasso CZK</div><div style="font-size:26px;font-weight:700;color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div><div style="font-size:11px;color:var(--text3)">≈ ${fmt(czkEur)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Totale ≈</div><div style="font-size:26px;font-weight:700">${fmt(incassoApprox)}</div></div>`:''}
+      </div>
+    </div>
+    <div class="report-card">
+      <div class="report-card-title">Dettaglio per variante</div>
+      <table class="report-table"><thead><tr><th>Barcode</th><th>Prodotto</th><th>Pezzi</th><th>€</th><th>CZK</th></tr></thead><tbody>${varRows}</tbody></table>
+    </div>
+    ${Object.keys(perEv).length>1?`<div class="report-card">
+      <div class="report-card-title">Dettaglio per evento</div>
+      <table class="report-table"><thead><tr><th>Evento</th><th>Pezzi</th><th>€</th><th>CZK</th></tr></thead><tbody>${evRows}</tbody></table>
+    </div>`:''}`;
+}
+window.renderRArticolo = renderRArticolo;
 
 
 function renderBilancioEventiPage() {
