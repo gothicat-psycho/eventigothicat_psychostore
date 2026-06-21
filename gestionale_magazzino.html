@@ -695,6 +695,43 @@
         </div>
       </div>
 
+      <!-- TRASFERIMENTO MASSIVO A GRIGLIA -->
+      <div class="card">
+        <div class="card-title">📋 Trasferimento massivo (vista griglia)</div>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:14px">Visualizza tutto lo stock di un magazzino e inserisci, taglia per taglia, le quantità da spostare verso un altro magazzino.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+          <div class="form-group" style="margin:0">
+            <label>Da magazzino</label>
+            <select id="tm-da" onchange="renderTrasfMassivo()" style="min-width:180px">
+              <option value="tour">🎒 Adriano On Tour</option>
+              <option value="avigliana">Avigliana</option>
+              <option value="napoli">Napoli</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>A magazzino</label>
+            <select id="tm-a" style="min-width:180px">
+              <option value="avigliana">Avigliana</option>
+              <option value="napoli">Napoli</option>
+              <option value="tour">🎒 Adriano On Tour</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Data</label>
+            <input id="tm-data" type="date">
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:160px">
+            <label>Note</label>
+            <input id="tm-note" placeholder="Opzionale">
+          </div>
+          <button class="btn" onclick="renderTrasfMassivo()">🔄 Aggiorna griglia</button>
+        </div>
+        <div id="trasf-massivo-content"></div>
+        <div id="trasf-massivo-actions" style="display:none;justify-content:flex-end;margin-top:16px">
+          <button class="btn btn-primary" onclick="eseguiTrasfMassivo()">Esegui trasferimento quantità inserite</button>
+        </div>
+      </div>
+
       <!-- STOCK ADRIANO ON TOUR -->
       <div class="card">
         <div class="card-title">🎒 Stock Adriano On Tour</div>
@@ -1684,6 +1721,8 @@ function showSection(s, el) {
       renderTourGrid();
     }
     renderAccTour();
+    if (!document.getElementById('tm-data').value) document.getElementById('tm-data').value = today();
+    renderTrasfMassivo();
   }
   // eventi is password-protected, handled by apriEventiConPwd()
   if (s === 'cassa') { initCassa(); }
@@ -2831,6 +2870,136 @@ function apriReportSnapshot(eventoId) {
 }
 
 // Reminder nel rientro post-evento
+// ─────────────────────────────────────────────
+// TRASFERIMENTO MASSIVO A GRIGLIA
+// ─────────────────────────────────────────────
+
+function renderTrasfMassivo() {
+  const da = document.getElementById('tm-da').value;
+  const container = document.getElementById('trasf-massivo-content');
+  const actions = document.getElementById('trasf-massivo-actions');
+  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+
+  const loghiConStock = [...db.loghi]
+    .filter(l => getTotaleLogoStock(l.id, da) > 0)
+    .sort((a,b) => a.nome.localeCompare(b.nome, 'it'));
+
+  if (loghiConStock.length === 0) {
+    container.innerHTML = `<p style="color:var(--text3);font-size:13px">Nessuno stock presente nel magazzino selezionato.</p>`;
+    actions.style.display = 'none';
+    return;
+  }
+
+  let html = '';
+  loghiConStock.forEach(l => {
+    const cats = getCatPerLogo(l.nome);
+    html += `<div style="margin-bottom:18px;padding:14px 16px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:10px">${l.nome}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">`;
+
+    cats.forEach(cat => {
+      const lblCls = catLabelClass[cat.id] || 'cat-shop';
+      if (cat.taglie) {
+        const taglie = cat.taglieLista || TAGLIE;
+        const totCat = taglie.reduce((a,t) => a + getStock(l.id, cat.id, t, da), 0);
+        if (totCat === 0) return;
+        html += `<div>
+          <div style="margin-bottom:6px"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
+          <div style="overflow-x:auto">
+          <table style="border-collapse:collapse;font-size:12px">
+            <tr>
+              <td style="padding:2px 8px 2px 0;color:var(--text3);font-size:11px;white-space:nowrap">Taglia</td>
+              ${taglie.map(t => `<td style="padding:2px 6px;text-align:center;font-size:11px;font-weight:600;color:var(--text3)">${t}</td>`).join('')}
+            </tr>
+            <tr>
+              <td style="padding:2px 8px 2px 0;color:var(--text2);font-size:11px;white-space:nowrap">Stock attuale</td>
+              ${taglie.map(t => {
+                const s = getStock(l.id, cat.id, t, da);
+                return `<td style="padding:2px 6px;text-align:center"><div class="stock-cell ${getStockClass(s,l.minimo||3)}" style="min-width:36px;padding:4px 2px;font-size:13px">${s}</div></td>`;
+              }).join('')}
+            </tr>
+            <tr>
+              <td style="padding:4px 8px 2px 0;color:var(--accent);font-size:11px;font-weight:600;white-space:nowrap">Da spostare</td>
+              ${taglie.map(t => {
+                const s = getStock(l.id, cat.id, t, da);
+                const id = `tm_${l.id}_${cat.id}_${t}`;
+                return `<td style="padding:4px 6px 2px"><input type="number" id="${id}" min="0" max="${s}" placeholder="0" data-logo="${l.id}" data-cat="${cat.id}" data-taglia="${t}" data-max="${s}"
+                  style="width:36px;padding:4px 2px;text-align:center;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--text);font-size:12px" ${s===0?'disabled':''}></td>`;
+              }).join('')}
+            </tr>
+          </table>
+          </div>
+        </div>`;
+      } else {
+        const s = getStock(l.id, cat.id, null, da);
+        if (s === 0) return;
+        const id = `tm_${l.id}_${cat.id}_null`;
+        html += `<div style="display:flex;align-items:center;gap:10px">
+          <span class="stock-cat-label ${lblCls}">${cat.label}</span>
+          <span style="font-size:12px;color:var(--text3)">Attuale:</span>
+          <div class="stock-cell ${getStockClass(s,l.minimo||3)}" style="min-width:36px;padding:4px 2px;font-size:13px">${s}</div>
+          <span style="font-size:12px;color:var(--accent);font-weight:600">Da spostare:</span>
+          <input type="number" id="${id}" min="0" max="${s}" placeholder="0" data-logo="${l.id}" data-cat="${cat.id}" data-taglia="" data-max="${s}"
+            style="width:50px;padding:4px 6px;text-align:center;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--text);font-size:12px">
+        </div>`;
+      }
+    });
+
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+  actions.style.display = 'flex';
+  if (!document.getElementById('tm-data').value) document.getElementById('tm-data').value = today();
+}
+
+async function eseguiTrasfMassivo() {
+  const da = document.getElementById('tm-da').value;
+  const a = document.getElementById('tm-a').value;
+  const data = document.getElementById('tm-data').value || today();
+  const note = document.getElementById('tm-note').value.trim() || `Trasferimento ${da} → ${a}`;
+
+  if (da === a) { showToast('I magazzini di partenza e destinazione devono essere diversi'); return; }
+
+  const inputs = document.querySelectorAll('#trasf-massivo-content input[type="number"]');
+  const items = [];
+  inputs.forEach(inp => {
+    const qty = parseInt(inp.value) || 0;
+    if (qty <= 0) return;
+    const max = parseInt(inp.dataset.max) || 0;
+    if (qty > max) { inp.style.borderColor = 'var(--red)'; return; }
+    items.push({
+      logoId: parseInt(inp.dataset.logo),
+      catId: inp.dataset.cat,
+      taglia: inp.dataset.taglia || null,
+      qty,
+    });
+  });
+
+  if (items.length === 0) { showToast('Inserisci almeno una quantità da trasferire'); return; }
+
+  const magLabel = m => m === 'tour' ? '🎒 Adriano On Tour' : m.charAt(0).toUpperCase() + m.slice(1);
+  if (!confirm(`Trasferire ${items.length} righe da ${magLabel(da)} a ${magLabel(a)}?\n\nData: ${data}\nNota: ${note}`)) return;
+
+  const nuoviMov = [];
+  items.forEach(it => {
+    const mOut = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'scarico', magazzino: da, data, note };
+    const mIn  = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'carico', magazzino: a, data, note };
+    db.movimenti.push(mOut, mIn);
+    nuoviMov.push(mOut, mIn);
+  });
+
+  await Promise.all([
+    ...nuoviMov.map(m => saveMovimento(m)),
+    saveDBFields({ nextMovId: db.nextMovId }),
+  ]);
+
+  showToast(`✓ Trasferite ${items.length} righe da ${magLabel(da)} a ${magLabel(a)}`);
+  renderStock();
+  renderTourGrid();
+  renderTrasfMassivo();
+}
+
 async function trasferimentoTotale() {
   const da = document.getElementById('tr-da').value;
   const a = document.getElementById('tr-a').value;
