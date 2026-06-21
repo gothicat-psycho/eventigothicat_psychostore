@@ -1417,6 +1417,7 @@
           <button class="btn btn-sm" id="tx-tab-storico" onclick="toxicoTab('storico')" style="border-radius:var(--radius) var(--radius) 0 0">📋 Storico</button>
           <button class="btn btn-sm" id="tx-tab-pagamenti" onclick="toxicoTab('pagamenti')" style="border-radius:var(--radius) var(--radius) 0 0">💸 Pagamenti</button>
           <button class="btn btn-sm" id="tx-tab-email"   onclick="toxicoTab('email')"   style="border-radius:var(--radius) var(--radius) 0 0">✉️ Email</button>
+          <button class="btn btn-sm" id="tx-tab-stats"   onclick="toxicoTab('stats')"   style="border-radius:var(--radius) var(--radius) 0 0">📊 Statistiche</button>
         </div>
 
         <!-- CASSA TAB -->
@@ -1505,6 +1506,16 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <!-- STATISTICHE TAB -->
+        <div id="tx-pane-stats" style="display:none">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+            <input id="tx-stats-q" oninput="renderTxStats()" placeholder="Cerca prodotto (nome o categoria)" style="flex:1;min-width:220px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+            <select id="tx-stats-evento" onchange="renderTxStats()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;min-width:220px"><option value="">Tutti gli eventi</option></select>
+          </div>
+          <div id="tx-stats-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px"></div>
+          <div id="tx-stats-content"></div>
         </div>
 
         <!-- PAGAMENTI TAB -->
@@ -8472,7 +8483,7 @@ function getTxStock(prodId, taglia) {
 
 // ── TABS ──
 function toxicoTab(tab) {
-  ['cassa','stock','storico','pagamenti','email'].forEach(t => {
+  ['cassa','stock','storico','pagamenti','email','stats'].forEach(t => {
     document.getElementById('tx-pane-'+t).style.display = t===tab?'':'none';
     const btn = document.getElementById('tx-tab-'+t);
     if(btn) {
@@ -8484,8 +8495,58 @@ function toxicoTab(tab) {
   if(tab==='storico') renderTxStorico();
   if(tab==='pagamenti') renderTxPagamenti();
   if(tab==='email') renderTxEmailOpts();
+  if(tab==='stats') renderTxStats();
 }
 window.toxicoTab = toxicoTab;
+
+function renderTxStats() {
+  if(!db.toxico) db.toxico={stock:{},vendite:[],pagamenti:[],cambio:1.18,nextVendId:1};
+  const evSel=document.getElementById('tx-stats-evento');
+  if(evSel){ const cur=evSel.value; const opts=[...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||'')).map(e=>`<option value="${e.id}">${e.nome}</option>`).join(''); evSel.innerHTML='<option value="">Tutti gli eventi</option>'+opts; evSel.value=cur; }
+  const evId=evSel?evSel.value:'';
+  const q=(document.getElementById('tx-stats-q').value||'').trim().toLowerCase();
+  const catOf=id=>{ const c=TOXICO_CATALOG.find(pp=>pp.id===id); return c?c.cat:'—'; };
+  let vendite=(db.toxico.vendite||[]).filter(v=>!evId||String(v.eventoId)===String(evId));
+  if(q) vendite=vendite.filter(v=>((v.nome||'')+' '+(v.prodId||'')+' '+(v.taglia||'')+' '+catOf(v.prodId)).toLowerCase().includes(q));
+  let pezzi=0,totEur=0,totCzk=0,totCzkEur=0,totGbp=0;
+  const perProd={},perCat={},perEv={},perVar={};
+  vendite.forEach(v=>{
+    const isCzk=v.valuta==='CZK'; const amt=v.totEur||v.totCzk||0; const qy=v.qta||0;
+    pezzi+=qy; totGbp+=v.totGbp||0;
+    if(isCzk){ totCzk+=amt; const ev=getEvento(parseInt(v.eventoId)); const r=ev&&ev.czkRate?ev.czkRate:0; if(r>0) totCzkEur+=amt/r; }
+    else totEur+=amt;
+    const cat=catOf(v.prodId);
+    perProd[v.prodId]=perProd[v.prodId]||{nome:v.nome||v.prodId,cat,qty:0,eur:0,czk:0};
+    perProd[v.prodId].qty+=qy; if(isCzk)perProd[v.prodId].czk+=amt; else perProd[v.prodId].eur+=amt;
+    perCat[cat]=perCat[cat]||{qty:0,eur:0,czk:0}; perCat[cat].qty+=qy; if(isCzk)perCat[cat].czk+=amt; else perCat[cat].eur+=amt;
+    perEv[v.eventoId]=perEv[v.eventoId]||{qty:0,eur:0,czk:0}; perEv[v.eventoId].qty+=qy; if(isCzk)perEv[v.eventoId].czk+=amt; else perEv[v.eventoId].eur+=amt;
+    const vk=(v.prodId||'?')+' | '+(v.taglia||'NO'); perVar[vk]=perVar[vk]||{nome:v.nome||v.prodId,taglia:v.taglia||'',qty:0,eur:0,czk:0}; perVar[vk].qty+=qy; if(isCzk)perVar[vk].czk+=amt; else perVar[vk].eur+=amt;
+  });
+  const incassoApprox=totEur+totCzkEur;
+  document.getElementById('tx-stats-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Pezzi venduti</div><div class="metric-value">${pezzi}</div></div>
+    <div class="metric"><div class="metric-label">Incasso €</div><div class="metric-value green">€ ${totEur.toFixed(2)}</div>${totCzk>0?`<div style="font-size:13px;color:#6D28D9;font-weight:600;margin-top:2px">${Math.round(totCzk).toLocaleString('it')} CZK ${totCzkEur>0?`<span style="color:var(--text3);font-weight:500">(≈ € ${totCzkEur.toFixed(2)})</span>`:''}</div>`:''}${(totCzk>0&&totCzkEur>0)?`<div style="font-size:12px;color:var(--text3);margin-top:4px;border-top:1px solid var(--border);padding-top:4px">Totale ≈ € ${incassoApprox.toFixed(2)}</div>`:''}</div>
+    <div class="metric"><div class="metric-label">Dovuto a Toxico £</div><div class="metric-value" style="color:#7F1D1D">£ ${totGbp.toFixed(2)}</div></div>
+  `;
+  if(!pezzi){ document.getElementById('tx-stats-content').innerHTML='<div class="report-card"><p class="empty">Nessuna vendita'+(q?' per &quot;'+q+'&quot;':'')+'.</p></div>'; return; }
+  const money=(eur,czk)=>`${eur>0?'€ '+eur.toFixed(2):'—'}${czk>0?' · '+Math.round(czk).toLocaleString('it')+' CZK':''}`;
+  let html='';
+  if(q){
+    const varRows=Object.values(perVar).sort((a,b)=>b.qty-a.qty).map(d=>`<tr><td>${d.nome}</td><td class="mono">${d.taglia||'—'}</td><td class="mono">${d.qty}</td><td class="mono">${money(d.eur,d.czk)}</td></tr>`).join('');
+    html+=`<div class="report-card"><div class="report-card-title">Dettaglio per taglia</div><table class="report-table"><thead><tr><th>Prodotto</th><th>Taglia</th><th>Pezzi</th><th>Incasso</th></tr></thead><tbody>${varRows}</tbody></table></div>`;
+  } else {
+    const prodRows=Object.values(perProd).sort((a,b)=>b.qty-a.qty).map((d,i)=>`<tr><td class="mono" style="color:var(--text3)">${i+1}</td><td style="font-weight:${i<3?700:400}">${d.nome}</td><td style="font-size:11px;color:var(--text3)">${d.cat}</td><td class="mono">${d.qty}</td><td class="mono">${money(d.eur,d.czk)}</td></tr>`).join('');
+    html+=`<div class="report-card"><div class="report-card-title">Prodotti più venduti</div><table class="report-table"><thead><tr><th>#</th><th>Prodotto</th><th>Categoria</th><th>Pezzi</th><th>Incasso</th></tr></thead><tbody>${prodRows}</tbody></table></div>`;
+    const catRows=Object.entries(perCat).sort((a,b)=>b[1].qty-a[1].qty).map(([c,d])=>`<tr><td style="font-weight:500">${c}</td><td class="mono">${d.qty}</td><td class="mono">${money(d.eur,d.czk)}</td></tr>`).join('');
+    html+=`<div class="report-card"><div class="report-card-title">Per categoria</div><table class="report-table"><thead><tr><th>Categoria</th><th>Pezzi</th><th>Incasso</th></tr></thead><tbody>${catRows}</tbody></table></div>`;
+  }
+  if(Object.keys(perEv).length>1 || !evId){
+    const evRows=Object.entries(perEv).sort((a,b)=>b[1].qty-a[1].qty).map(([eid,d])=>{ const ev=getEvento(parseInt(eid)); return `<tr><td style="font-weight:500">${ev?ev.nome:('Evento '+eid)}</td><td class="mono">${d.qty}</td><td class="mono">${money(d.eur,d.czk)}</td></tr>`; }).join('');
+    html+=`<div class="report-card"><div class="report-card-title">Per evento</div><table class="report-table"><thead><tr><th>Evento</th><th>Pezzi</th><th>Incasso</th></tr></thead><tbody>${evRows}</tbody></table></div>`;
+  }
+  document.getElementById('tx-stats-content').innerHTML=html;
+}
+window.renderTxStats = renderTxStats;
 
 // ── RENDER TOXICO (entry point) ──
 function renderToxico() {
