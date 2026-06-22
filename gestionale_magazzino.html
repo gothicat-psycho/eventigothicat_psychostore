@@ -2420,7 +2420,16 @@ function impostaTutteTaglie(logoId, catId, mag, inputId) {
     nuoviMov.push(m);
   });
   if (nuoviMov.length === 0) { showToast('Nessuna variazione necessaria'); return; }
-  renderStock();
+  // Aggiorna solo le celle del logo/categoria interessato
+  nuoviMov.forEach(m => {
+    const cellId = `apriEditStock`;
+    const t = m.taglia || '';
+    const nuovoVal = val;
+    const cls = getStockClass(nuovoVal, logo?.minimo||3);
+    // Trova la cella tramite onclick pattern
+    const cells = document.querySelectorAll(`.stock-cell.editable[onclick*="apriEditStock(this,${logoId},'${catId}','${t}'"]`);
+    cells.forEach(c => { c.className = `stock-cell editable ${cls}`; c.textContent = nuovoVal; });
+  });
   showToast(`${logo?.nome} — ${cat?.label}: tutte le taglie impostate a ${val} pz ✓`);
   Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })])
     .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
@@ -2456,7 +2465,11 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
       note: 'Rettifica manuale',
     };
     db.movimenti.push(m);
-    renderStock();
+    // Aggiorna solo la cella, non tutta la griglia
+    const logo = getLogo(logoId);
+    const cls = getStockClass(nuovoStock, logo?.minimo||3);
+    el.className = `stock-cell editable ${cls}`;
+    el.textContent = nuovoStock;
     showToast(`Stock ${mag} aggiornato: ${stockAttuale} → ${nuovoStock}`);
     Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })])
       .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
