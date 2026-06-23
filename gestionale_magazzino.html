@@ -936,6 +936,7 @@
                 <option value="pos">💳 POS</option>
                 <option value="contanti">💵 Contanti</option>
                 <option value="paypal">🅿️ PayPal</option>
+                <option id="opt-cashless" value="cashless" style="display:none">🪙 Cashless (CZK)</option>
                 <option value="misto">💵+💳 Misto</option>
               </select>
               <div id="misto-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px">
@@ -1322,7 +1323,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.0.1'; // aggiornare ad ogni modifica
+const VERSION = '1.0.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3608,11 +3609,19 @@ function initCassa() {
   const valutaSel = document.getElementById('cassa-valuta-sel');
   if (isCzEvent(ev)) {
     valutaSel.style.display = 'flex';
-    cassaValuta = 'EUR'; // reset to EUR
-    setCassaValuta('EUR');
+    cassaValuta = 'CZK'; // default CZK per eventi cechi
+    setCassaValuta('CZK');
+    // Mostra opzione Cashless solo per eventi CZK
+    const cashlessOpt = document.getElementById('opt-cashless');
+    if (cashlessOpt) cashlessOpt.style.display = 'block';
   } else {
     valutaSel.style.display = 'none';
     cassaValuta = 'EUR';
+    const cashlessOpt = document.getElementById('opt-cashless');
+    if (cashlessOpt) cashlessOpt.style.display = 'none';
+    // Ripristina POS se era cashless
+    const mp = document.getElementById('metodo-pagamento');
+    if (mp && mp.value === 'cashless') mp.value = 'pos';
   }
   buildLoghiGrid();
   resetCassaSteps();
@@ -4282,7 +4291,7 @@ async function concludiVendita() {
   if (!db.nextVendId) db.nextVendId = 1;
   const metodoPag = (document.getElementById('metodo-pagamento')||{value:'contanti'}).value || 'contanti';
   const pagContanti = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-contanti').value)||0) : (metodoPag === 'contanti' ? totale : 0);
-  const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : ((metodoPag === 'pos' || metodoPag === 'paypal') ? totale : 0);
+  const pagPos = metodoPag === 'misto' ? (parseFloat(document.getElementById('misto-pos').value)||0) : ((metodoPag === 'pos' || metodoPag === 'paypal' || metodoPag === 'cashless') ? totale : 0);
   const noteVendita = (document.getElementById('scontrino-note')||{value:''}).value.trim();
   const nuovaVendita = {
     id: db.nextVendId++,
@@ -4328,6 +4337,9 @@ async function concludiVendita() {
   const noteEl = document.getElementById('scontrino-note');
   if (noteEl) noteEl.value = '';
   showToast('Vendita registrata ✓');
+  // Reset metodo pagamento — mantieni cashless se evento CZK
+  const mpElReset = document.getElementById('metodo-pagamento');
+  if (mpElReset && mpElReset.value !== 'cashless') mpElReset.value = 'pos';
 
   // Salvataggio Firebase in background — con coda di sicurezza se fallisce
   const fieldsUpdate = { nextVendId: db.nextVendId, nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId };
@@ -4425,7 +4437,7 @@ function renderVendite() {
         : '<span class="badge badge-gray">€ EUR</span>';
       const totFmt = v.valuta === 'CZK' ? Math.round(v.totale) + ' CZK' : fmt(v.totale);
       const mp = v.metodoPagamento || 'contanti';
-      const mpLabel = mp === 'pos' ? '💳 POS' : mp === 'misto' ? '💵+💳 Misto' : mp === 'paypal' ? '🅿️ PayPal' : '💵 Contanti';
+      const mpLabel = mp === 'pos' ? '💳 POS' : mp === 'misto' ? '💵+💳 Misto' : mp === 'paypal' ? '🅿️ PayPal' : mp === 'cashless' ? '🪙 Cashless' : '💵 Contanti';
       const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
         `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
       const noteHtml = v.note ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">📝 ${v.note}</div>` : '';
