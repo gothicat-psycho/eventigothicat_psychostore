@@ -1322,7 +1322,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.0.0'; // aggiornare ad ogni modifica
+const VERSION = '1.0.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3619,7 +3619,7 @@ function initCassa() {
 }
 
 function scrollToLogo(logoId) {
-  const el = document.getElementById(`logo-anchor-${logoId}`);
+  const el = document.getElementById(`logo-anchor-${parseInt(logoId)}`);
   const container = document.getElementById('cassa-scroll-container');
   if (!el || !container) return;
   const containerRect = container.getBoundingClientRect();
@@ -3825,12 +3825,12 @@ function aggiungiAccessorio(catId) {
 }
 
 function cassaSelLogo(logoId, btnEl) {
-  cassaLogoId = logoId;
+  cassaLogoId = parseInt(logoId);
   cassaCatId = null;
   document.querySelectorAll('.logo-btn').forEach(b => b.classList.remove('selected'));
   btnEl.classList.add('selected');
 
-  const logo = db.loghi.find(l => l.id === logoId);
+  const logo = db.loghi.find(l => l.id === cassaLogoId);
   const ev = getEvento(cassaEventoId);
   const mag = ev ? ev.magazzino : null;
 
@@ -3842,7 +3842,7 @@ function cassaSelLogo(logoId, btnEl) {
 
   // Populate categories
   document.getElementById('popup-cat-grid').innerHTML = CATEGORIE.map(cat => {
-    const tot = getTotaleStock(logoId, cat.id, mag);
+    const tot = getTotaleStock(cassaLogoId, cat.id, mag);
     return `<button class="popup-cat-btn ${tot===0?'disabled':''}" onclick="cassaSelCat('${cat.id}')">
       ${cat.label}
       <div style="font-size:11px;font-weight:400;margin-top:4px;opacity:.7">${tot} pz</div>
