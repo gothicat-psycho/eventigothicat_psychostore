@@ -1452,9 +1452,9 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    // Aggiorna solo i campi leggeri, non sovrascrivere vendite/movimenti in memoria
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
+    invalidateAll();
     updateFooter();
   });
 
@@ -1462,7 +1462,7 @@ function avviaListeners() {
   if (_unsubscribeVendite) _unsubscribeVendite();
   _unsubscribeVendite = VEND_COL.orderBy('id').onSnapshot(snap => {
     db.vendite = snap.docs.map(d => d.data());
-    // Aggiorna UI se siamo nella sezione vendite o dashboard
+    invalidateAll();
     const active = document.querySelector('.section.active');
     if (active) {
       if (active.id === 'sec-vendite') renderVendite();
@@ -1476,6 +1476,7 @@ function avviaListeners() {
   if (_unsubscribeMovimenti) _unsubscribeMovimenti();
   _unsubscribeMovimenti = MOV_COL.orderBy('id').onSnapshot(snap => {
     db.movimenti = snap.docs.map(d => d.data());
+    invalidateAll();
     const active = document.querySelector('.section.active');
     if (active) {
       if (active.id === 'sec-stock') renderStock();
@@ -1641,26 +1642,55 @@ function getStockClass(s, minimo) {
 // ─────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────
-function showSection(s, el) {
+// ─────────────────────────────────────────────
+// RENDER LAZY — ridisegna solo se i dati sono cambiati
+// ─────────────────────────────────────────────
+const _renderHash = {};
 
+function _dbHash() {
+  // Hash veloce basato su contatori e lunghezze array
+  return [
+    db.loghi?.length, db.fornitori?.length, db.ordini?.length,
+    db.eventi?.length, db.vendite?.length, db.movimenti?.length,
+    db.movimentiAcc?.length, db.nextMovId, db.nextVendId,
+    db.nextLogoId, db.nextOrdId, db.nextFornId, db.nextEvId,
+  ].join('|');
+}
+
+function needsRender(section) {
+  const h = _dbHash();
+  if (_renderHash[section] === h) return false;
+  _renderHash[section] = h;
+  return true;
+}
+
+function invalidateRender(section) {
+  delete _renderHash[section];
+}
+
+function invalidateAll() {
+  Object.keys(_renderHash).forEach(k => delete _renderHash[k]);
+}
+
+function showSection(s, el) {
   document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('sec-' + s).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock Tessile', 'stock-accessori':'Stock Accessori', trasferimenti:'Trasferimenti', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite', report:'Report' };
+  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock Tessile', 'stock-accessori':'Stock Accessori', trasferimenti:'Trasferimenti/Stock Tour', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite', report:'Report' };
   document.getElementById('page-title').textContent = titles[s] || s;
-  if (s === 'dashboard') renderDashboard();
-  if (s === 'fornitori') renderFornitori();
-  if (s === 'loghi') { renderLoghi(); populateFornSelects(); }
-  if (s === 'ordini') { renderOrdini(); populateFornSelects(); if (loghiOrdine.length === 0) addLogoOrdine(); document.getElementById('o-data').value = today(); }
-  if (s === 'stock') { renderStock(); populateFornSelects(); renderStockMetrics(); }
-  if (s === 'stock-accessori') { renderAccessori(); renderAccMetrics(); }
+
+  if (s === 'dashboard')       { if (needsRender('dashboard')) renderDashboard(); }
+  if (s === 'fornitori')       { if (needsRender('fornitori')) { renderFornitori(); populateFornSelects(); } }
+  if (s === 'loghi')           { if (needsRender('loghi')) renderLoghi(); populateFornSelects(); }
+  if (s === 'ordini')          { if (needsRender('ordini')) { renderOrdini(); populateFornSelects(); } if (loghiOrdine.length === 0) addLogoOrdine(); document.getElementById('o-data').value = today(); }
+  if (s === 'stock')           { if (needsRender('stock')) { renderStock(); renderStockMetrics(); } populateFornSelects(); }
+  if (s === 'stock-accessori') { if (needsRender('accessori')) { renderAccessori(); renderAccMetrics(); } }
   if (s === 'trasferimenti') {
-    renderTrasferimenti();
+    if (needsRender('trasferimenti')) renderTrasferimenti();
     populateFornSelects();
     document.getElementById('tr-data').value = today();
     if (trItems.length === 0) addTrItem();
-    // Popola select logo per stock tour
     const sel = document.getElementById('tour-logo-sel');
     if (sel) {
       sel.innerHTML = '<option value="">-- Seleziona logo --</option>' +
@@ -1669,10 +1699,10 @@ function showSection(s, el) {
       renderTourGrid();
     }
     renderAccTour();
+    if (!document.getElementById('tm-data').value) document.getElementById('tm-data').value = today();
+    renderTrasfMassivo();
   }
-  // eventi is password-protected, handled by apriEventiConPwd()
   if (s === 'cassa') { initCassa(); }
-  // vendite is password-protected, handled by apriVenditeConPwd()
 }
 
 // ─────────────────────────────────────────────
