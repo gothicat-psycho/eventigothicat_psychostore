@@ -311,7 +311,7 @@
   </div>
   <nav class="sidebar-nav">
     <div onclick="mostraLoginModal()" id="ruolo-badge" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);margin-bottom:4px;cursor:pointer;background:var(--accent-light);border-radius:var(--radius)">
-      <span id="ruolo-label" style="font-size:15px;font-weight:700;color:var(--accent)">👤 Tocca per accedere</span>
+      <span id="ruolo-label" style="font-size:12px;font-weight:600;color:var(--accent)">👤 Tocca per accedere</span>
     </div>
     <div class="nav-section">Panoramica</div>
     <div class="nav-item active" onclick="showSection('dashboard',this)">
@@ -695,43 +695,6 @@
         </div>
       </div>
 
-      <!-- TRASFERIMENTO MASSIVO A GRIGLIA -->
-      <div class="card">
-        <div class="card-title">📋 Trasferimento massivo (vista griglia)</div>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:14px">Visualizza tutto lo stock di un magazzino e inserisci, taglia per taglia, le quantità da spostare verso un altro magazzino.</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-          <div class="form-group" style="margin:0">
-            <label>Da magazzino</label>
-            <select id="tm-da" onchange="renderTrasfMassivo()" style="min-width:180px">
-              <option value="tour">🎒 Adriano On Tour</option>
-              <option value="avigliana">Avigliana</option>
-              <option value="napoli">Napoli</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0">
-            <label>A magazzino</label>
-            <select id="tm-a" style="min-width:180px">
-              <option value="avigliana">Avigliana</option>
-              <option value="napoli">Napoli</option>
-              <option value="tour">🎒 Adriano On Tour</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0">
-            <label>Data</label>
-            <input id="tm-data" type="date">
-          </div>
-          <div class="form-group" style="margin:0;flex:1;min-width:160px">
-            <label>Note</label>
-            <input id="tm-note" placeholder="Opzionale">
-          </div>
-          <button class="btn" onclick="renderTrasfMassivo()">🔄 Aggiorna griglia</button>
-        </div>
-        <div id="trasf-massivo-content"></div>
-        <div id="trasf-massivo-actions" style="display:none;justify-content:flex-end;margin-top:16px">
-          <button class="btn btn-primary" onclick="eseguiTrasfMassivo()">Esegui trasferimento quantità inserite</button>
-        </div>
-      </div>
-
       <!-- STOCK ADRIANO ON TOUR -->
       <div class="card">
         <div class="card-title">🎒 Stock Adriano On Tour</div>
@@ -936,10 +899,6 @@
             <button id="btn-eur" class="btn btn-sm btn-primary" onclick="setCassaValuta('EUR')">€ EUR</button>
             <button id="btn-czk" class="btn btn-sm" onclick="setCassaValuta('CZK')">CZK</button>
           </div>
-          <button class="btn btn-sm" id="btn-sync-status" onclick="apriPannelloSync()" style="margin-left:auto;display:flex;align-items:center;gap:5px">
-            <span id="sync-status-dot" style="width:8px;height:8px;border-radius:50%;background:#10B981;display:inline-block"></span>
-            <span id="sync-status-label">Sync OK</span>
-          </button>
           <button class="btn btn-sm" onclick="doShowEventi(document.getElementById('nav-eventi'))">Cambia evento</button>
         </div>
         <!-- Snapshot reminder banner -->
@@ -1017,8 +976,8 @@
           <select id="filter-vend-venditore" onchange="renderVendite()" style="max-width:200px">
             <option value="">Tutti i venditori</option>
             <option value="matteo.lassandro@gmail.com">👑 Amministratore</option>
-            <option value="collaboratore1@gothicat.net">👤 DANILO</option>
-            <option value="collaboratore2@gothicat.net">👤 BOB</option>
+            <option value="collaboratore1@gothicat.net">👤 Collaboratore 1</option>
+            <option value="collaboratore2@gothicat.net">👤 Collaboratore 2</option>
           </select>
           <input id="filter-vend-data" type="date" onchange="renderVendite()" style="max-width:160px">
           <button class="btn btn-sm" onclick="document.getElementById('filter-vend-data').value='';document.getElementById('filter-vend-venditore').value='';renderVendite()">Reset</button>
@@ -1189,18 +1148,6 @@
       </div>
       <div id="login-error" style="color:var(--red);font-size:12px;margin-top:4px;display:none">Password errata. Riprova.</div>
       <button class="btn btn-primary" style="width:100%;margin-top:10px;padding:12px" onclick="verificaLogin()">Entra</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL stato sync -->
-<div class="modal-backdrop" id="modal-sync-status">
-  <div class="modal" style="width:520px;max-height:85vh;overflow-y:auto">
-    <div class="modal-title">📡 Stato sincronizzazione — questo device</div>
-    <div id="sync-modal-content"></div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-      <button class="btn" onclick="document.getElementById('modal-sync-status').classList.remove('open')">Chiudi</button>
-      <button class="btn btn-primary" onclick="ritentaPendingSales()">🔄 Riprova ora</button>
     </div>
   </div>
 </div>
@@ -1416,9 +1363,23 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const firestore = firebase.firestore();
-const DOC_REF       = firestore.collection('gestionale').doc('data');
-const VEND_COL      = firestore.collection('vendite');
-const MOV_COL       = firestore.collection('movimenti');
+
+// ── PERSISTENZA OFFLINE ──
+// Firestore salva tutto in IndexedDB locale — le scritture vanno a buon fine
+// immediatamente anche senza rete, e si sincronizzano su Firebase in background
+// non appena la connessione torna disponibile.
+firestore.enablePersistence({ synchronizeTabs: true })
+  .catch(e => {
+    if (e.code === 'failed-precondition') {
+      console.warn('Persistenza offline: più tab aperte, attiva solo sulla prima');
+    } else if (e.code === 'unimplemented') {
+      console.warn('Persistenza offline non supportata da questo browser');
+    }
+  });
+
+const DOC_REF  = firestore.collection('gestionale').doc('data');
+const VEND_COL = firestore.collection('vendite');
+const MOV_COL  = firestore.collection('movimenti');
 const auth = firebase.auth();
 
 // ─────────────────────────────────────────────
@@ -1530,18 +1491,18 @@ async function loadDB() {
     // Controlla se serve migrare
     await migraSeNecessario();
 
-    // Carica documento principale (leggero)
-    const doc = await DOC_REF.get();
-    if (doc.exists) {
-      db = doc.data();
+    // Carica dalla cache locale prima (istantaneo), poi Firebase aggiorna in background
+    const docSnap = await DOC_REF.get();
+    if (docSnap.exists) {
+      db = docSnap.data();
     }
 
-    // Carica vendite dalla collezione separata
-    const vendSnap = await VEND_COL.orderBy('id').get();
+    // Carica vendite e movimenti dalle collezioni separate
+    const [vendSnap, movSnap] = await Promise.all([
+      VEND_COL.orderBy('id').get(),
+      MOV_COL.orderBy('id').get(),
+    ]);
     db.vendite = vendSnap.docs.map(d => d.data());
-
-    // Carica movimenti dalla collezione separata
-    const movSnap = await MOV_COL.orderBy('id').get();
     db.movimenti = movSnap.docs.map(d => d.data());
 
     updateFooter();
@@ -1549,65 +1510,52 @@ async function loadDB() {
     showSyncStatus('');
   } catch(e) {
     console.error('Errore caricamento:', e);
-    showSyncStatus('Errore connessione — dati non caricati', true);
+    // Se offline, Firestore servirà dalla cache locale automaticamente
+    showSyncStatus('Dati da cache locale', false);
   }
 }
 
 async function saveDB() {
   try {
-    isSaving = true;
-    showSyncStatus('Salvataggio...');
     const { vendite, movimenti, ...dbLight } = db;
-    await DOC_REF.set(dbLight);
+    // Non bloccante: IndexedDB aggiorna subito in locale, Firebase in background
+    DOC_REF.set(dbLight).catch(e => console.error('saveDB:', e));
     updateFooter();
     showSyncStatus('');
-    isSaving = false;
   } catch(e) {
-    console.error('Errore salvataggio:', e);
-    showSyncStatus('Errore salvataggio!', true);
-    isSaving = false;
+    console.error('saveDB:', e);
   }
 }
 
-// Salvataggio parziale — aggiorna solo i campi specificati (molto più veloce)
-async function saveDBFields(fields) {
-  try {
-    isSaving = true;
-    showSyncStatus('Salvataggio...');
-    await DOC_REF.update(fields);
-    updateFooter();
-    showSyncStatus('');
-    isSaving = false;
-  } catch(e) {
-    // Se il documento non esiste ancora, usa set
+// Salvataggio parziale — aggiorna solo i campi specificati
+function saveDBFields(fields) {
+  DOC_REF.update(fields).catch(e => {
     if (e.code === 'not-found') {
-      await saveDB();
+      saveDB();
     } else {
-      console.error('Errore salvataggio:', e);
-      showSyncStatus('Errore salvataggio!', true);
-      isSaving = false;
+      console.error('saveDBFields:', e);
     }
-  }
+  });
 }
 
-// Salva una singola vendita nella collezione separata
-async function saveVendita(v) {
-  await VEND_COL.doc(String(v.id)).set(v);
+// Salva singola vendita — non bloccante
+function saveVendita(v) {
+  return VEND_COL.doc(String(v.id)).set(v).catch(e => console.error('saveVendita:', e));
 }
 
-// Salva un singolo movimento nella collezione separata
-async function saveMovimento(m) {
-  await MOV_COL.doc(String(m.id)).set(m);
+// Salva singolo movimento — non bloccante
+function saveMovimento(m) {
+  return MOV_COL.doc(String(m.id)).set(m).catch(e => console.error('saveMovimento:', e));
 }
 
-// Elimina una vendita dalla collezione separata
-async function deleteVendita(id) {
-  await VEND_COL.doc(String(id)).delete();
+// Elimina vendita
+function deleteVendita(id) {
+  return VEND_COL.doc(String(id)).delete().catch(e => console.error('deleteVendita:', e));
 }
 
-// Elimina un movimento dalla collezione separata
-async function deleteMovimento(id) {
-  await MOV_COL.doc(String(id)).delete();
+// Elimina movimento
+function deleteMovimento(id) {
+  return MOV_COL.doc(String(id)).delete().catch(e => console.error('deleteMovimento:', e));
 }
 
 function updateFooter() {
@@ -1721,8 +1669,6 @@ function showSection(s, el) {
       renderTourGrid();
     }
     renderAccTour();
-    if (!document.getElementById('tm-data').value) document.getElementById('tm-data').value = today();
-    renderTrasfMassivo();
   }
   // eventi is password-protected, handled by apriEventiConPwd()
   if (s === 'cassa') { initCassa(); }
@@ -2420,16 +2366,7 @@ function impostaTutteTaglie(logoId, catId, mag, inputId) {
     nuoviMov.push(m);
   });
   if (nuoviMov.length === 0) { showToast('Nessuna variazione necessaria'); return; }
-  // Aggiorna solo le celle del logo/categoria interessato
-  nuoviMov.forEach(m => {
-    const cellId = `apriEditStock`;
-    const t = m.taglia || '';
-    const nuovoVal = val;
-    const cls = getStockClass(nuovoVal, logo?.minimo||3);
-    // Trova la cella tramite onclick pattern
-    const cells = document.querySelectorAll(`.stock-cell.editable[onclick*="apriEditStock(this,${logoId},'${catId}','${t}'"]`);
-    cells.forEach(c => { c.className = `stock-cell editable ${cls}`; c.textContent = nuovoVal; });
-  });
+  renderStock();
   showToast(`${logo?.nome} — ${cat?.label}: tutte le taglie impostate a ${val} pz ✓`);
   Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })])
     .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
@@ -2465,11 +2402,7 @@ function apriEditStock(el, logoId, catId, taglia, mag) {
       note: 'Rettifica manuale',
     };
     db.movimenti.push(m);
-    // Aggiorna solo la cella, non tutta la griglia
-    const logo = getLogo(logoId);
-    const cls = getStockClass(nuovoStock, logo?.minimo||3);
-    el.className = `stock-cell editable ${cls}`;
-    el.textContent = nuovoStock;
+    renderStock();
     showToast(`Stock ${mag} aggiornato: ${stockAttuale} → ${nuovoStock}`);
     Promise.all([saveMovimento(m), saveDBFields({ nextMovId: db.nextMovId })])
       .catch(e => { console.error('Errore salvataggio:', e); showSyncStatus('Errore salvataggio!', true); });
@@ -2883,136 +2816,6 @@ function apriReportSnapshot(eventoId) {
 }
 
 // Reminder nel rientro post-evento
-// ─────────────────────────────────────────────
-// TRASFERIMENTO MASSIVO A GRIGLIA
-// ─────────────────────────────────────────────
-
-function renderTrasfMassivo() {
-  const da = document.getElementById('tm-da').value;
-  const container = document.getElementById('trasf-massivo-content');
-  const actions = document.getElementById('trasf-massivo-actions');
-  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
-
-  const loghiConStock = [...db.loghi]
-    .filter(l => getTotaleLogoStock(l.id, da) > 0)
-    .sort((a,b) => a.nome.localeCompare(b.nome, 'it'));
-
-  if (loghiConStock.length === 0) {
-    container.innerHTML = `<p style="color:var(--text3);font-size:13px">Nessuno stock presente nel magazzino selezionato.</p>`;
-    actions.style.display = 'none';
-    return;
-  }
-
-  let html = '';
-  loghiConStock.forEach(l => {
-    const cats = getCatPerLogo(l.nome);
-    html += `<div style="margin-bottom:18px;padding:14px 16px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border)">
-      <div style="font-weight:700;font-size:15px;margin-bottom:10px">${l.nome}</div>
-      <div style="display:flex;flex-direction:column;gap:10px">`;
-
-    cats.forEach(cat => {
-      const lblCls = catLabelClass[cat.id] || 'cat-shop';
-      if (cat.taglie) {
-        const taglie = cat.taglieLista || TAGLIE;
-        const totCat = taglie.reduce((a,t) => a + getStock(l.id, cat.id, t, da), 0);
-        if (totCat === 0) return;
-        html += `<div>
-          <div style="margin-bottom:6px"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-          <div style="overflow-x:auto">
-          <table style="border-collapse:collapse;font-size:12px">
-            <tr>
-              <td style="padding:2px 8px 2px 0;color:var(--text3);font-size:11px;white-space:nowrap">Taglia</td>
-              ${taglie.map(t => `<td style="padding:2px 6px;text-align:center;font-size:11px;font-weight:600;color:var(--text3)">${t}</td>`).join('')}
-            </tr>
-            <tr>
-              <td style="padding:2px 8px 2px 0;color:var(--text2);font-size:11px;white-space:nowrap">Stock attuale</td>
-              ${taglie.map(t => {
-                const s = getStock(l.id, cat.id, t, da);
-                return `<td style="padding:2px 6px;text-align:center"><div class="stock-cell ${getStockClass(s,l.minimo||3)}" style="min-width:36px;padding:4px 2px;font-size:13px">${s}</div></td>`;
-              }).join('')}
-            </tr>
-            <tr>
-              <td style="padding:4px 8px 2px 0;color:var(--accent);font-size:11px;font-weight:600;white-space:nowrap">Da spostare</td>
-              ${taglie.map(t => {
-                const s = getStock(l.id, cat.id, t, da);
-                const id = `tm_${l.id}_${cat.id}_${t}`;
-                return `<td style="padding:4px 6px 2px"><input type="number" id="${id}" min="0" max="${s}" placeholder="0" data-logo="${l.id}" data-cat="${cat.id}" data-taglia="${t}" data-max="${s}"
-                  style="width:36px;padding:4px 2px;text-align:center;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--text);font-size:12px" ${s===0?'disabled':''}></td>`;
-              }).join('')}
-            </tr>
-          </table>
-          </div>
-        </div>`;
-      } else {
-        const s = getStock(l.id, cat.id, null, da);
-        if (s === 0) return;
-        const id = `tm_${l.id}_${cat.id}_null`;
-        html += `<div style="display:flex;align-items:center;gap:10px">
-          <span class="stock-cat-label ${lblCls}">${cat.label}</span>
-          <span style="font-size:12px;color:var(--text3)">Attuale:</span>
-          <div class="stock-cell ${getStockClass(s,l.minimo||3)}" style="min-width:36px;padding:4px 2px;font-size:13px">${s}</div>
-          <span style="font-size:12px;color:var(--accent);font-weight:600">Da spostare:</span>
-          <input type="number" id="${id}" min="0" max="${s}" placeholder="0" data-logo="${l.id}" data-cat="${cat.id}" data-taglia="" data-max="${s}"
-            style="width:50px;padding:4px 6px;text-align:center;border-radius:var(--radius);border:1px solid var(--accent);background:var(--surface);color:var(--text);font-size:12px">
-        </div>`;
-      }
-    });
-
-    html += `</div></div>`;
-  });
-
-  container.innerHTML = html;
-  actions.style.display = 'flex';
-  if (!document.getElementById('tm-data').value) document.getElementById('tm-data').value = today();
-}
-
-async function eseguiTrasfMassivo() {
-  const da = document.getElementById('tm-da').value;
-  const a = document.getElementById('tm-a').value;
-  const data = document.getElementById('tm-data').value || today();
-  const note = document.getElementById('tm-note').value.trim() || `Trasferimento ${da} → ${a}`;
-
-  if (da === a) { showToast('I magazzini di partenza e destinazione devono essere diversi'); return; }
-
-  const inputs = document.querySelectorAll('#trasf-massivo-content input[type="number"]');
-  const items = [];
-  inputs.forEach(inp => {
-    const qty = parseInt(inp.value) || 0;
-    if (qty <= 0) return;
-    const max = parseInt(inp.dataset.max) || 0;
-    if (qty > max) { inp.style.borderColor = 'var(--red)'; return; }
-    items.push({
-      logoId: parseInt(inp.dataset.logo),
-      catId: inp.dataset.cat,
-      taglia: inp.dataset.taglia || null,
-      qty,
-    });
-  });
-
-  if (items.length === 0) { showToast('Inserisci almeno una quantità da trasferire'); return; }
-
-  const magLabel = m => m === 'tour' ? '🎒 Adriano On Tour' : m.charAt(0).toUpperCase() + m.slice(1);
-  if (!confirm(`Trasferire ${items.length} righe da ${magLabel(da)} a ${magLabel(a)}?\n\nData: ${data}\nNota: ${note}`)) return;
-
-  const nuoviMov = [];
-  items.forEach(it => {
-    const mOut = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'scarico', magazzino: da, data, note };
-    const mIn  = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'carico', magazzino: a, data, note };
-    db.movimenti.push(mOut, mIn);
-    nuoviMov.push(mOut, mIn);
-  });
-
-  await Promise.all([
-    ...nuoviMov.map(m => saveMovimento(m)),
-    saveDBFields({ nextMovId: db.nextMovId }),
-  ]);
-
-  showToast(`✓ Trasferite ${items.length} righe da ${magLabel(da)} a ${magLabel(a)}`);
-  renderStock();
-  renderTourGrid();
-  renderTrasfMassivo();
-}
-
 async function trasferimentoTotale() {
   const da = document.getElementById('tr-da').value;
   const a = document.getElementById('tr-a').value;
@@ -3762,7 +3565,6 @@ function initCassa() {
   const magBadge = document.getElementById('cassa-evento-mag');
   magBadge.textContent = ev.magazzino === 'tour' ? '🎒 Adriano On Tour' : ev.magazzino.charAt(0).toUpperCase() + ev.magazzino.slice(1);
   magBadge.className = 'mag-badge mag-' + ev.magazzino;
-  updatePendingBanner();
 
   // Snapshot reminder banner
   const snapBanner = document.getElementById('cassa-snapshot-banner');
@@ -4352,68 +4154,17 @@ function removePendingSale(ventitaId) {
 function updatePendingBanner() {
   const list = getPendingSales();
   const banner = document.getElementById('pending-sales-banner');
-  if (banner) {
-    if (list.length === 0) {
-      banner.style.display = 'none';
-    } else {
-      banner.style.display = 'flex';
-      document.getElementById('pending-sales-title').textContent =
-        `${list.length} vendita${list.length > 1 ? 'e' : ''} non sincronizzata${list.length > 1 ? 'e' : ''}!`;
-      const tot = list.reduce((a,p) => a + (p.vendita.totale||0), 0);
-      document.getElementById('pending-sales-detail').textContent =
-        `Totale non salvato: ${tot.toFixed(2)} ${list[0].vendita.valuta || '€'} — il gestionale riproverà automaticamente, oppure clicca "Riprova ora"`;
-    }
-  }
-  // Aggiorna anche il bottone compatto nella barra cassa
-  const dot = document.getElementById('sync-status-dot');
-  const label = document.getElementById('sync-status-label');
-  if (dot && label) {
-    if (list.length === 0) {
-      dot.style.background = '#10B981';
-      label.textContent = 'Sync OK';
-    } else {
-      dot.style.background = '#DC2626';
-      label.textContent = `${list.length} in coda`;
-    }
-  }
-}
-
-function apriPannelloSync() {
-  const list = getPendingSales();
-  const content = document.getElementById('sync-modal-content');
-  const userLabel = currentUser === ADMIN_EMAIL ? '👑 Amministratore' : currentUser === 'collaboratore1@gothicat.net' ? '👤 DANILO' : currentUser === 'collaboratore2@gothicat.net' ? '👤 BOB' : currentUser || 'Sconosciuto';
-
-  let html = `<div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Account attivo su questo device</div>
-    <div style="font-size:15px;font-weight:600">${userLabel}</div>
-  </div>`;
-
+  if (!banner) return;
   if (list.length === 0) {
-    html += `<div style="text-align:center;padding:24px 0">
-      <div style="font-size:40px;margin-bottom:8px">✅</div>
-      <div style="font-size:15px;font-weight:600;color:var(--green)">Tutte le vendite sono sincronizzate</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:4px">Nessuna vendita in attesa su questo device</div>
-    </div>`;
+    banner.style.display = 'none';
   } else {
+    banner.style.display = 'flex';
+    document.getElementById('pending-sales-title').textContent =
+      `${list.length} vendita${list.length > 1 ? 'e' : ''} non sincronizzata${list.length > 1 ? 'e' : ''}!`;
     const tot = list.reduce((a,p) => a + (p.vendita.totale||0), 0);
-    html += `<div style="background:#FEE2E2;border:1px solid #DC2626;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px">
-      <div style="font-weight:700;color:#991B1B;font-size:14px">⚠️ ${list.length} vendita${list.length>1?'e':''} non ancora salvata${list.length>1?'e':''} su Firebase</div>
-      <div style="font-size:12px;color:#B91C1C;margin-top:4px">Totale: ${tot.toFixed(2)} ${list[0].vendita.valuta||'€'}</div>
-    </div>`;
-    html += `<div style="display:flex;flex-direction:column;gap:8px">`;
-    list.forEach(p => {
-      const v = p.vendita;
-      const ora = new Date(p._addedAt).toLocaleTimeString('it', {hour:'2-digit', minute:'2-digit'});
-      html += `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:13px">
-        <div style="display:flex;justify-content:space-between"><strong>${v.totale.toFixed(2)} ${v.valuta||'€'}</strong><span style="color:var(--text3);font-size:11px">aggiunta alle ${ora}</span></div>
-        <div style="color:var(--text3);font-size:12px;margin-top:2px">${(v.items||[]).length} articoli — ${v.metodoPagamento||'contanti'}</div>
-      </div>`;
-    });
-    html += `</div>`;
+    document.getElementById('pending-sales-detail').textContent =
+      `Totale non salvato: ${tot.toFixed(2)} ${list[0].vendita.valuta || '€'} — il gestionale riproverà automaticamente, oppure clicca "Riprova ora"`;
   }
-
-  content.innerHTML = html;
-  document.getElementById('modal-sync-status').classList.add('open');
 }
 
 async function trySaveVenditaPayload(payload) {
@@ -4460,40 +4211,33 @@ window.addEventListener('online', () => {
 // ─────────────────────────────────────────────
 // INDICATORE CONNESSIONE FIREBASE
 // ─────────────────────────────────────────────
-function setConnIndicator(stato) {
+function updateNetStatus() {
   const dot = document.getElementById('conn-dot');
   const label = document.getElementById('conn-label');
   if (!dot || !label) return;
-  if (stato === 'online') {
+  if (navigator.onLine) {
     dot.style.background = '#10B981';
-    label.textContent = 'Connesso';
+    label.textContent = '🟢 Online';
     label.style.color = '#10B981';
-  } else if (stato === 'offline') {
-    dot.style.background = '#DC2626';
-    label.textContent = 'Offline';
-    label.style.color = '#DC2626';
   } else {
     dot.style.background = '#F59E0B';
-    label.textContent = 'Verifica...';
-    label.style.color = '#F59E0B';
+    label.textContent = '🟡 Offline — dati salvati in locale';
+    label.style.color = '#B45309';
   }
 }
 
-// Usa il listener del documento principale per dedurre lo stato connessione
 function initConnMonitor() {
-  setConnIndicator(navigator.onLine ? 'checking' : 'offline');
-  window.addEventListener('online', () => setConnIndicator('online'));
-  window.addEventListener('offline', () => setConnIndicator('offline'));
-  // Verifica reale tramite un piccolo ping a Firestore
-  setInterval(async () => {
-    if (!navigator.onLine) { setConnIndicator('offline'); return; }
-    try {
-      await firestore.collection('gestionale').doc('data').get({ source: 'server' });
-      setConnIndicator('online');
-    } catch(e) {
-      setConnIndicator('offline');
-    }
-  }, 10000);
+  updateNetStatus();
+  window.addEventListener('online', () => {
+    updateNetStatus();
+    // Firestore riprende la sync automaticamente — avvisiamo l'utente
+    showToast('🟢 Connessione ripristinata — dati in sincronizzazione');
+    if (getPendingSales().length > 0) ritentaPendingSales();
+  });
+  window.addEventListener('offline', () => {
+    updateNetStatus();
+    showToast('🟡 Offline — le modifiche si salvano in locale e si sincronizzeranno automaticamente');
+  });
 }
 
 async function concludiVendita() {
@@ -4653,7 +4397,7 @@ function renderVendite() {
       const mpDetail = mp === 'misto' && (v.pagContanti||v.pagPos) ?
         `<div style="font-size:10px;color:var(--text3);margin-top:2px">€${(v.pagContanti||0).toFixed(2)} cont. / €${(v.pagPos||0).toFixed(2)} POS</div>` : '';
       const noteHtml = v.note ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">📝 ${v.note}</div>` : '';
-      const vLabel = !v.venditore ? '—' : v.venditore === 'matteo.lassandro@gmail.com' ? '👑 Admin' : v.venditore === 'collaboratore1@gothicat.net' ? '👤 DANILO' : v.venditore === 'collaboratore2@gothicat.net' ? '👤 BOB' : v.venditore;
+      const vLabel = !v.venditore ? '—' : v.venditore === 'matteo.lassandro@gmail.com' ? '👑 Admin' : v.venditore === 'collaboratore1@gothicat.net' ? '👤 Collab. 1' : v.venditore === 'collaboratore2@gothicat.net' ? '👤 Collab. 2' : v.venditore;
       return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${dataOraFmt}</td>
         <td style="font-weight:500">${ev ? ev.nome : '-'}</td>
@@ -5035,7 +4779,7 @@ function completaAccesso(email, adminMode) {
     document.getElementById('ruolo-label').style.color = 'var(--accent)';
     document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'block');
   } else {
-    const nome = email === 'collaboratore1@gothicat.net' ? 'DANILO' : email === 'collaboratore2@gothicat.net' ? 'BOB' : email;
+    const nome = email.replace('@gothicat.net','').replace('collaboratore','Collaboratore ');
     document.getElementById('ruolo-label').textContent = '👤 ' + nome;
     document.getElementById('ruolo-label').style.color = 'var(--text3)';
     document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = 'none');
