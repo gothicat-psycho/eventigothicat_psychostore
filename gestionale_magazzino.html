@@ -1324,7 +1324,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.0.5'; // aggiornare ad ogni modifica
+const VERSION = '1.0.6'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1606,12 +1606,9 @@ function _buildStockIndex() {
     const mag = m.magazzino || 'avigliana';
     const delta = m.tipo === 'carico' ? m.qty : -m.qty;
     const tg = m.taglia || '_';
-    // chiave per magazzino specifico
     add(`${m.logoId}|${m.catId}|${tg}|${mag}`, delta);
-    // chiave per totale (mag = '*')
     add(`${m.logoId}|${m.catId}|${tg}|*`, delta);
   });
-  // trasferimenti (struttura legacy, raramente usata)
   (db.trasferimenti||[]).forEach(tr => {
     (tr.items||[]).forEach(it => {
       const tg = it.taglia || '_';
@@ -1625,7 +1622,6 @@ function _buildStockIndex() {
 }
 
 function _ensureStockIndex() {
-  // Ricostruisce l'indice solo se i movimenti sono cambiati
   const hash = (db.movimenti||[]).length + '|' + (db.nextMovId||0) + '|' + (db.trasferimenti||[]).length;
   if (_stockIndex === null || _stockIndexHash !== hash) {
     _buildStockIndex();
@@ -5374,7 +5370,7 @@ async function impostaStockMassa() {
         const attuale = getStock(l.id, cat.id, null, mag);
         const delta = qty - attuale;
         if (delta !== 0) {
-          db.movimenti.push({
+          const m = {
             id: db.nextMovId++,
             logoId: l.id, catId: cat.id, taglia: null,
             magazzino: mag,
@@ -5382,7 +5378,9 @@ async function impostaStockMassa() {
             tipo: delta > 0 ? 'carico' : 'scarico',
             data: today(),
             note: `Stock massa ${qty}pz`,
-          });
+          };
+          db.movimenti.push(m);
+          saveMovimento(m);
           count++;
         }
       }
@@ -5390,6 +5388,7 @@ async function impostaStockMassa() {
   });
 
   await saveDBFields({ nextMovId: db.nextMovId });
+  invalidateStockIndex();
   renderStock();
   showToast(`Stock aggiornato: ${count} varianti impostate a ${qty} pz`);
 }
