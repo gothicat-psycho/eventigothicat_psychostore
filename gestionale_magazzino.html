@@ -1324,7 +1324,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.0.6'; // aggiornare ad ogni modifica
+const VERSION = '1.0.7'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1543,6 +1543,24 @@ function saveVendita(v) {
 // Salva singolo movimento — non bloccante
 function saveMovimento(m) {
   return MOV_COL.doc(String(m.id)).set(m).catch(e => console.error('saveMovimento:', e));
+}
+
+// Salva molti movimenti in batch (max 500 per batch, limite Firestore).
+// Molto più efficiente di N scritture singole per operazioni massive
+// (azzeramento stock, trasferimenti totali, ecc.).
+async function saveMovimentiBatch(movimenti) {
+  const CHUNK = 450; // sotto il limite di 500 per sicurezza
+  for (let i = 0; i < movimenti.length; i += CHUNK) {
+    const batch = firestore.batch();
+    const slice = movimenti.slice(i, i + CHUNK);
+    slice.forEach(m => batch.set(MOV_COL.doc(String(m.id)), m));
+    try {
+      await batch.commit();
+    } catch(e) {
+      console.error('saveMovimentiBatch:', e);
+      throw e; // propaga per gestire l'errore a monte
+    }
+  }
 }
 
 // Elimina vendita
@@ -2941,17 +2959,22 @@ async function trasferimentoTotale() {
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.catId, mag: a, magazzino: a, qty: it.qty, tipo: 'carico', data, note });
   });
 
-  await Promise.all([
-    ...nuoviMov.map(m => saveMovimento(m)),
-    saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
-  ]);
-
+  invalidateStockIndex();
   renderStock();
   renderTrasferimenti();
   renderTourGrid();
   renderAccessori();
   renderAccTour();
-  showToast(`✓ Tutto lo stock di ${magLabel(da)} spostato a ${magLabel(a)} — ${totale} righe`);
+  showToast(`Salvataggio di ${nuoviMov.length} movimenti...`);
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId });
+    showToast(`✓ Tutto lo stock di ${magLabel(da)} spostato a ${magLabel(a)} — ${totale} righe`);
+  } catch(e) {
+    console.error('Errore batch trasferimento totale:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
 }
 
 async function rientroRapido(destinazione) {
@@ -3016,15 +3039,20 @@ async function rientroRapido(destinazione) {
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId: it.catId, mag: destinazione, magazzino: destinazione, qty: it.qty, tipo: 'carico', data, note });
   });
 
-  await Promise.all([
-    ...nuoviMov.map(m => saveMovimento(m)),
-    saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
-  ]);
-
+  invalidateStockIndex();
   renderTrasferimenti();
   renderAccessori();
   renderAccTour();
-  showToast(`✓ Tutto lo stock Tour spostato a ${destLabel} — ${totale} righe`);
+  showToast(`Salvataggio di ${nuoviMov.length} movimenti...`);
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId });
+    showToast(`✓ Tutto lo stock Tour spostato a ${destLabel} — ${totale} righe`);
+  } catch(e) {
+    console.error('Errore batch rientro:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
 }
 
 function caricaStockTourRientro() {
@@ -3150,9 +3178,16 @@ async function eseguiRientro() {
     }
   }
 
-  await Promise.all([...nuoviMov.map(m => saveMovimento(m)), saveDBFields({ nextMovId: db.nextMovId })]);
-  document.getElementById('rientro-items').style.display = 'none';
-  showToast(`Rientro eseguito — ${nuoviMov.length} movimenti registrati ✓`);
+  invalidateStockIndex();
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId });
+    document.getElementById('rientro-items').style.display = 'none';
+    showToast(`Rientro eseguito — ${nuoviMov.length} movimenti registrati ✓`);
+  } catch(e) {
+    console.error('Errore batch rientro:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
 }
 
 function renderAccTour() {
@@ -3327,6 +3362,7 @@ async function executeDel() {
       });
     }
     db.vendite = (db.vendite||[]).filter(v => v.id !== id);
+    invalidateStockIndex();
     await Promise.all([
       deleteVendita(id),
       ...nuoviMov.map(m => saveMovimento(m)),
@@ -5344,7 +5380,7 @@ async function impostaStockMassa() {
   const mag = document.getElementById('massa-mag').value;
   if (!confirm(`Portare ogni variante a ${qty} pz nel magazzino ${mag}? Verranno create rettifiche manuali per tutti i loghi.`)) return;
 
-  let count = 0;
+  const nuoviMov = [];
   db.loghi.forEach(l => {
     CATEGORIE.forEach(cat => {
       if (cat.taglie) {
@@ -5362,8 +5398,7 @@ async function impostaStockMassa() {
               note: `Stock massa ${qty}pz`,
             };
             db.movimenti.push(m);
-            saveMovimento(m);
-            count++;
+            nuoviMov.push(m);
           }
         });
       } else {
@@ -5380,17 +5415,28 @@ async function impostaStockMassa() {
             note: `Stock massa ${qty}pz`,
           };
           db.movimenti.push(m);
-          saveMovimento(m);
-          count++;
+          nuoviMov.push(m);
         }
       }
     });
   });
 
-  await saveDBFields({ nextMovId: db.nextMovId });
+  if (nuoviMov.length === 0) { showToast('Tutto lo stock era già a ' + qty); return; }
+
   invalidateStockIndex();
   renderStock();
-  showToast(`Stock aggiornato: ${count} varianti impostate a ${qty} pz`);
+  showToast(`Salvataggio di ${nuoviMov.length} rettifiche in corso...`);
+
+  // Salvataggio in BATCH (molto più efficiente di N scritture singole)
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId });
+    showToast(`✓ Stock aggiornato: ${nuoviMov.length} varianti impostate a ${qty} pz`);
+  } catch(e) {
+    console.error('Errore batch stock massa:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+    showToast('⚠️ Alcune modifiche potrebbero non essere state salvate. Riprova.');
+  }
 }
 
 // ─────────────────────────────────────────────
