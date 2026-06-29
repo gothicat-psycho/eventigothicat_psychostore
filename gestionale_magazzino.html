@@ -337,6 +337,13 @@
     <div class="nav-item" onclick="showSection('trasferimenti',this)">
       <span class="nav-icon">⇄</span> Trasferimenti/Stock Tour
     </div>
+    <div class="nav-section">Blank (non stampato)</div>
+    <div class="nav-item" onclick="showSection('ordini-blank',this)">
+      <span class="nav-icon">◷</span> Ordini Acquisto Blank
+    </div>
+    <div class="nav-item" onclick="showSection('stock-blank',this)">
+      <span class="nav-icon">▢</span> Stock Blank
+    </div>
     <div class="nav-section">Vendite</div>
     <div class="nav-item" id="nav-eventi" onclick="doShowEventi(this)">
       <span class="nav-icon">★</span> Eventi
@@ -758,6 +765,85 @@
           <table><thead><tr><th>Data</th><th>Da</th><th>A</th><th>Logo</th><th>Categoria</th><th>Taglia</th><th>Qtà</th><th>Note</th></tr></thead>
           <tbody id="tab-trasferimenti"></tbody>
         </table></div>
+      </div>
+    </div>
+
+
+    <!-- ORDINI ACQUISTO BLANK -->
+    <div class="section" id="sec-ordini-blank">
+      <div class="card">
+        <div class="card-title">Nuovo ordine acquisto blank</div>
+        <div class="form-row cols4">
+          <div class="form-group"><label>Fornitore *</label><select id="ob-fornitore"><option value="">-- seleziona --</option></select></div>
+          <div class="form-group"><label>Data ordine</label><input id="ob-data" type="date"></div>
+          <div class="form-group"><label>N° ordine / riferimento</label><input id="ob-ref" placeholder="es. BLANK-2026-001"></div>
+          <div class="form-group"><label>Note</label><input id="ob-note" placeholder="Opzionale"></div>
+        </div>
+        <div class="sep"></div>
+        <div class="card-title">Articoli blank ordinati</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Per ogni articolo indica categoria, brand, colore e le quantità per taglia. Alla ricezione lo stock si carica automaticamente.</p>
+        <div id="ob-items"></div>
+        <button class="btn btn-ghost" onclick="addBlankItemOrdine()" style="margin-bottom:12px">+ Aggiungi articolo blank</button>
+        <div class="sep"></div>
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="salvaOrdineBlank()">Salva ordine blank</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Storico ordini blank</div>
+        <div class="flex-row" style="margin-bottom:12px;gap:8px">
+          <select id="filter-ob-forn" onchange="renderOrdiniBlank()" style="max-width:200px">
+            <option value="">Tutti i fornitori</option>
+          </select>
+          <select id="filter-ob-stato" onchange="renderOrdiniBlank()" style="max-width:160px">
+            <option value="">Tutti gli stati</option>
+            <option value="in attesa">In attesa</option>
+            <option value="ricevuto">Ricevuto</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Data</th><th>N° ordine</th><th>Fornitore</th><th>Articoli</th><th>Pz totali</th><th>Stato</th><th></th></tr></thead>
+          <tbody id="tab-ordini-blank"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOCK BLANK -->
+    <div class="section" id="sec-stock-blank">
+      <div class="grid4" style="margin-bottom:16px" id="stock-blank-metrics"></div>
+      <div class="card">
+        <div class="card-title">Aggiungi articolo blank manualmente</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Crea una nuova riga di stock blank (es. quando fai l'inventario fisico). Magazzino: Napoli.</p>
+        <div class="form-row cols4">
+          <div class="form-group"><label>Categoria *</label>
+            <select id="sb-cat">
+              <option value="">-- seleziona --</option>
+              <option value="tshirt_uomo">T-Shirt Uomo</option>
+              <option value="tshirt_donna">T-Shirt Donna</option>
+              <option value="tshirt_bambino">T-Shirt Bambino</option>
+              <option value="canotte">Canotte Unisex</option>
+              <option value="shoppers">Shopper</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Brand *</label><input id="sb-brand" placeholder="es. Gildan"></div>
+          <div class="form-group"><label>Colore *</label><input id="sb-colore" placeholder="es. Nero"></div>
+          <div class="form-group" style="align-self:flex-end"><button class="btn btn-primary" onclick="aggiungiArticoloBlank()">+ Crea articolo</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stock Blank — Napoli</div>
+        <div class="flex-row" style="margin-bottom:12px;gap:8px">
+          <input id="filter-blank-search" placeholder="🔍 Cerca per brand o colore..." oninput="renderStockBlank()" style="max-width:260px">
+          <select id="filter-blank-cat" onchange="renderStockBlank()" style="max-width:180px">
+            <option value="">Tutte le categorie</option>
+            <option value="tshirt_uomo">T-Shirt Uomo</option>
+            <option value="tshirt_donna">T-Shirt Donna</option>
+            <option value="tshirt_bambino">T-Shirt Bambino</option>
+            <option value="canotte">Canotte Unisex</option>
+            <option value="shoppers">Shopper</option>
+          </select>
+        </div>
+        <div id="stock-blank-grid"></div>
       </div>
     </div>
 
@@ -1324,7 +1410,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.0.7'; // aggiornare ad ogni modifica
+const VERSION = '1.1.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1338,6 +1424,20 @@ const CATEGORIE = [
   { id: 'tshirt_bambino', label: 'T-Shirt Bambino', taglie: true,  taglieLista: TAGLIE_BAMBINO, prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
   { id: 'felpe',          label: 'Felpe Unisex',    taglie: true,  taglieLista: TAGLIE_FELPE,   prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: 'MGT1' },
 ];
+
+// ── BLANK (materiale non stampato) ──
+const TAGLIE_BLANK_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
+const TAGLIE_BLANK_DONNA = ['S','M','L','XL','2XL'];
+const TAGLIE_BLANK_BAMBINO = ['0A','1A','2A','3-4A','5-6A','7-8A'];
+const TAGLIE_BLANK_CANOTTE = ['S','M','L','XL','2XL','3XL'];
+const CATEGORIE_BLANK = [
+  { id: 'tshirt_uomo',    label: 'T-Shirt Uomo',    taglie: true,  taglieLista: TAGLIE_BLANK_UOMO },
+  { id: 'tshirt_donna',   label: 'T-Shirt Donna',   taglie: true,  taglieLista: TAGLIE_BLANK_DONNA },
+  { id: 'tshirt_bambino', label: 'T-Shirt Bambino', taglie: true,  taglieLista: TAGLIE_BLANK_BAMBINO },
+  { id: 'canotte',        label: 'Canotte Unisex',  taglie: true,  taglieLista: TAGLIE_BLANK_CANOTTE },
+  { id: 'shoppers',       label: 'Shopper',          taglie: false, taglieLista: [] },
+];
+function getCatBlank(id) { return CATEGORIE_BLANK.find(c => c.id === id); }
 
 function getCatPerLogo(logoNome) {
   return CATEGORIE.filter(c => {
@@ -1459,7 +1559,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -1744,6 +1844,26 @@ function showSection(s, el) {
     renderTrasfMassivo();
   }
   if (s === 'cassa') { initCassa(); }
+  if (s === 'ordini-blank') {
+    populateBlankFornSelect();
+    document.getElementById('ob-data').value = today();
+    if (blankOrdineItems.length === 0) addBlankItemOrdine();
+    renderOrdiniBlank();
+  }
+  if (s === 'stock-blank') {
+    renderStockBlank();
+    renderBlankMetrics();
+  }
+}
+
+// Popola il select fornitori nel form ordine blank
+function populateBlankFornSelect() {
+  const sel = document.getElementById('ob-fornitore');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- seleziona --</option>' +
+    (db.fornitori||[]).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+  if (cur) sel.value = cur;
 }
 
 // ─────────────────────────────────────────────
@@ -4551,6 +4671,379 @@ function getAccStock(catId, mag) {
     }
   });
   return Math.max(0, s);
+}
+
+// ═══════════════════════════════════════════════
+// BLANK (materiale non stampato) — magazzino Napoli
+// ═══════════════════════════════════════════════
+// Struttura dati:
+//   db.blankArticoli = [{ id, catId, brand, colore, qty: {S:0,M:0,...} }]
+//   db.blankOrdini   = [{ id, fornitoreId, data, ref, note, stato, items: [{catId,brand,colore,qty:{}}] }]
+//   db.nextBlankId, db.nextBlankOrdId
+
+function ensureBlankStructures() {
+  if (!db.blankArticoli) db.blankArticoli = [];
+  if (!db.blankOrdini) db.blankOrdini = [];
+  if (!db.nextBlankId) db.nextBlankId = 1;
+  if (!db.nextBlankOrdId) db.nextBlankOrdId = 1;
+}
+
+function getBlankTaglie(catId) {
+  const cat = getCatBlank(catId);
+  return cat && cat.taglie ? cat.taglieLista : null;
+}
+
+function totaleArticoloBlank(art) {
+  if (!art.qty) return 0;
+  return Object.values(art.qty).reduce((a, v) => a + (parseInt(v)||0), 0);
+}
+
+// ── STOCK BLANK ──
+function aggiungiArticoloBlank() {
+  ensureBlankStructures();
+  const catId = document.getElementById('sb-cat').value;
+  const brand = document.getElementById('sb-brand').value.trim();
+  const colore = document.getElementById('sb-colore').value.trim();
+  if (!catId) { showToast('Seleziona una categoria'); return; }
+  if (!brand) { showToast('Inserisci il brand'); return; }
+  if (!colore) { showToast('Inserisci il colore'); return; }
+
+  // Evita duplicati esatti (stessa cat+brand+colore)
+  const esiste = db.blankArticoli.find(a => a.catId === catId && a.brand.toLowerCase() === brand.toLowerCase() && a.colore.toLowerCase() === colore.toLowerCase());
+  if (esiste) { showToast('Esiste già un articolo con questa combinazione'); return; }
+
+  const cat = getCatBlank(catId);
+  const qty = {};
+  if (cat.taglie) { cat.taglieLista.forEach(t => qty[t] = 0); }
+  else { qty['_'] = 0; }
+
+  const art = { id: db.nextBlankId++, catId, brand, colore, qty };
+  db.blankArticoli.push(art);
+  saveDBFields({ blankArticoli: db.blankArticoli, nextBlankId: db.nextBlankId });
+
+  document.getElementById('sb-cat').value = '';
+  document.getElementById('sb-brand').value = '';
+  document.getElementById('sb-colore').value = '';
+  renderStockBlank();
+  renderBlankMetrics();
+  showToast(`Articolo blank creato: ${cat.label} ${brand} ${colore}`);
+}
+
+function aggiornaCellaBlank(artId, taglia, val) {
+  ensureBlankStructures();
+  const art = db.blankArticoli.find(a => a.id === artId);
+  if (!art) return;
+  const n = parseInt(val);
+  art.qty[taglia] = isNaN(n) || n < 0 ? 0 : n;
+  saveDBFields({ blankArticoli: db.blankArticoli });
+  renderBlankMetrics();
+  // aggiorna totale riga senza ridisegnare tutto
+  const totEl = document.getElementById(`blank-tot-${artId}`);
+  if (totEl) totEl.textContent = totaleArticoloBlank(art) + ' pz';
+}
+
+function eliminaArticoloBlank(artId) {
+  const art = db.blankArticoli.find(a => a.id === artId);
+  if (!art) return;
+  const cat = getCatBlank(art.catId);
+  if (!confirm(`Eliminare l'articolo blank "${cat?.label} ${art.brand} ${art.colore}"?\n\nLo stock verrà rimosso.`)) return;
+  db.blankArticoli = db.blankArticoli.filter(a => a.id !== artId);
+  saveDBFields({ blankArticoli: db.blankArticoli });
+  renderStockBlank();
+  renderBlankMetrics();
+  showToast('Articolo blank eliminato');
+}
+
+function renderBlankMetrics() {
+  ensureBlankStructures();
+  const perCat = {};
+  CATEGORIE_BLANK.forEach(c => perCat[c.id] = 0);
+  let totGlob = 0;
+  db.blankArticoli.forEach(a => {
+    const t = totaleArticoloBlank(a);
+    perCat[a.catId] = (perCat[a.catId]||0) + t;
+    totGlob += t;
+  });
+  const el = document.getElementById('stock-blank-metrics');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="metric"><div class="metric-label">T-Shirt Uomo</div><div class="metric-value">${perCat['tshirt_uomo']||0}</div></div>
+    <div class="metric"><div class="metric-label">T-Shirt Donna</div><div class="metric-value">${perCat['tshirt_donna']||0}</div></div>
+    <div class="metric"><div class="metric-label">Canotte</div><div class="metric-value">${perCat['canotte']||0}</div></div>
+    <div class="metric"><div class="metric-label">Totale blank</div><div class="metric-value green">${totGlob}</div><div class="metric-sub">${db.blankArticoli.length} articoli</div></div>
+  `;
+}
+
+function renderStockBlank() {
+  ensureBlankStructures();
+  const grid = document.getElementById('stock-blank-grid');
+  if (!grid) return;
+  const search = (document.getElementById('filter-blank-search')?.value || '').toLowerCase();
+  const filterCat = document.getElementById('filter-blank-cat')?.value || '';
+
+  let articoli = [...db.blankArticoli];
+  if (filterCat) articoli = articoli.filter(a => a.catId === filterCat);
+  if (search) articoli = articoli.filter(a => a.brand.toLowerCase().includes(search) || a.colore.toLowerCase().includes(search));
+
+  if (articoli.length === 0) {
+    grid.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:8px 0">Nessun articolo blank. Creane uno con il form sopra, oppure ricevi un ordine blank.</p>';
+    return;
+  }
+
+  // Ordina per categoria, poi brand, poi colore
+  const catOrder = CATEGORIE_BLANK.map(c => c.id);
+  articoli.sort((a,b) => {
+    const ci = catOrder.indexOf(a.catId) - catOrder.indexOf(b.catId);
+    if (ci !== 0) return ci;
+    if (a.brand !== b.brand) return a.brand.localeCompare(b.brand,'it');
+    return a.colore.localeCompare(b.colore,'it');
+  });
+
+  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop' };
+
+  grid.innerHTML = articoli.map(art => {
+    const cat = getCatBlank(art.catId);
+    const lblCls = catLabelClass[art.catId] || 'cat-shop';
+    const tot = totaleArticoloBlank(art);
+    let cellsHtml;
+    if (cat.taglie) {
+      cellsHtml = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">` +
+        cat.taglieLista.map(t => {
+          const v = (art.qty && art.qty[t]) || 0;
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">${t}</div>
+            <input type="number" min="0" value="${v}" onchange="aggiornaCellaBlank(${art.id},'${t}',this.value)"
+              style="width:46px;padding:6px 2px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600">
+          </div>`;
+        }).join('') + `</div>`;
+    } else {
+      const v = (art.qty && art.qty['_']) || 0;
+      cellsHtml = `<div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text3)">Quantità:</span>
+        <input type="number" min="0" value="${v}" onchange="aggiornaCellaBlank(${art.id},'_',this.value)"
+          style="width:60px;padding:6px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600">
+      </div>`;
+    }
+    return `<div style="margin-bottom:14px;padding:14px 16px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="stock-cat-label ${lblCls}">${cat.label}</span>
+        <span style="font-weight:700;font-size:15px">${art.brand}</span>
+        <span style="padding:2px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--border);font-size:12px">${art.colore}</span>
+        <span id="blank-tot-${art.id}" style="font-size:13px;font-weight:700;color:var(--text2);margin-left:auto">${tot} pz</span>
+        <button onclick="eliminaArticoloBlank(${art.id})" title="Elimina articolo" style="padding:3px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--red);cursor:pointer;font-size:12px">✕</button>
+      </div>
+      ${cellsHtml}
+    </div>`;
+  }).join('');
+}
+
+// ── ORDINI BLANK ──
+let blankOrdineItems = []; // righe temporanee del form ordine
+
+function addBlankItemOrdine() {
+  blankOrdineItems.push({ catId: '', brand: '', colore: '', qty: {} });
+  renderBlankOrdineItems();
+}
+
+function rimuoviBlankItemOrdine(idx) {
+  blankOrdineItems.splice(idx, 1);
+  renderBlankOrdineItems();
+}
+
+function aggiornaBlankItemMeta(idx, campo, val) {
+  blankOrdineItems[idx][campo] = val;
+  if (campo === 'catId') {
+    // reset quantità quando cambia categoria
+    blankOrdineItems[idx].qty = {};
+    renderBlankOrdineItems();
+  }
+}
+
+function aggiornaBlankItemQty(idx, taglia, val) {
+  const n = parseInt(val);
+  blankOrdineItems[idx].qty[taglia] = isNaN(n) || n < 0 ? 0 : n;
+}
+
+function renderBlankOrdineItems() {
+  const cont = document.getElementById('ob-items');
+  if (!cont) return;
+  if (blankOrdineItems.length === 0) {
+    cont.innerHTML = '<p style="color:var(--text3);font-size:13px;margin-bottom:10px">Nessun articolo. Clicca "+ Aggiungi articolo blank".</p>';
+    return;
+  }
+  cont.innerHTML = blankOrdineItems.map((it, idx) => {
+    const cat = it.catId ? getCatBlank(it.catId) : null;
+    let qtyHtml = '';
+    if (cat) {
+      if (cat.taglie) {
+        qtyHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">` +
+          cat.taglieLista.map(t => `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="font-size:10px;font-weight:600;color:var(--text3)">${t}</div>
+            <input type="number" min="0" placeholder="0" value="${it.qty[t]||''}" onchange="aggiornaBlankItemQty(${idx},'${t}',this.value)"
+              style="width:42px;padding:4px 2px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px">
+          </div>`).join('') + `</div>`;
+      } else {
+        qtyHtml = `<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text3)">Quantità:</span>
+          <input type="number" min="0" placeholder="0" value="${it.qty['_']||''}" onchange="aggiornaBlankItemQty(${idx},'_',this.value)"
+            style="width:60px;padding:4px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px">
+        </div>`;
+      }
+    }
+    return `<div style="margin-bottom:10px;padding:12px 14px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="margin:0;min-width:150px">
+          <label style="font-size:11px">Categoria</label>
+          <select onchange="aggiornaBlankItemMeta(${idx},'catId',this.value)">
+            <option value="">-- seleziona --</option>
+            <option value="tshirt_uomo" ${it.catId==='tshirt_uomo'?'selected':''}>T-Shirt Uomo</option>
+            <option value="tshirt_donna" ${it.catId==='tshirt_donna'?'selected':''}>T-Shirt Donna</option>
+            <option value="tshirt_bambino" ${it.catId==='tshirt_bambino'?'selected':''}>T-Shirt Bambino</option>
+            <option value="canotte" ${it.catId==='canotte'?'selected':''}>Canotte Unisex</option>
+            <option value="shoppers" ${it.catId==='shoppers'?'selected':''}>Shopper</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:120px">
+          <label style="font-size:11px">Brand</label>
+          <input value="${it.brand||''}" placeholder="es. Gildan" onchange="aggiornaBlankItemMeta(${idx},'brand',this.value)">
+        </div>
+        <div class="form-group" style="margin:0;min-width:120px">
+          <label style="font-size:11px">Colore</label>
+          <input value="${it.colore||''}" placeholder="es. Nero" onchange="aggiornaBlankItemMeta(${idx},'colore',this.value)">
+        </div>
+        <button onclick="rimuoviBlankItemOrdine(${idx})" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--red);cursor:pointer;font-size:13px">✕</button>
+      </div>
+      ${qtyHtml}
+    </div>`;
+  }).join('');
+}
+
+function salvaOrdineBlank() {
+  ensureBlankStructures();
+  const fornId = document.getElementById('ob-fornitore').value;
+  const data = document.getElementById('ob-data').value || today();
+  const ref = document.getElementById('ob-ref').value.trim();
+  const note = document.getElementById('ob-note').value.trim();
+  if (!fornId) { showToast('Seleziona un fornitore'); return; }
+  if (blankOrdineItems.length === 0) { showToast('Aggiungi almeno un articolo'); return; }
+
+  // Valida e pulisce gli items
+  const items = [];
+  for (const it of blankOrdineItems) {
+    if (!it.catId || !it.brand.trim() || !it.colore.trim()) {
+      showToast('Completa categoria, brand e colore per ogni articolo'); return;
+    }
+    const tot = Object.values(it.qty).reduce((a,v)=>a+(parseInt(v)||0),0);
+    if (tot === 0) { showToast('Inserisci almeno una quantità per ogni articolo'); return; }
+    items.push({ catId: it.catId, brand: it.brand.trim(), colore: it.colore.trim(), qty: {...it.qty} });
+  }
+
+  const ord = {
+    id: db.nextBlankOrdId++,
+    fornitoreId: parseInt(fornId),
+    data, ref, note,
+    stato: 'in attesa',
+    items,
+  };
+  db.blankOrdini.push(ord);
+  saveDBFields({ blankOrdini: db.blankOrdini, nextBlankOrdId: db.nextBlankOrdId });
+
+  blankOrdineItems = [];
+  document.getElementById('ob-ref').value = '';
+  document.getElementById('ob-note').value = '';
+  renderBlankOrdineItems();
+  renderOrdiniBlank();
+  showToast('Ordine blank salvato');
+}
+
+function riceviOrdineBlank(ordId) {
+  ensureBlankStructures();
+  const ord = db.blankOrdini.find(o => o.id === ordId);
+  if (!ord) return;
+  if (ord.stato === 'ricevuto') { showToast('Ordine già ricevuto'); return; }
+  if (!confirm(`Confermi la ricezione dell'ordine ${ord.ref || '#'+ord.id}?\n\nLe quantità verranno caricate automaticamente nello Stock Blank.`)) return;
+
+  // Per ogni item dell'ordine, carica nello stock (crea articolo se non esiste)
+  ord.items.forEach(it => {
+    let art = db.blankArticoli.find(a => a.catId === it.catId && a.brand.toLowerCase() === it.brand.toLowerCase() && a.colore.toLowerCase() === it.colore.toLowerCase());
+    if (!art) {
+      const cat = getCatBlank(it.catId);
+      const qty = {};
+      if (cat.taglie) cat.taglieLista.forEach(t => qty[t] = 0);
+      else qty['_'] = 0;
+      art = { id: db.nextBlankId++, catId: it.catId, brand: it.brand, colore: it.colore, qty };
+      db.blankArticoli.push(art);
+    }
+    // Somma le quantità ordinate
+    Object.keys(it.qty).forEach(t => {
+      art.qty[t] = (parseInt(art.qty[t])||0) + (parseInt(it.qty[t])||0);
+    });
+  });
+
+  ord.stato = 'ricevuto';
+  ord.dataRicezione = today();
+  saveDBFields({ blankArticoli: db.blankArticoli, blankOrdini: db.blankOrdini, nextBlankId: db.nextBlankId });
+  renderOrdiniBlank();
+  renderStockBlank();
+  renderBlankMetrics();
+  showToast('✓ Ordine ricevuto — stock blank aggiornato');
+}
+
+function eliminaOrdineBlank(ordId) {
+  const ord = db.blankOrdini.find(o => o.id === ordId);
+  if (!ord) return;
+  if (!confirm(`Eliminare l'ordine blank ${ord.ref || '#'+ord.id}?\n\n${ord.stato==='ricevuto' ? 'NOTA: lo stock già caricato NON verrà rimosso.' : ''}`)) return;
+  db.blankOrdini = db.blankOrdini.filter(o => o.id !== ordId);
+  saveDBFields({ blankOrdini: db.blankOrdini });
+  renderOrdiniBlank();
+  showToast('Ordine blank eliminato');
+}
+
+function renderOrdiniBlank() {
+  ensureBlankStructures();
+  // popola filtro fornitori
+  const fornSel = document.getElementById('filter-ob-forn');
+  if (fornSel && fornSel.options.length <= 1) {
+    fornSel.innerHTML = '<option value="">Tutti i fornitori</option>' +
+      (db.fornitori||[]).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+  }
+  const filtForn = document.getElementById('filter-ob-forn')?.value || '';
+  const filtStato = document.getElementById('filter-ob-stato')?.value || '';
+
+  let ordini = [...db.blankOrdini];
+  if (filtForn) ordini = ordini.filter(o => o.fornitoreId === parseInt(filtForn));
+  if (filtStato) ordini = ordini.filter(o => o.stato === filtStato);
+  ordini.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+
+  const tbody = document.getElementById('tab-ordini-blank');
+  if (!tbody) return;
+  if (ordini.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">Nessun ordine blank</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ordini.map(o => {
+    const forn = (db.fornitori||[]).find(f => f.id === o.fornitoreId);
+    const totPz = o.items.reduce((a,it) => a + Object.values(it.qty).reduce((x,v)=>x+(parseInt(v)||0),0), 0);
+    const articoliLabel = o.items.map(it => {
+      const cat = getCatBlank(it.catId);
+      return `${cat?.label||it.catId} ${it.brand} ${it.colore}`;
+    }).join(', ');
+    const statoBadge = o.stato === 'ricevuto'
+      ? '<span style="padding:2px 8px;border-radius:99px;background:#EAF3DE;color:#27500A;font-size:11px;font-weight:600">Ricevuto</span>'
+      : '<span style="padding:2px 8px;border-radius:99px;background:#FAEEDA;color:#633806;font-size:11px;font-weight:600">In attesa</span>';
+    return `<tr>
+      <td>${o.data||'—'}</td>
+      <td>${o.ref||'—'}</td>
+      <td>${forn?.nome||'—'}</td>
+      <td style="max-width:280px;font-size:12px">${articoliLabel}</td>
+      <td style="font-weight:600">${totPz}</td>
+      <td>${statoBadge}</td>
+      <td style="white-space:nowrap">
+        ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm btn-primary" onclick="riceviOrdineBlank(${o.id})">Ricevi</button>` : ''}
+        <button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="eliminaOrdineBlank(${o.id})">Elimina</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function renderAccMetrics() {
