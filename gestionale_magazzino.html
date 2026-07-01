@@ -174,8 +174,9 @@
   .stock-logo-block { margin-bottom: 20px; }
   .stock-logo-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
   .stock-genere-title { font-size: 12px; font-weight: 500; color: var(--text2); margin: 8px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
-  .stock-inline-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: start; margin-bottom: 4px; }
-  .stock-cat-block { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .stock-inline-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+  .stock-cat-block { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; padding: 8px 10px; background: var(--surface2); border-radius: 8px; flex-wrap: wrap; }
+  .stock-cat-block .stock-cat-head { min-width: 130px; flex-shrink: 0; }
   .stock-cat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; padding: 2px 6px; border-radius: 20px; display: inline-block; }
   .stock-cat-label.cat-uomo    { background: #DBEAFE; color: #1E40AF; }
   .stock-cat-label.cat-donna   { background: #FCE7F3; color: #9D174D; }
@@ -190,14 +191,14 @@
   .stock-cat-tot.cat-shop    { color: var(--text2); }
   .stock-taglia-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .stock-taglia-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .stock-cell { width: 46px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 15px; padding: 10px 4px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); }
+  .stock-cell { width: 50px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 16px; padding: 12px 4px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); }
   .stock-cell.zero { color: var(--text3); }
   .stock-cell.low { color: var(--amber); background: var(--amber-light); border-color: #F0D080; }
   .stock-cell.ok { color: var(--green); font-weight: 500; }
   .stock-cell.editable { cursor: pointer; }
   .stock-cell.editable:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
   .stock-taglia-headers { display: flex; gap: 4px; margin-bottom: 3px; }
-  .stock-taglia-hdr { width: 46px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; }
+  .stock-taglia-hdr { width: 50px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; }
   .stock-shopper-val { display: flex; align-items: center; gap: 6px; margin-top: 0; }
 
   /* ORDER ITEMS */
@@ -1411,7 +1412,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.1.2'; // aggiornare ad ogni modifica
+const VERSION = '1.1.3'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2440,12 +2441,12 @@ function renderStock() {
           </div>`;
         }).join('');
         const setAllBtn = isTotale ? '' : `
-          <div style="display:flex;align-items:center;gap:4px;margin-top:6px">
-            <input type="number" id="${setAllId}" min="0" placeholder="0" style="width:52px;padding:4px 4px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);text-align:center">
-            <button onclick="impostaTutteTaglie(${l.id},'${cat.id}','${magFilter}','${setAllId}')" style="font-size:11px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;white-space:nowrap">Imposta tutto</button>
+          <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+            <input type="number" id="${setAllId}" min="0" placeholder="0" style="width:52px;padding:8px 4px;font-size:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);text-align:center">
+            <button onclick="impostaTutteTaglie(${l.id},'${cat.id}','${magFilter}','${setAllId}')" style="font-size:11px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap">Imposta tutto</button>
           </div>`;
         return `<div class="stock-cat-block">
-          <div style="margin-bottom:4px"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
+          <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
           <div class="stock-taglia-row">${cells}</div>
           ${setAllBtn}
         </div>`;
@@ -2454,8 +2455,8 @@ function renderStock() {
         const cls = getStockClass(s, l.minimo||3);
         if (isTotale) {
           return `<div class="stock-cat-block">
-            <div><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-            <div style="display:flex;gap:6px;margin-top:2px">
+            <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
+            <div style="display:flex;gap:8px">
               ${MAGAZZINI.map(m => {
                 const sm = getStock(l.id, cat.id, null, m);
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -2467,11 +2468,11 @@ function renderStock() {
           </div>`;
         }
         return `<div class="stock-cat-block">
-          <div style="margin-bottom:2px"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
-          <div class="stock-taglia-headers"><div class="stock-taglia-hdr">tot</div></div>
-          <div class="stock-taglia-row">
+          <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
+          <div class="stock-taglia-cell">
+            <div class="stock-taglia-hdr">tot</div>
             <div class="stock-cell editable ${cls}" title="Clicca per modificare"
-              onclick="apriEditStock(this,${l.id},'${cat.id}',null,'${magFilter}')" style="min-width:44px">${s}</div>
+              onclick="apriEditStock(this,${l.id},'${cat.id}',null,'${magFilter}')">${s}</div>
           </div>
         </div>`;
       }
@@ -2479,37 +2480,37 @@ function renderStock() {
 
     let rowHtml;
     if (isTotale) {
-      // For totale: show avigliana + napoli stacked per category
+      // Vista Totale: ogni categoria una riga, con i 3 magazzini
       rowHtml = `<div class="stock-inline-row">` +
         logoCategorie.map(cat => {
           const catTl = cat.taglieLista || TAGLIE;
           const lblCls = catLabelClass[cat.id] || 'cat-shop';
           if (cat.taglie) {
-            const hdrs = catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('');
-            return `<div class="stock-cat-block" style="overflow-x:auto">
-              <div><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-              <div class="stock-taglia-headers" style="flex-wrap:nowrap;padding-left:32px">${hdrs}</div>
-              ${MAGAZZINI.map(m => {
-                const cells = catTl.map(t => {
-                  const s = getStock(l.id, cat.id, t, m);
-                  return `<div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>`;
-                }).join('');
-                return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;flex-wrap:nowrap">
-                  <span class="mag-badge mag-${m}" style="font-size:9px;min-width:28px">${m.slice(0,3).toUpperCase()}</span>
-                  ${cells}
-                </div>`;
-              }).join('')}
+            return `<div class="stock-cat-block" style="align-items:flex-start;overflow-x:auto">
+              <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;gap:4px;padding-left:36px">${catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('')}</div>
+                ${MAGAZZINI.map(m => {
+                  const cells = catTl.map(t => {
+                    const s = getStock(l.id, cat.id, t, m);
+                    return `<div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>`;
+                  }).join('');
+                  return `<div style="display:flex;gap:4px;align-items:center">
+                    <span class="mag-badge mag-${m}" style="font-size:9px;min-width:32px">${m.slice(0,3).toUpperCase()}</span>
+                    ${cells}
+                  </div>`;
+                }).join('')}
+              </div>
             </div>`;
           } else {
             return `<div class="stock-cat-block">
-              <div><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
-              <div class="stock-taglia-headers"><div class="stock-taglia-hdr">mag.</div><div class="stock-taglia-hdr">pz</div></div>
-              <div style="display:flex;flex-direction:column;gap:3px">
+              <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
+              <div style="display:flex;gap:8px">
                 ${MAGAZZINI.map(m => {
                   const s = getStock(l.id, cat.id, null, m);
-                  return `<div style="display:flex;gap:3px;align-items:center">
+                  return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
                     <span class="mag-badge mag-${m}" style="font-size:9px">${m.slice(0,3).toUpperCase()}</span>
-                    <div class="stock-cell ${getStockClass(s,l.minimo||3)}" style="min-width:44px">${s}</div>
+                    <div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>
                   </div>`;
                 }).join('')}
               </div>
