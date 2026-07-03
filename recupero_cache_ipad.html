@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RECUPERO CACHE - PSYCHO-STORE</title>
+<style>
+  body{font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:820px;margin:20px auto;padding:0 16px;background:#111;color:#eee;line-height:1.5}
+  h1{font-size:19px}
+  .box{background:#3f1d1d;border:1px solid #7f1d1d;border-radius:10px;padding:12px 14px;margin:14px 0}
+  button{font-size:17px;padding:14px 22px;border:0;border-radius:10px;background:#b91c1c;color:#fff;cursor:pointer;width:100%}
+  button:disabled{background:#555}
+  #log{white-space:pre-wrap;background:#1c1c1c;border:1px solid #333;border-radius:10px;padding:14px;margin-top:16px;font-family:monospace;font-size:13px;min-height:120px}
+  .ok{color:#4ade80}.warn{color:#fbbf24}.err{color:#f87171}
+  a.dl{display:block;margin-top:16px;font-size:17px;color:#4ade80;word-break:break-all}
+</style>
+</head>
+<body>
+<h1>🛟 Recupero dati dalla cache offline (iPad)</h1>
+<div class="box">
+  <b>PRIMA DI PREMERE:</b><br>
+  1) L'iPad deve essere in <b>MODALITÀ AEREO</b> (niente Wi-Fi, niente dati).<br>
+  2) Non aprire il gestionale.<br>
+  Questa pagina legge SOLO la copia locale salvata in Safari. Non si collega a internet e non cancella nulla.
+</div>
+<button id="go">🔎 Cerca e scarica i dati dalla cache</button>
+<div id="log"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeFirestore, doc, getDocFromCache, collection, getDocsFromCache,
+         persistentLocalCache, persistentMultipleTabManager }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBtjDJ8vbZeC1ZS9dBiLEu_qx6vK5Uw9vI",
+  authDomain: "psycho-store-9bd6f.firebaseapp.com",
+  projectId: "psycho-store-9bd6f",
+  storageBucket: "psycho-store-9bd6f.firebasestorage.app",
+  messagingSenderId: "739439120369",
+  appId: "1:739439120369:web:cc4fd673e2a967164fbe50"
+};
+
+const logEl = document.getElementById('log');
+function log(m,c){ const s=document.createElement('div'); if(c)s.className=c; s.textContent=m; logEl.appendChild(s); }
+
+document.getElementById('go').addEventListener('click', async () => {
+  const btn=document.getElementById('go'); btn.disabled=true; logEl.innerHTML='';
+  try {
+    log('Apro la cache locale di Safari (nessun collegamento a internet)...');
+    const app = initializeApp(firebaseConfig);
+    // Usa la stessa cache persistente del gestionale, SENZA connettersi al server
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+
+    const backup = { esportatoIl:new Date().toISOString(), origine:'cache-offline-ipad' };
+
+    // documento principale gestionale/data DALLA CACHE
+    log('Cerco il documento "gestionale/data" nella cache...');
+    let data=null;
+    try {
+      const snap = await getDocFromCache(doc(db,'gestionale','data'));
+      data = snap.data();
+      backup.data = data;
+      log('  → TROVATO nella cache!', 'ok');
+    } catch(e) {
+      log('  → non trovato in cache ('+(e.code||e.message)+')', 'err');
+    }
+
+    // documento backup_pre_migrazione, se in cache
+    try { const s2 = await getDocFromCache(doc(db,'gestionale','backup_pre_migrazione')); backup.backup_pre_migrazione = s2.data(); log('  → trovato anche backup_pre_migrazione', 'ok'); } catch(e){}
+
+    // movimenti e vendite dalla cache (se presenti)
+    try { const m = await getDocsFromCache(collection(db,'movimenti')); backup.movimenti = m.docs.map(d=>d.data()); log('  → movimenti in cache: '+backup.movimenti.length, 'ok'); } catch(e){ log('  → movimenti non in cache', 'warn'); }
+    try { const v = await getDocsFromCache(collection(db,'vendite')); backup.vendite = v.docs.map(d=>d.data()); log('  → vendite in cache: '+backup.vendite.length, 'ok'); } catch(e){ log('  → vendite non in cache', 'warn'); }
+
+    log('');
+    if(data){
+      log('--- Cosa contiene "data" nella cache ---','warn');
+      const campi=['prodotti','eventi','ordiniDIL','ordiniDF','ordiniPR','ordiniOD','ordiniINNOCENT','ordiniADRIANO','toxico','pepito','tarocchi','documentiDoganali'];
+      campi.forEach(c=>{ const val=data[c]; let info; if(val===undefined)info='(assente)'; else if(Array.isArray(val))info=val.length+' elementi'; else if(val&&typeof val==='object')info='oggetto ('+Object.keys(val).length+' chiavi)'; else info=String(val); log('  '+c+': '+info, (val===undefined||(Array.isArray(val)&&val.length===0))?'err':'ok'); });
+    } else {
+      log('Nella cache di questo Safari non c\'e\' il documento data.','err');
+      log('Possibili cause: la cache era gia\' stata sincronizzata col vuoto, oppure Safari l\'ha svuotata.','warn');
+    }
+
+    // scarica sempre quel che si e' trovato
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const a=document.createElement('a'); a.href=url; a.download='CACHE_IPAD_'+ts+'.json'; a.className='dl';
+    a.textContent='⬇️ SCARICA il file recuperato (toccami)';
+    logEl.appendChild(a);
+    log('');
+    log('Ho preparato il file. Toccalo qui sopra per scaricarlo/condividerlo.','ok');
+    log('Poi mandami lo screenshot di questo riquadro.','ok');
+  } catch(e){
+    log('ERRORE: '+(e&&e.message?e.message:e),'err');
+  } finally { btn.disabled=false; }
+});
+</script>
+</body>
+</html>
