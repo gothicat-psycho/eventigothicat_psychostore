@@ -271,7 +271,7 @@
       <span class="topbar-title" id="page-title">Dashboard</span>
       <div style="font-size:12px;color:var(--text3)" id="db-status">Caricamento...</div>
       <div id="net-status" style="font-size:12px;font-weight:600;margin-top:2px"></div>
-      <button onclick="scaricaBackupLocale(false)" title="Scarica una copia di sicurezza dei dati sul tuo computer" style="margin-left:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);height:30px;padding:0 12px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0">\ud83d\udcbe Backup</button>
+      <button onclick="scaricaBackupLocale(false)" title="Scarica una copia di sicurezza dei dati sul tuo computer" style="margin-left:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);height:30px;padding:0 12px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0">💾 Backup</button>
     </div>
     <div class="content">
 
@@ -1896,7 +1896,7 @@ const PRODUCTS_INIT = [{"Barcode": "1001.1.L", "Fornitore": "BRANDIT", "Descrizi
 const APP_VERSION = '2.9.0';
 const APP_VERSION_DATE = '03/07/2026';
 const CHANGELOG = [
-  { v:'2.9.0', d:'03/07/2026', t:'PROTEZIONE ANTI-DISASTRO: il gestionale non re-inizializza pi\u00f9 se il server non conferma i dati (evita sovrascritture da cache vuota/offline); stop di sicurezza nel salvataggio se i dati crollano; backup automatico giornaliero sul computer + pulsante \ud83d\udcbe Backup nell\'intestazione' },
+  { v:'2.9.0', d:'03/07/2026', t:'PROTEZIONE ANTI-DISASTRO: il gestionale non re-inizializza pi\u00f9 se il server non conferma i dati (evita sovrascritture da cache vuota/offline); stop di sicurezza nel salvataggio se i dati crollano; backup automatico giornaliero sul computer + pulsante 💾 Backup nell\'intestazione' },
   { v:'2.8.6', d:'01/07/2026', t:'Stato ordine: modificando un ordine (es. aggiungendo il link Drive) lo stato NON torna più a bozza — resta quello impostato a mano. Lo stato si cambia solo dal menu apposito' },
   { v:'2.8.5', d:'30/06/2026', t:'Etichette DIL/DF/PR: il prezzo stampato è quello di vendita indicato nell\'ordine (non più quello vecchio del catalogo) — risolve i prezzi diversi sullo stesso prodotto' },
   { v:'2.8.4', d:'30/06/2026', t:'Etichette: le taglie lunghe (es. XL/XXL) si rimpiccioliscono per non sforare, così i prezzi EUR/CZK restano centrati e non vengono più tagliati' },
