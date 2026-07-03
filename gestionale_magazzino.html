@@ -373,6 +373,7 @@
       <span id="conn-label">Connessione...</span>
     </span>
     <button onclick="ricaricaDati()" title="Ricarica i dati da Firebase" style="margin-left:10px;padding:4px 10px;font-size:11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">🔄 Aggiorna dati</button>
+    <button onclick="scaricaBackupLocale(false)" title="Scarica una copia di sicurezza dei dati sul computer" style="margin-left:6px;padding:4px 10px;font-size:11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">💾 Backup</button>
     <div id="topbar-alerts"></div>
   </div>
   <!-- Banner persistente vendite non sincronizzate -->
@@ -603,6 +604,14 @@
           <span style="font-size:11px;color:var(--text3)">Converte tutti i movimenti e le vendite con taglia "XXL" in "2XL"</span>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:8px">Porta ogni variante di ogni logo alla quantità indicata tramite rettifica manuale. Utile per caricare dati storici.</div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Backup dati:</div>
+          <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="scaricaBackupLocale(false)">💾 Scarica backup completo</button>
+          <input type="file" id="restore-file" accept="application/json" style="display:none" onchange="ripristinaDaBackup(this)">
+          <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="document.getElementById('restore-file').click()">⚠️ Ripristina da backup</button>
+          <span style="font-size:11px;color:var(--text3)">Il ripristino sovrascrive TUTTI i dati attuali con quelli del file di backup</span>
+        </div>
       </div>
     </div>
 
@@ -1412,7 +1421,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.1.3'; // aggiornare ad ogni modifica
+const VERSION = '1.2.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1569,6 +1578,109 @@ function avviaListeners() {
 }
 
 // Ricarica manuale dei dati da Firebase (utile a inizio giornata o per sicurezza)
+// ─────────────────────────────────────────────
+// BACKUP LOCALE DEL DATABASE
+// Scarica un file JSON con TUTTI i dati (loghi, fornitori, ordini, eventi,
+// vendite, movimenti, stock accessori, blank, ecc.). Il db in memoria contiene
+// già tutto perché viene caricato interamente all'avvio.
+// ─────────────────────────────────────────────
+function scaricaBackupLocale(silenzioso) {
+  try {
+    const contenuto = {
+      esportatoIl: new Date().toISOString(),
+      versione: VERSION,
+      origine: 'gothicat-backup-locale',
+      data: db,
+    };
+    const blob = new Blob([JSON.stringify(contenuto, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BACKUP_GOTHICAT_' + ts + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    try { localStorage.setItem('gothicat_lastBackup', String(Date.now())); } catch(e) {}
+    if (!silenzioso) showToast('Backup scaricato ✓');
+  } catch(e) {
+    console.error('Errore backup:', e);
+    if (!silenzioso) showToast('Errore backup: ' + (e.message || e));
+  }
+}
+
+// Backup automatico giornaliero: se è passato più di ~20h dall'ultimo backup
+// e ci sono dati significativi, scarica automaticamente una copia.
+function checkBackupAutomatico() {
+  try {
+    const last = +(localStorage.getItem('gothicat_lastBackup') || 0);
+    const haiDati = (db.loghi||[]).length >= 5;
+    if (haiDati && Date.now() - last > 20 * 3600 * 1000) {
+      setTimeout(() => scaricaBackupLocale(true), 4000);
+    }
+  } catch(e) {}
+}
+
+// Ripristina i dati da un file di backup JSON.
+// ATTENZIONE: sovrascrive tutto il database su Firebase.
+async function ripristinaDaBackup(inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const dati = parsed.data || parsed; // accetta sia il formato con wrapper che il db diretto
+      if (!dati || typeof dati !== 'object' || !Array.isArray(dati.loghi)) {
+        showToast('File di backup non valido');
+        inputEl.value = '';
+        return;
+      }
+      const nLoghi = (dati.loghi||[]).length;
+      const nVendite = (dati.vendite||[]).length;
+      const nMovimenti = (dati.movimenti||[]).length;
+      const dataBackup = parsed.esportatoIl ? new Date(parsed.esportatoIl).toLocaleString('it') : 'sconosciuta';
+      if (!confirm(`⚠️ RIPRISTINO DA BACKUP\n\nData backup: ${dataBackup}\nVersione: ${parsed.versione || 'n/d'}\n\nContiene:\n• ${nLoghi} loghi\n• ${nVendite} vendite\n• ${nMovimenti} movimenti\n\nQuesto SOVRASCRIVERÀ tutti i dati attuali su Firebase. L'operazione NON è reversibile (salvo un altro backup).\n\nProcedere?`)) {
+        inputEl.value = '';
+        return;
+      }
+      // Scarica prima un backup di sicurezza dello stato attuale
+      scaricaBackupLocale(true);
+
+      showToast('Ripristino in corso...');
+      db = dati;
+
+      // Salva il documento principale (senza vendite/movimenti che vanno in collezioni)
+      await saveDB();
+
+      // Ripristina vendite e movimenti nelle collezioni separate (in batch)
+      if (Array.isArray(db.vendite) && db.vendite.length) {
+        const CHUNK = 450;
+        for (let i = 0; i < db.vendite.length; i += CHUNK) {
+          const batch = firestore.batch();
+          db.vendite.slice(i, i+CHUNK).forEach(v => batch.set(VEND_COL.doc(String(v.id)), v));
+          await batch.commit();
+        }
+      }
+      if (Array.isArray(db.movimenti) && db.movimenti.length) {
+        await saveMovimentiBatch(db.movimenti);
+      }
+
+      invalidateStockIndex();
+      invalidateAll();
+      renderDashboard();
+      showSection('dashboard', document.querySelector('.nav-item'));
+      showToast('✓ Ripristino completato');
+    } catch(err) {
+      console.error('Errore ripristino:', err);
+      showToast('Errore nel ripristino: ' + (err.message || err));
+    }
+    inputEl.value = '';
+  };
+  reader.readAsText(file);
+}
+
 async function ricaricaDati() {
   showToast('Ricaricamento dati in corso...');
   await loadDB();
@@ -1589,10 +1701,24 @@ async function loadDB() {
     // Controlla se serve migrare
     await migraSeNecessario();
 
-    // Carica dalla cache locale prima (istantaneo), poi Firebase aggiorna in background
-    const docSnap = await DOC_REF.get();
+    // Prova a leggere dal SERVER per avere la conferma reale dello stato dati.
+    // Se offline, ricade sulla cache locale (comportamento normale di Firestore).
+    let docSnap;
+    let daServer = false;
+    try {
+      docSnap = await DOC_REF.get({ source: 'server' });
+      daServer = true;
+    } catch(eServer) {
+      // offline o server irraggiungibile → usa la cache
+      docSnap = await DOC_REF.get();
+    }
+
     if (docSnap.exists) {
       db = docSnap.data();
+    } else if (daServer) {
+      // Il SERVER conferma che il documento non esiste davvero.
+      // Non re-inizializziamo dati al buio: mostriamo solo un avviso.
+      console.warn('Documento principale assente sul server — database vuoto o nuovo.');
     }
 
     // Carica vendite e movimenti dalle collezioni separate
@@ -1604,20 +1730,75 @@ async function loadDB() {
     db.movimenti = movSnap.docs.map(d => d.data());
     invalidateStockIndex();
 
+    // Aggiorna il baseline dei dati sani SOLO se abbiamo letto dal server
+    // (così un caricamento da cache vuota non abbassa il baseline).
+    if (daServer && (db.loghi||[]).length > 0) {
+      aggiornaBaselineDati();
+    }
+
     updateFooter();
     renderDashboard();
     showSyncStatus('');
   } catch(e) {
     console.error('Errore caricamento:', e);
-    // Se offline, Firestore servirà dalla cache locale automaticamente
     showSyncStatus('Dati da cache locale', false);
   }
 }
 
+// Traccia l'ultimo conteggio dati "sano" per rilevare crolli anomali
+let _lastSafeCounts = null;
+
+function _contaDatiCritici() {
+  return {
+    loghi: (db.loghi||[]).length,
+    fornitori: (db.fornitori||[]).length,
+    eventi: (db.eventi||[]).length,
+  };
+}
+
+// Aggiorna il baseline dei dati sani (chiamato dopo un load riuscito)
+function aggiornaBaselineDati() {
+  _lastSafeCounts = _contaDatiCritici();
+  try { localStorage.setItem('gothicat_baseline', JSON.stringify(_lastSafeCounts)); } catch(e) {}
+}
+
+// Verifica se i dati stanno per "crollare" rispetto al baseline noto.
+// Ritorna true se il salvataggio è sicuro, false se sospetto (e va confermato).
+function salvataggioSicuro() {
+  const attuale = _contaDatiCritici();
+  // baseline dalla sessione o da localStorage
+  let base = _lastSafeCounts;
+  if (!base) {
+    try { base = JSON.parse(localStorage.getItem('gothicat_baseline') || 'null'); } catch(e) { base = null; }
+  }
+  if (!base) return true; // nessun riferimento, consenti
+  // Sospetto: i loghi erano molti (>=5) e ora sono crollati a pochissimi
+  if (base.loghi >= 5 && attuale.loghi < Math.max(2, Math.floor(base.loghi * 0.3))) {
+    return false;
+  }
+  return true;
+}
+
 async function saveDB() {
   try {
+    // STOP DI SICUREZZA: se i dati critici sono crollati rispetto al baseline,
+    // non sovrascrivere in silenzio — chiedi conferma esplicita.
+    if (!salvataggioSicuro()) {
+      const attuale = _contaDatiCritici();
+      const base = _lastSafeCounts || JSON.parse(localStorage.getItem('gothicat_baseline')||'{}');
+      const conferma = confirm(
+        `⚠️ ATTENZIONE — possibile perdita dati!\n\n` +
+        `Il salvataggio sta per scrivere molti meno dati del previsto:\n` +
+        `• Loghi: ${base.loghi||'?'} → ${attuale.loghi}\n\n` +
+        `Questo potrebbe cancellare dati su Firebase. Se non hai svuotato tu volontariamente il database, ANNULLA e ricarica la pagina.\n\n` +
+        `Vuoi procedere comunque con il salvataggio?`
+      );
+      if (!conferma) {
+        showSyncStatus('⚠️ Salvataggio annullato — ricarica la pagina', true);
+        return;
+      }
+    }
     const { vendite, movimenti, ...dbLight } = db;
-    // Non bloccante: IndexedDB aggiorna subito in locale, Firebase in background
     DOC_REF.set(dbLight).catch(e => console.error('saveDB:', e));
     updateFooter();
     showSyncStatus('');
@@ -5392,6 +5573,7 @@ function completaAccesso(email, adminMode) {
   loadDB().then(() => {
     renderDashboard();
     showSection(adminMode ? 'dashboard' : 'dashboard', document.querySelector('.nav-item'));
+    checkBackupAutomatico();
   });
 }
 
