@@ -1281,6 +1281,8 @@
         <select id="mv-metodo" onchange="aggiornaMVMisto()" style="width:100%">
           <option value="contanti">💵 Contanti</option>
           <option value="pos">💳 POS</option>
+          <option value="paypal">🅿️ PayPal</option>
+          <option value="cashless">🪙 Cashless (CZK)</option>
           <option value="misto">💵+💳 Misto</option>
         </select>
       </div>
@@ -1421,7 +1423,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.2.2'; // aggiornare ad ogni modifica
+const VERSION = '1.2.3'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3978,6 +3980,11 @@ function initCassa() {
     // Mostra opzione Cashless solo per eventi CZK
     const cashlessOpt = document.getElementById('opt-cashless');
     if (cashlessOpt) cashlessOpt.style.display = 'block';
+    // Per Masters of Rock e Metalfest, il metodo di pagamento di default è Cashless
+    const nomeUpper = (ev.nome||'').toUpperCase();
+    const defaultCashless = nomeUpper.includes('MASTERS OF ROCK') || nomeUpper.includes('METALFEST');
+    const mpEl = document.getElementById('metodo-pagamento');
+    if (defaultCashless && mpEl) mpEl.value = 'cashless';
   } else {
     valutaSel.style.display = 'none';
     cassaValuta = 'EUR';
