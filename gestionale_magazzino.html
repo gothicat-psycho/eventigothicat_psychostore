@@ -1421,7 +1421,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.2.1'; // aggiornare ad ogni modifica
+const VERSION = '1.2.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3827,10 +3827,9 @@ function renderEventi() {
       ? '<tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th>Vendite</th><th>Incasso €</th><th>Incasso CZK</th><th>Totale in €</th><th></th></tr>'
       : '<tr><th>Nome</th><th>Inizio</th><th>Fine</th><th>Località</th><th>Nazione</th><th>Magazzino</th><th>Valuta</th><th>Tasso CZK</th><th></th></tr>';
   }
-  // Show CZK prices card
-  const hasCzEv = (db.eventi||[]).some(isCzEvent);
+  // Mostra sempre la card prezzi CZK (utile anche se il campo Nazione non è compilato come "Ceca")
   const czkCard = document.getElementById('czk-prezzi-card');
-  if (czkCard) { czkCard.style.display = hasCzEv ? 'block' : 'none'; loadPrezzicCzk(); }
+  if (czkCard) { czkCard.style.display = 'block'; loadPrezzicCzk(); }
 
   // Populate year filter
   const anni = [...new Set((db.eventi||[]).map(e => (e.inizio||'').substring(0,4)).filter(Boolean))].sort((a,b) => b-a);
