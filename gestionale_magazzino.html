@@ -69,7 +69,11 @@
   .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
   .sidebar-logo .app-name { font-size: 13px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
   .sidebar-logo .app-sub { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
-  .sidebar-nav { flex: 1; padding: 12px 10px; }
+  .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; overflow-x: hidden; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: var(--text3); }
   .nav-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); padding: 12px 12px 4px; }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13px; color: var(--text2); margin-bottom: 1px; transition: all .15s; border: 1px solid transparent; user-select: none; }
   .nav-item:hover { background: var(--surface2); color: var(--text); }
@@ -1423,7 +1427,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.2.3'; // aggiornare ad ogni modifica
+const VERSION = '1.2.4'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -4695,8 +4699,6 @@ async function concludiVendita() {
 
   // Reset UI immediato (optimistic) — non aspettare Firebase
   svuotaScontrino();
-  const mpEl = document.getElementById('metodo-pagamento');
-  if (mpEl) mpEl.value = 'pos';
   const mf = document.getElementById('misto-fields');
   if (mf) mf.style.display = 'none';
   const mc = document.getElementById('misto-contanti');
@@ -4708,7 +4710,7 @@ async function concludiVendita() {
   const noteEl = document.getElementById('scontrino-note');
   if (noteEl) noteEl.value = '';
   showToast('Vendita registrata ✓');
-  // Reset metodo pagamento — mantieni cashless se evento CZK
+  // Reset metodo pagamento — mantieni cashless se era selezionato (es. eventi CZK)
   const mpElReset = document.getElementById('metodo-pagamento');
   if (mpElReset && mpElReset.value !== 'cashless') mpElReset.value = 'pos';
 
