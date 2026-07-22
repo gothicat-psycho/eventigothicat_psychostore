@@ -1440,14 +1440,15 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.3.0'; // aggiornare ad ogni modifica
+const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
+const VERSION = '1.3.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
 const TAGLIE_FELPE = ['S','M','L','XL','2XL']; // Felpe MGT1 only
 const TAGLIE_BAMBINO = ['0A','1A','2A','3-4A','5-6A','7-8A']; // T-shirt bambino
 const CATEGORIE = [
-  { id: 'tshirt_uomo',    label: 'T-Shirt Uomo',    taglie: true,  taglieLista: TAGLIE,         prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
+  { id: 'tshirt_uomo',    label: 'T-Shirt Uomo',    taglie: true,  taglieLista: TAGLIE_UOMO,    prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
   { id: 'tshirt_donna',   label: 'T-Shirt Donna',   taglie: true,  taglieLista: TAGLIE_DONNA,   prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
   { id: 'canotte',        label: 'Canotte Unisex',  taglie: true,  taglieLista: TAGLIE,         prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
   { id: 'shoppers',       label: 'Shoppers',         taglie: false, taglieLista: [],             prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
@@ -2127,7 +2128,7 @@ function renderDashboard() {
   db.loghi.forEach(l => {
     CATEGORIE.forEach(cat => {
       if (cat.taglie) {
-        TAGLIE.forEach(t => {
+        (cat.taglieLista||TAGLIE).forEach(t => {
           const s = getStock(l.id, cat.id, t, null);
           if (s > 0 && s <= (l.minimo || 3)) bassi.push(`${l.nome} ${cat.label} ${t} (${s} pz)`);
         });
@@ -2384,10 +2385,10 @@ function renderLoghiOrdine() {
           if (cat.taglie) {
             return `<div style="margin-bottom:10px">
               <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">${cat.label}</div>
-              <div class="taglia-grid-header"><div></div>${TAGLIE.map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
+              <div class="taglia-grid-header"><div></div>${(cat.taglieLista||TAGLIE).map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
               <div class="taglia-grid">
                 <div class="taglia-label">Qtà</div>
-                ${TAGLIE.map(t => `<input type="number" class="taglia-input" min="0" value="${(item.quantita[cat.id]||{})[t]||0}"
+                ${(cat.taglieLista||TAGLIE).map(t => `<input type="number" class="taglia-input" min="0" value="${(item.quantita[cat.id]||{})[t]||0}"
                   onchange="onQtyChange(${item.id},'${cat.id}','${t}',this.value)">`).join('')}
               </div>
             </div>`;
@@ -2458,7 +2459,7 @@ function renderOrdini() {
       const totPz = o.items.reduce((a, it) =>
         a + CATEGORIE.reduce((b, cat) => {
           const q = it.quantita[cat.id] || {};
-          return b + (cat.taglie ? TAGLIE.reduce((c,t)=>c+(q[t]||0),0) : (q._||0));
+          return b + (cat.taglie ? (cat.taglieLista||TAGLIE).reduce((c,t)=>c+(q[t]||0),0) : (q._||0));
         }, 0), 0);
       return `<tr>
         <td>${fmtDate(o.data)}</td>
@@ -2490,19 +2491,20 @@ function apriOrdine(id, autoRicevi) {
     let catHtml = getCatPerLogo(logoOrdineObj ? logoOrdineObj.nome : '').map(cat => {
       const q = item.quantita[cat.id] || {};
       if (cat.taglie) {
-        const totAvg = TAGLIE.reduce((a,t)=>a+((q.avigliana||{})[t]||0),0);
-        const totNap = TAGLIE.reduce((a,t)=>a+((q.napoli||{})[t]||0),0);
+        const catTl = cat.taglieLista||TAGLIE;
+        const totAvg = catTl.reduce((a,t)=>a+((q.avigliana||{})[t]||0),0);
+        const totNap = catTl.reduce((a,t)=>a+((q.napoli||{})[t]||0),0);
         if (totAvg+totNap === 0) return '';
         return `<div style="margin-bottom:12px">
           <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;text-transform:uppercase">${cat.label}</div>
-          <div class="taglia-grid-header"><div></div>${TAGLIE.map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
+          <div class="taglia-grid-header"><div></div>${catTl.map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
           ${totAvg>0?`<div class="taglia-grid" style="margin-bottom:3px">
             <div class="taglia-label"><span class="mag-badge mag-avigliana">Avigliana</span></div>
-            ${TAGLIE.map(t=>`<div class="taglia-stock ${((q.avigliana||{})[t]||0)===0?'zero':'ok'}">${(q.avigliana||{})[t]||0}</div>`).join('')}
+            ${catTl.map(t=>`<div class="taglia-stock ${((q.avigliana||{})[t]||0)===0?'zero':'ok'}">${(q.avigliana||{})[t]||0}</div>`).join('')}
           </div>`:''}
           ${totNap>0?`<div class="taglia-grid">
             <div class="taglia-label"><span class="mag-badge mag-napoli">Napoli</span></div>
-            ${TAGLIE.map(t=>`<div class="taglia-stock ${((q.napoli||{})[t]||0)===0?'zero':'ok'}">${(q.napoli||{})[t]||0}</div>`).join('')}
+            ${catTl.map(t=>`<div class="taglia-stock ${((q.napoli||{})[t]||0)===0?'zero':'ok'}">${(q.napoli||{})[t]||0}</div>`).join('')}
           </div>`:''}
         </div>`;
       } else {
@@ -2537,7 +2539,7 @@ function riceviOrdine() {
       MAGAZZINI.forEach(mag => {
         const qMag = q[mag] || {};
         if (cat.taglie) {
-          TAGLIE.forEach(t => {
+          (cat.taglieLista||TAGLIE).forEach(t => {
             const qty = qMag[t] || 0;
             if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: t, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
           });
@@ -2862,7 +2864,7 @@ function renderTrItems() {
         <select onchange="onTrChange(${item.id},'taglia',this.value)">
           <option value="">--</option>
           ${item.catId && getCat(item.catId) && getCat(item.catId).taglie
-            ? TAGLIE.map(t=>`<option value="${t}" ${t===item.taglia?'selected':''}>${t}</option>`).join('')
+            ? (getCat(item.catId).taglieLista||TAGLIE).map(t=>`<option value="${t}" ${t===item.taglia?'selected':''}>${t}</option>`).join('')
             : '<option value="_">N/A</option>'}
         </select>
       </div>
