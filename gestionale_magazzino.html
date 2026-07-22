@@ -348,7 +348,10 @@
       <span class="nav-icon">◷</span> Ordini Acquisto Blank
     </div>
     <div class="nav-item" onclick="showSection('stock-blank',this)">
-      <span class="nav-icon">▢</span> Stock Blank
+      <span class="nav-icon">▢</span> Stock Blank Tessile
+    </div>
+    <div class="nav-item" onclick="showSection('stock-blank-toppe',this)">
+      <span class="nav-icon">◆</span> Stock Blank Toppe
     </div>
     <div class="nav-section">Vendite</div>
     <div class="nav-item" id="nav-eventi" onclick="doShowEventi(this)">
@@ -846,7 +849,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Stock Blank — Napoli</div>
+        <div class="card-title">Stock Blank Tessile — Napoli</div>
         <div class="flex-row" style="margin-bottom:12px;gap:8px">
           <input id="filter-blank-search" placeholder="🔍 Cerca per brand o colore..." oninput="renderStockBlank()" style="max-width:260px">
           <select id="filter-blank-cat" onchange="renderStockBlank()" style="max-width:180px">
@@ -859,6 +862,16 @@
           </select>
         </div>
         <div id="stock-blank-grid"></div>
+      </div>
+    </div>
+
+    <!-- STOCK BLANK TOPPE -->
+    <div class="section" id="sec-stock-blank-toppe">
+      <div class="grid4" style="margin-bottom:16px" id="stock-blank-toppe-metrics"></div>
+      <div class="card">
+        <div class="card-title">Stock Blank Toppe — Napoli</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Modifica direttamente la quantità di ciascun tipo di toppa blank. Il magazzino è Napoli.</p>
+        <div id="stock-blank-toppe-grid"></div>
       </div>
     </div>
 
@@ -1427,7 +1440,7 @@
 // COSTANTI
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
-const VERSION = '1.2.4'; // aggiornare ad ogni modifica
+const VERSION = '1.3.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1455,6 +1468,16 @@ const CATEGORIE_BLANK = [
   { id: 'shoppers',       label: 'Shopper',          taglie: false, taglieLista: [] },
 ];
 function getCatBlank(id) { return CATEGORIE_BLANK.find(c => c.id === id); }
+
+// ── Toppe blank (non stampate) — tipi fissi, solo quantità ──
+const TOPPE_BLANK_TIPI = [
+  { id: 'rotonde',          label: 'Toppe Rotonde' },
+  { id: 'quadrate',         label: 'Toppe Quadrate' },
+  { id: 'rett_piccole',     label: 'Toppe Rettangolari Piccole' },
+  { id: 'rett_medie',       label: 'Toppe Rettangolari Medie' },
+  { id: 'rett_grandi',      label: 'Toppe Rettangolari Grandi' },
+];
+function getToppaBlankTipo(id) { return TOPPE_BLANK_TIPI.find(t => t.id === id); }
 
 function getCatPerLogo(logoNome) {
   return CATEGORIE.filter(c => {
@@ -1576,7 +1599,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -2007,7 +2030,7 @@ function showSection(s, el) {
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('sec-' + s).classList.add('active');
   if (el) el.classList.add('active');
-  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock Tessile', 'stock-accessori':'Stock Accessori', trasferimenti:'Trasferimenti/Stock Tour', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite', report:'Report' };
+  const titles = { dashboard:'Dashboard', fornitori:'Fornitori', loghi:'Loghi', ordini:'Ordini fornitori', stock:'Stock Tessile', 'stock-accessori':'Stock Accessori', trasferimenti:'Trasferimenti/Stock Tour', eventi:'Eventi', cassa:'Cassa', vendite:'Storico vendite', report:'Report', 'ordini-blank':'Ordini Acquisto Blank', 'stock-blank':'Stock Blank Tessile', 'stock-blank-toppe':'Stock Blank Toppe' };
   document.getElementById('page-title').textContent = titles[s] || s;
 
   if (s === 'dashboard')       { if (needsRender('dashboard')) renderDashboard(); }
@@ -2042,6 +2065,10 @@ function showSection(s, el) {
   if (s === 'stock-blank') {
     renderStockBlank();
     renderBlankMetrics();
+  }
+  if (s === 'stock-blank-toppe') {
+    renderStockBlankToppe();
+    renderBlankToppeMetrics();
   }
 }
 
@@ -4880,6 +4907,11 @@ function ensureBlankStructures() {
   if (!db.blankOrdini) db.blankOrdini = [];
   if (!db.nextBlankId) db.nextBlankId = 1;
   if (!db.nextBlankOrdId) db.nextBlankOrdId = 1;
+  if (!db.blankToppe) {
+    db.blankToppe = {};
+    TOPPE_BLANK_TIPI.forEach(t => db.blankToppe[t.id] = 0);
+  }
+  TOPPE_BLANK_TIPI.forEach(t => { if (db.blankToppe[t.id] === undefined) db.blankToppe[t.id] = 0; });
 }
 
 function getBlankTaglie(catId) {
@@ -5031,6 +5063,44 @@ function renderStockBlank() {
   }).join('');
 }
 
+// ── STOCK BLANK TOPPE (solo quantità, nessun brand/colore) ──
+function renderBlankToppeMetrics() {
+  ensureBlankStructures();
+  const tot = TOPPE_BLANK_TIPI.reduce((a,t) => a + (parseInt(db.blankToppe[t.id])||0), 0);
+  const el = document.getElementById('stock-blank-toppe-metrics');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="metric"><div class="metric-label">Toppe Rotonde</div><div class="metric-value">${db.blankToppe['rotonde']||0}</div></div>
+    <div class="metric"><div class="metric-label">Toppe Quadrate</div><div class="metric-value">${db.blankToppe['quadrate']||0}</div></div>
+    <div class="metric"><div class="metric-label">Rettangolari (tutte)</div><div class="metric-value">${(db.blankToppe['rett_piccole']||0)+(db.blankToppe['rett_medie']||0)+(db.blankToppe['rett_grandi']||0)}</div></div>
+    <div class="metric"><div class="metric-label">Totale toppe blank</div><div class="metric-value green">${tot}</div></div>
+  `;
+}
+
+function aggiornaToppaBlank(tipoId, val) {
+  ensureBlankStructures();
+  const n = parseInt(val);
+  db.blankToppe[tipoId] = isNaN(n) || n < 0 ? 0 : n;
+  saveDBFields({ blankToppe: db.blankToppe });
+  renderBlankToppeMetrics();
+}
+
+function renderStockBlankToppe() {
+  ensureBlankStructures();
+  const grid = document.getElementById('stock-blank-toppe-grid');
+  if (!grid) return;
+  grid.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">` +
+    TOPPE_BLANK_TIPI.map(t => {
+      const v = db.blankToppe[t.id] || 0;
+      return `<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border)">
+        <span style="font-weight:600;font-size:14px;min-width:220px">${t.label}</span>
+        <input type="number" min="0" value="${v}" onchange="aggiornaToppaBlank('${t.id}',this.value)"
+          style="width:90px;padding:10px 6px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;font-weight:700">
+        <span style="font-size:12px;color:var(--text3)">pz</span>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
 // ── ORDINI BLANK ──
 let blankOrdineItems = []; // righe temporanee del form ordine
 
@@ -5047,9 +5117,13 @@ function rimuoviBlankItemOrdine(idx) {
 function aggiornaBlankItemMeta(idx, campo, val) {
   blankOrdineItems[idx][campo] = val;
   if (campo === 'catId') {
-    // reset quantità quando cambia categoria
+    // reset quantità e tipo toppa quando cambia categoria
     blankOrdineItems[idx].qty = {};
+    blankOrdineItems[idx].toppaTipo = '';
     renderBlankOrdineItems();
+  }
+  if (campo === 'toppaTipo') {
+    blankOrdineItems[idx].qty = {};
   }
 }
 
@@ -5066,9 +5140,26 @@ function renderBlankOrdineItems() {
     return;
   }
   cont.innerHTML = blankOrdineItems.map((it, idx) => {
-    const cat = it.catId ? getCatBlank(it.catId) : null;
+    const isToppe = it.catId === 'toppe';
+    const cat = (it.catId && !isToppe) ? getCatBlank(it.catId) : null;
     let qtyHtml = '';
-    if (cat) {
+    let metaExtraHtml = '';
+    if (isToppe) {
+      metaExtraHtml = `<div class="form-group" style="margin:0;min-width:200px">
+        <label style="font-size:11px">Tipo toppa</label>
+        <select onchange="aggiornaBlankItemMeta(${idx},'toppaTipo',this.value)">
+          <option value="">-- seleziona --</option>
+          ${TOPPE_BLANK_TIPI.map(t => `<option value="${t.id}" ${it.toppaTipo===t.id?'selected':''}>${t.label}</option>`).join('')}
+        </select>
+      </div>`;
+      if (it.toppaTipo) {
+        qtyHtml = `<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text3)">Quantità:</span>
+          <input type="number" min="0" placeholder="0" value="${it.qty['_']||''}" onchange="aggiornaBlankItemQty(${idx},'_',this.value)"
+            style="width:60px;padding:4px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px">
+        </div>`;
+      }
+    } else if (cat) {
       if (cat.taglie) {
         qtyHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">` +
           cat.taglieLista.map(t => `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -5084,6 +5175,15 @@ function renderBlankOrdineItems() {
         </div>`;
       }
     }
+    const brandColoreHtml = isToppe ? '' : `
+        <div class="form-group" style="margin:0;min-width:120px">
+          <label style="font-size:11px">Brand</label>
+          <input value="${it.brand||''}" placeholder="es. Gildan" onchange="aggiornaBlankItemMeta(${idx},'brand',this.value)">
+        </div>
+        <div class="form-group" style="margin:0;min-width:120px">
+          <label style="font-size:11px">Colore</label>
+          <input value="${it.colore||''}" placeholder="es. Nero" onchange="aggiornaBlankItemMeta(${idx},'colore',this.value)">
+        </div>`;
     return `<div style="margin-bottom:10px;padding:12px 14px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="margin:0;min-width:150px">
@@ -5095,16 +5195,11 @@ function renderBlankOrdineItems() {
             <option value="tshirt_bambino" ${it.catId==='tshirt_bambino'?'selected':''}>T-Shirt Bambino</option>
             <option value="canotte" ${it.catId==='canotte'?'selected':''}>Canotte Unisex</option>
             <option value="shoppers" ${it.catId==='shoppers'?'selected':''}>Shopper</option>
+            <option value="toppe" ${it.catId==='toppe'?'selected':''}>Toppe</option>
           </select>
         </div>
-        <div class="form-group" style="margin:0;min-width:120px">
-          <label style="font-size:11px">Brand</label>
-          <input value="${it.brand||''}" placeholder="es. Gildan" onchange="aggiornaBlankItemMeta(${idx},'brand',this.value)">
-        </div>
-        <div class="form-group" style="margin:0;min-width:120px">
-          <label style="font-size:11px">Colore</label>
-          <input value="${it.colore||''}" placeholder="es. Nero" onchange="aggiornaBlankItemMeta(${idx},'colore',this.value)">
-        </div>
+        ${metaExtraHtml}
+        ${brandColoreHtml}
         <button onclick="rimuoviBlankItemOrdine(${idx})" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--red);cursor:pointer;font-size:13px">✕</button>
       </div>
       ${qtyHtml}
@@ -5124,12 +5219,20 @@ function salvaOrdineBlank() {
   // Valida e pulisce gli items
   const items = [];
   for (const it of blankOrdineItems) {
-    if (!it.catId || !it.brand.trim() || !it.colore.trim()) {
-      showToast('Completa categoria, brand e colore per ogni articolo'); return;
+    if (!it.catId) { showToast('Seleziona la categoria per ogni articolo'); return; }
+    if (it.catId === 'toppe') {
+      if (!it.toppaTipo) { showToast('Seleziona il tipo di toppa per ogni articolo'); return; }
+      const tot = parseInt(it.qty['_']) || 0;
+      if (tot === 0) { showToast('Inserisci una quantità per ogni articolo'); return; }
+      items.push({ catId: 'toppe', toppaTipo: it.toppaTipo, qty: { _: tot } });
+    } else {
+      if (!it.brand.trim() || !it.colore.trim()) {
+        showToast('Completa brand e colore per ogni articolo'); return;
+      }
+      const tot = Object.values(it.qty).reduce((a,v)=>a+(parseInt(v)||0),0);
+      if (tot === 0) { showToast('Inserisci almeno una quantità per ogni articolo'); return; }
+      items.push({ catId: it.catId, brand: it.brand.trim(), colore: it.colore.trim(), qty: {...it.qty} });
     }
-    const tot = Object.values(it.qty).reduce((a,v)=>a+(parseInt(v)||0),0);
-    if (tot === 0) { showToast('Inserisci almeno una quantità per ogni articolo'); return; }
-    items.push({ catId: it.catId, brand: it.brand.trim(), colore: it.colore.trim(), qty: {...it.qty} });
   }
 
   const ord = {
@@ -5159,6 +5262,12 @@ function riceviOrdineBlank(ordId) {
 
   // Per ogni item dell'ordine, carica nello stock (crea articolo se non esiste)
   ord.items.forEach(it => {
+    if (it.catId === 'toppe') {
+      // Toppe blank: sommate direttamente in db.blankToppe
+      const qty = parseInt(it.qty['_']) || 0;
+      db.blankToppe[it.toppaTipo] = (parseInt(db.blankToppe[it.toppaTipo])||0) + qty;
+      return;
+    }
     let art = db.blankArticoli.find(a => a.catId === it.catId && a.brand.toLowerCase() === it.brand.toLowerCase() && a.colore.toLowerCase() === it.colore.toLowerCase());
     if (!art) {
       const cat = getCatBlank(it.catId);
@@ -5176,10 +5285,12 @@ function riceviOrdineBlank(ordId) {
 
   ord.stato = 'ricevuto';
   ord.dataRicezione = today();
-  saveDBFields({ blankArticoli: db.blankArticoli, blankOrdini: db.blankOrdini, nextBlankId: db.nextBlankId });
+  saveDBFields({ blankArticoli: db.blankArticoli, blankOrdini: db.blankOrdini, nextBlankId: db.nextBlankId, blankToppe: db.blankToppe });
   renderOrdiniBlank();
   renderStockBlank();
   renderBlankMetrics();
+  renderStockBlankToppe();
+  renderBlankToppeMetrics();
   showToast('✓ Ordine ricevuto — stock blank aggiornato');
 }
 
@@ -5219,6 +5330,10 @@ function renderOrdiniBlank() {
     const forn = (db.fornitori||[]).find(f => f.id === o.fornitoreId);
     const totPz = o.items.reduce((a,it) => a + Object.values(it.qty).reduce((x,v)=>x+(parseInt(v)||0),0), 0);
     const articoliLabel = o.items.map(it => {
+      if (it.catId === 'toppe') {
+        const tipo = getToppaBlankTipo(it.toppaTipo);
+        return tipo?.label || 'Toppe';
+      }
       const cat = getCatBlank(it.catId);
       return `${cat?.label||it.catId} ${it.brand} ${it.colore}`;
     }).join(', ');
