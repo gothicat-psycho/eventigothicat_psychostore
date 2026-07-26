@@ -1119,6 +1119,7 @@
         <button class="tab-btn" id="rtab-stagionale" onclick="switchReportTab('stagionale')">📈 Stagionale</button>
         <button class="tab-btn" id="rtab-giornaliero" onclick="switchReportTab('giornaliero')">📆 Giornaliero</button>
         <button class="tab-btn" id="rtab-orario" onclick="switchReportTab('orario')">🕐 Orario</button>
+        <button class="tab-btn" id="rtab-andamento" onclick="switchReportTab('andamento')">📉 Andamento logo</button>
       </div>
       <div id="report-evento" class="report-tab">
         <div class="card">
@@ -1182,6 +1183,20 @@
           </div>
         </div>
         <div id="r-orario-content"></div>
+      </div>
+      <div id="report-andamento" class="report-tab" style="display:none">
+        <div class="card">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Andamento giornaliero delle vendite di un logo durante un evento, con stock residuo ricostruito dai movimenti. Utile per individuare i sold-out precoci e pianificare le quantità dell'anno successivo.</p>
+          <div class="flex-row" style="gap:8px">
+            <select id="r-sel-evento-a" onchange="renderReportAndamento()" style="max-width:320px">
+              <option value="">Seleziona un evento...</option>
+            </select>
+            <select id="r-sel-logo-a" onchange="renderReportAndamento()" style="max-width:280px">
+              <option value="">Seleziona un logo...</option>
+            </select>
+          </div>
+        </div>
+        <div id="r-andamento-content"></div>
       </div>
     </div>
 
@@ -1441,7 +1456,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.3.1'; // aggiornare ad ogni modifica
+const VERSION = '1.4.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -5788,7 +5803,7 @@ function switchReportTab(tab) {
   document.getElementById('rtab-' + tab).classList.add('active');
   document.querySelectorAll('.report-tab').forEach(t => t.style.display = 'none');
   document.getElementById('report-' + tab).style.display = 'block';
-  const fns = { evento: renderReportEvento, anno: renderReportAnno, loghi: renderReportLoghi, geo: renderReportGeo, stagionale: renderReportStagionale, giornaliero: renderReportGiornaliero, orario: renderReportOrario };
+  const fns = { evento: renderReportEvento, anno: renderReportAnno, loghi: renderReportLoghi, geo: renderReportGeo, stagionale: renderReportStagionale, giornaliero: renderReportGiornaliero, orario: renderReportOrario, andamento: renderReportAndamento };
   if (fns[tab]) fns[tab]();
 }
 
@@ -5798,10 +5813,13 @@ function initReport() {
   const eventiSorted = [...(db.eventi||[])].sort((a,b)=>(b.inizio||'').localeCompare(a.inizio||''));
   const evOpts = eventiSorted.map(e=>`<option value="${e.id}">${e.nome} (${(e.inizio||'').substring(0,4)})</option>`).join('');
   const annoOpts = '<option value="">Tutti gli anni</option>' + anni.map(a=>`<option value="${a}">${a}</option>`).join('');
-  ['r-sel-evento','r-sel-evento-g','r-sel-evento-o'].forEach(id => {
+  ['r-sel-evento','r-sel-evento-g','r-sel-evento-o','r-sel-evento-a'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<option value="">Seleziona un evento...</option>' + evOpts;
   });
+  const logoOptsA = [...(db.loghi||[])].sort((a,b)=>a.nome.localeCompare(b.nome,'it')).map(l=>`<option value="${l.id}">${l.nome}</option>`).join('');
+  const rsla = document.getElementById('r-sel-logo-a');
+  if (rsla) rsla.innerHTML = '<option value="">Seleziona un logo...</option>' + logoOptsA;
   ['r-sel-anno','r-loghi-anno','r-stag-anno'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = annoOpts;
@@ -6133,6 +6151,112 @@ function renderReportOrario() {
       </div>
     </div>`).join('')}
   </div>`;
+}
+
+// ── REPORT ANDAMENTO LOGO (sold-out precoci) ──
+function renderReportAndamento() {
+  const evId = document.getElementById('r-sel-evento-a').value;
+  const logoId = document.getElementById('r-sel-logo-a').value;
+  const el = document.getElementById('r-andamento-content');
+  if (!evId || !logoId) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Seleziona un evento e un logo.</p></div>'; return; }
+
+  const ev = getEvento(parseInt(evId));
+  const logo = getLogo(parseInt(logoId));
+  if (!ev || !logo) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Evento o logo non trovato.</p></div>'; return; }
+  const lId = parseInt(logoId);
+  const mag = ev.magazzino || 'avigliana';
+
+  // Giorni dell'evento (da inizio a fine, o dai giorni con vendite se date mancanti)
+  const vendEv = (db.vendite||[]).filter(v => v.eventoId === parseInt(evId));
+  let giorni = [];
+  if (ev.inizio && ev.fine) {
+    let d = new Date(ev.inizio + 'T00:00:00');
+    const fine = new Date(ev.fine + 'T00:00:00');
+    while (d <= fine) { giorni.push(d.toISOString().substring(0,10)); d.setDate(d.getDate()+1); }
+  } else {
+    giorni = [...new Set(vendEv.map(v=>v.dataOra.substring(0,10)))].sort();
+  }
+  if (giorni.length === 0) { el.innerHTML='<div class="report-card"><p style="color:var(--text3)">Nessun giorno evento trovato.</p></div>'; return; }
+
+  // Categorie del logo
+  const cats = getCatPerLogo(logo.nome);
+
+  // Vendite del logo per giorno e categoria (da v.items)
+  const vendGiornoCat = {}; // giorno -> catId -> pz
+  vendEv.forEach(v => {
+    const g = v.dataOra.substring(0,10);
+    (v.items||[]).forEach(it => {
+      if (it.isAccessorio || it.logoId !== lId) return;
+      if (!vendGiornoCat[g]) vendGiornoCat[g] = {};
+      vendGiornoCat[g][it.catId] = (vendGiornoCat[g][it.catId]||0) + (it.qty||1);
+    });
+  });
+
+  // Stock residuo a fine giornata per categoria, ricostruito dai movimenti
+  // saldo(cat, fine giorno g) = Σ movimenti nel magazzino evento con data <= g
+  const saldoCatFineGiorno = (catId, g) => {
+    let s = 0;
+    (db.movimenti||[]).forEach(m => {
+      if (m.logoId !== lId || m.catId !== catId) return;
+      if ((m.magazzino||'avigliana') !== mag) return;
+      if ((m.data||'') > g) return;
+      s += m.tipo === 'carico' ? m.qty : -m.qty;
+    });
+    return Math.max(0, s);
+  };
+
+  // Costruzione righe: per giorno → venduto per categoria + residuo
+  const ultimoGiorno = giorni[giorni.length-1];
+  const soldOut = []; // { cat, giorno, giornoIdx }
+  const catSeenSoldOut = {};
+  const righe = giorni.map((g, gi) => {
+    const vendute = vendGiornoCat[g] || {};
+    const totGiorno = Object.values(vendute).reduce((a,v)=>a+v,0);
+    const celle = cats.map(cat => {
+      const pz = vendute[cat.id] || 0;
+      const residuo = saldoCatFineGiorno(cat.id, g);
+      // Rileva sold-out: residuo 0 a fine giornata, con vendite avvenute per la categoria durante l'evento, prima dell'ultimo giorno
+      if (residuo === 0 && !catSeenSoldOut[cat.id]) {
+        const vendCatTotale = giorni.reduce((a,gg)=>a+((vendGiornoCat[gg]||{})[cat.id]||0),0);
+        if (vendCatTotale > 0) {
+          catSeenSoldOut[cat.id] = true;
+          if (g < ultimoGiorno) soldOut.push({ cat, giorno: g, giornoIdx: gi+1 });
+        }
+      }
+      const resCls = residuo === 0 ? 'color:var(--red);font-weight:700' : (residuo <= (logo.minimo||3)*3 ? 'color:var(--amber);font-weight:600' : 'color:var(--text2)');
+      return `<td class="mono" style="text-align:center">${pz>0?`<strong>${pz}</strong>`:'-'}<span style="font-size:10px;${resCls}"> /${residuo}</span></td>`;
+    }).join('');
+    return `<tr>
+      <td style="font-weight:500">${fmtDate(g)} <span style="font-size:10px;color:var(--text3)">g.${gi+1}</span></td>
+      ${celle}
+      <td class="mono" style="font-weight:600">${totGiorno||'-'}</td>
+    </tr>`;
+  }).join('');
+
+  const totEvento = giorni.reduce((a,g)=>a+Object.values(vendGiornoCat[g]||{}).reduce((x,y)=>x+y,0),0);
+
+  const soldOutHtml = soldOut.length ? `<div class="report-card" style="border-left:3px solid var(--red)">
+    <div class="report-card-title" style="color:var(--red)">⚠️ Sold-out precoci rilevati</div>
+    ${soldOut.map(s=>`<div style="font-size:13px;margin-bottom:6px">
+      <strong>${s.cat.label}</strong> esaurita il <strong>${fmtDate(s.giorno)}</strong> (giorno ${s.giornoIdx} di ${giorni.length})
+      — per l'edizione successiva valuta più stock di questa categoria.
+    </div>`).join('')}
+  </div>` : (totEvento>0 ? `<div class="report-card" style="border-left:3px solid var(--green)">
+    <div style="font-size:13px;color:var(--green)">✓ Nessun sold-out precoce: lo stock ha coperto tutto l'evento.</div>
+  </div>` : '');
+
+  el.innerHTML = `
+    ${soldOutHtml}
+    <div class="report-card">
+      <div class="report-card-title">${logo.nome} — ${ev.nome} (${totEvento} pz venduti)</div>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Per ogni giorno: <strong>pezzi venduti</strong> /stock residuo a fine giornata (ricostruito dai movimenti del magazzino "${mag}"). Rosso = esaurito, ambra = in esaurimento.</p>
+      <div style="overflow-x:auto">
+      <table class="report-table">
+        <thead><tr><th>Giorno</th>${cats.map(c=>`<th style="text-align:center">${c.label}</th>`).join('')}<th>Tot</th></tr></thead>
+        <tbody>${righe}</tbody>
+      </table>
+      </div>
+    </div>`;
 }
 
 // ─────────────────────────────────────────────
