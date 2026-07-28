@@ -715,7 +715,11 @@
         <div id="tr-items"></div>
         <button class="btn btn-ghost" onclick="addTrItem()" style="margin-bottom:12px">+ Aggiungi articolo</button>
         <div class="sep"></div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="tr-logo-sel" style="max-width:220px">
+            <option value="">-- Seleziona logo --</option>
+          </select>
+          <button class="btn" style="border-color:#1565C0;color:#1565C0" onclick="trasferimentoLogo()">📦 Sposta tutto il logo</button>
           <button class="btn" style="border-color:#E65100;color:#E65100" onclick="trasferimentoTotale()">⚡ Sposta TUTTO lo stock</button>
           <button class="btn btn-primary" onclick="salvaTrasferimento()">Esegui trasferimento</button>
         </div>
@@ -1456,7 +1460,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.4.0'; // aggiornare ad ogni modifica
+const VERSION = '1.4.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2066,6 +2070,14 @@ function showSection(s, el) {
         [...(db.loghi||[])].sort((a,b) => a.nome.localeCompare(b.nome,'it'))
           .map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
       renderTourGrid();
+    }
+    const selTrLogo = document.getElementById('tr-logo-sel');
+    if (selTrLogo) {
+      const curVal = selTrLogo.value;
+      selTrLogo.innerHTML = '<option value="">-- Seleziona logo --</option>' +
+        [...(db.loghi||[])].sort((a,b) => a.nome.localeCompare(b.nome,'it'))
+          .map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+      if (curVal) selTrLogo.value = curVal;
     }
     renderAccTour();
     if (!document.getElementById('tm-data').value) document.getElementById('tm-data').value = today();
@@ -3246,6 +3258,64 @@ function apriReportSnapshot(eventoId) {
 }
 
 // Reminder nel rientro post-evento
+async function trasferimentoLogo() {
+  const da = document.getElementById('tr-da').value;
+  const a = document.getElementById('tr-a').value;
+  const data = document.getElementById('tr-data').value || today();
+  const logoId = parseInt(document.getElementById('tr-logo-sel').value);
+  const magLabel = m => m === 'tour' ? '🎒 Adriano On Tour' : m.charAt(0).toUpperCase() + m.slice(1);
+
+  if (!logoId) { showToast('Seleziona un logo'); return; }
+  if (da === a) { showToast('I magazzini di partenza e destinazione devono essere diversi'); return; }
+
+  const logo = getLogo(logoId);
+  if (!logo) { showToast('Logo non trovato'); return; }
+  const note = document.getElementById('tr-note').value.trim() || `Trasferimento logo ${logo.nome}: ${da} → ${a}`;
+
+  // Raccoglie tutto lo stock > 0 del logo nel magazzino di partenza
+  const items = [];
+  const cats = getCatPerLogo(logo.nome);
+  cats.forEach(cat => {
+    if (cat.taglie) {
+      (cat.taglieLista||TAGLIE).forEach(t => {
+        const s = getStock(logo.id, cat.id, t, da);
+        if (s > 0) items.push({ logoId: logo.id, catId: cat.id, taglia: t, qty: s, catLabel: cat.label });
+      });
+    } else {
+      const s = getStock(logo.id, cat.id, null, da);
+      if (s > 0) items.push({ logoId: logo.id, catId: cat.id, taglia: null, qty: s, catLabel: cat.label });
+    }
+  });
+
+  if (items.length === 0) { showToast(`Nessuno stock di "${logo.nome}" presente in ${magLabel(da)}`); return; }
+
+  const totalePz = items.reduce((a,it)=>a+it.qty,0);
+  if (!confirm(`Sposta TUTTO lo stock di "${logo.nome}" da ${magLabel(da)} a ${magLabel(a)}?\n\n${items.length} varianti, ${totalePz} pz totali.\nData: ${data}\nNota: ${note}`)) return;
+
+  const nuoviMov = [];
+  items.forEach(it => {
+    const mOut = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'scarico', magazzino: da, data, note };
+    const mIn  = { id: db.nextMovId++, logoId: it.logoId, catId: it.catId, taglia: it.taglia, qty: it.qty, tipo: 'carico', magazzino: a, data, note };
+    db.movimenti.push(mOut, mIn);
+    nuoviMov.push(mOut, mIn);
+  });
+
+  invalidateStockIndex();
+  renderStock();
+  renderTrasferimenti();
+  renderTourGrid();
+  showToast(`Salvataggio di ${nuoviMov.length} movimenti...`);
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId });
+    showToast(`✓ "${logo.nome}" spostato da ${magLabel(da)} a ${magLabel(a)} — ${totalePz} pz`);
+  } catch(e) {
+    console.error('Errore batch trasferimento logo:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
+}
+
 async function trasferimentoTotale() {
   const da = document.getElementById('tr-da').value;
   const a = document.getElementById('tr-a').value;
