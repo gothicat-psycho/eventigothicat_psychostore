@@ -1467,7 +1467,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.4.3'; // aggiornare ad ogni modifica
+const VERSION = '1.4.4'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2474,23 +2474,43 @@ function renderLoghiOrdine() {
           <button class="btn btn-sm btn-danger" onclick="removeLogoOrdine(${item.id})">Rimuovi</button>
         </div>
         ${CATEGORIE.map(cat => {
+          const totCat = calcTotaleCategoria(item, cat.id);
           if (cat.taglie) {
+            const tl = cat.taglieLista||TAGLIE;
             return `<div style="margin-bottom:10px">
-              <div style="margin-bottom:6px"><span class="stock-cat-label ${getCatLabelClass(cat.id)}">${cat.label}</span></div>
-              <div class="taglia-grid-header"><div></div>${(cat.taglieLista||TAGLIE).map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
+              <div style="margin-bottom:6px;display:flex;align-items:center;gap:10px">
+                <span class="stock-cat-label ${getCatLabelClass(cat.id)}">${cat.label}</span>
+                <span id="qta-tot-${item.id}-${cat.id}" style="font-size:12px;font-weight:600;color:var(--text2)">Tot: ${totCat} pz</span>
+              </div>
+              <div class="taglia-grid-header"><div></div>${tl.map(t=>`<div class="taglia-header">${t}</div>`).join('')}</div>
+              <div class="taglia-grid" style="margin-bottom:3px">
+                <div class="taglia-label"><span class="mag-badge mag-avigliana">Avigliana</span></div>
+                ${tl.map(t => `<input type="number" class="taglia-input" min="0" value="${(item.quantita[cat.id]?.avigliana||{})[t]||0}"
+                  oninput="onQtyChange(${item.id},'${cat.id}','${t}','avigliana',this.value)">`).join('')}
+              </div>
               <div class="taglia-grid">
-                <div class="taglia-label">Qtà</div>
-                ${(cat.taglieLista||TAGLIE).map(t => `<input type="number" class="taglia-input" min="0" value="${(item.quantita[cat.id]||{})[t]||0}"
-                  onchange="onQtyChange(${item.id},'${cat.id}','${t}',this.value)">`).join('')}
+                <div class="taglia-label"><span class="mag-badge mag-napoli">Napoli</span></div>
+                ${tl.map(t => `<input type="number" class="taglia-input" min="0" value="${(item.quantita[cat.id]?.napoli||{})[t]||0}"
+                  oninput="onQtyChange(${item.id},'${cat.id}','${t}','napoli',this.value)">`).join('')}
               </div>
             </div>`;
           } else {
-            return `<div style="margin-bottom:10px;display:flex;align-items:center;gap:12px">
-              <span class="stock-cat-label ${getCatLabelClass(cat.id)}" style="width:110px;text-align:center">${cat.label}</span>
-              <div style="display:flex;align-items:center;gap:8px">
-                <label style="font-size:12px;color:var(--text3);margin:0">Qtà:</label>
-                <input type="number" style="width:90px" min="0" value="${(item.quantita[cat.id]||{})._||0}"
-                  onchange="onQtyChange(${item.id},'${cat.id}','_',this.value)">
+            return `<div style="margin-bottom:10px">
+              <div style="margin-bottom:6px;display:flex;align-items:center;gap:10px">
+                <span class="stock-cat-label ${getCatLabelClass(cat.id)}" style="width:110px;text-align:center">${cat.label}</span>
+                <span id="qta-tot-${item.id}-${cat.id}" style="font-size:12px;font-weight:600;color:var(--text2)">Tot: ${totCat} pz</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:20px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="mag-badge mag-avigliana">Avigliana</span>
+                  <input type="number" style="width:80px" min="0" value="${(item.quantita[cat.id]?.avigliana||{})._||0}"
+                    oninput="onQtyChange(${item.id},'${cat.id}','_','avigliana',this.value)">
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="mag-badge mag-napoli">Napoli</span>
+                  <input type="number" style="width:80px" min="0" value="${(item.quantita[cat.id]?.napoli||{})._||0}"
+                    oninput="onQtyChange(${item.id},'${cat.id}','_','napoli',this.value)">
+                </div>
               </div>
             </div>`;
           }
@@ -2510,6 +2530,20 @@ function onQtyChange(id, catId, taglia, mag, val) {
   if (!item.quantita[catId]) item.quantita[catId] = { avigliana: {}, napoli: {} };
   if (!item.quantita[catId][mag]) item.quantita[catId][mag] = {};
   item.quantita[catId][mag][taglia] = parseInt(val) || 0;
+  aggiornaTotaleCategoria(id, catId);
+}
+
+function calcTotaleCategoria(item, catId) {
+  const q = item.quantita[catId] || {};
+  const somma = obj => Object.values(obj||{}).reduce((a,v)=>a+(parseInt(v)||0),0);
+  return somma(q.avigliana) + somma(q.napoli);
+}
+
+function aggiornaTotaleCategoria(id, catId) {
+  const item = loghiOrdine.find(x => x.id === id);
+  if (!item) return;
+  const el = document.getElementById(`qta-tot-${id}-${catId}`);
+  if (el) el.textContent = `Tot: ${calcTotaleCategoria(item, catId)} pz`;
 }
 
 function salvaOrdine() {
