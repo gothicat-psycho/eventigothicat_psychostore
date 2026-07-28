@@ -619,6 +619,13 @@
           <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="document.getElementById('restore-file').click()">⚠️ Ripristina da backup</button>
           <span style="font-size:11px;color:var(--text3)">Il ripristino sovrascrive TUTTI i dati attuali con quelli del file di backup</span>
         </div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Diagnostica:</div>
+          <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="diagnosticaSaldiNegativi()">🔍 Verifica saldi negativi nascosti</button>
+          <span style="font-size:11px;color:var(--text3)">Trova varianti dove lo stock reale è negativo (mostrato come 0) — può causare discrepanze nei trasferimenti</span>
+        </div>
+        <div id="diagnostica-risultati"></div>
       </div>
     </div>
 
@@ -1460,7 +1467,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.4.1'; // aggiornare ad ogni modifica
+const VERSION = '1.4.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1990,6 +1997,62 @@ function getStock(logoId, catId, taglia, mag) {
   const magKey = mag || '*';
   const v = _stockIndex[`${logoId}|${catId}|${tg}|${magKey}`] || 0;
   return Math.max(0, v);
+}
+
+// ─────────────────────────────────────────────
+// DIAGNOSTICA: saldi negativi nascosti
+// getStock() tronca sempre a 0 (Math.max(0,...)) per non mostrare numeri
+// negativi in UI. Ma se il saldo REALE è negativo (più scarichi che carichi
+// storici), quel "debito" resta nascosto finché non viene "assorbito" da
+// un successivo trasferimento o rettifica verso quel magazzino — causando
+// discrepanze apparenti. Questo strumento espone quei saldi senza modificarli.
+// ─────────────────────────────────────────────
+function diagnosticaSaldiNegativi() {
+  _ensureStockIndex();
+  const problemi = [];
+  Object.keys(_stockIndex).forEach(key => {
+    const parts = key.split('|');
+    const magKey = parts[3];
+    if (magKey === '*') return; // aggregato multi-magazzino, non diagnostico qui
+    const v = _stockIndex[key];
+    if (v < 0) {
+      problemi.push({ logoId: parseInt(parts[0]), catId: parts[1], taglia: parts[2]==='_'?null:parts[2], mag: magKey, saldo: v });
+    }
+  });
+  renderDiagnosticaRisultati(problemi);
+}
+
+function renderDiagnosticaRisultati(problemi) {
+  const el = document.getElementById('diagnostica-risultati');
+  if (!el) return;
+  if (problemi.length === 0) {
+    el.innerHTML = `<div style="margin-top:10px;padding:12px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Nessun saldo negativo nascosto trovato — tutti gli stock sono coerenti.</div>`;
+    return;
+  }
+  const perLogo = {};
+  problemi.forEach(p => { (perLogo[p.logoId] = perLogo[p.logoId]||[]).push(p); });
+  const magLabel = m => m === 'tour' ? '🎒 Tour' : m.charAt(0).toUpperCase()+m.slice(1);
+  const html = Object.keys(perLogo).map(logoId => {
+    const logo = getLogo(parseInt(logoId));
+    const righe = perLogo[logoId].map(p => {
+      const cat = getCat(p.catId);
+      return `<div style="font-size:13px;padding:3px 0">
+        <strong>${cat?.label||p.catId}</strong>${p.taglia?` — Taglia ${p.taglia}`:''} in <strong>${magLabel(p.mag)}</strong>:
+        saldo reale <strong style="color:var(--red)">${p.saldo}</strong> <span style="color:var(--text3)">(mostrato come 0)</span>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:10px;padding:12px 14px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border)">
+      <div style="font-weight:600;margin-bottom:6px">${logo?.nome || ('Logo #'+logoId)}</div>
+      ${righe}
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="margin-top:10px">
+    <div style="padding:10px 14px;background:#FCEBEB;border-radius:var(--radius);color:#791F1F;font-size:13px;margin-bottom:10px;font-weight:600">
+      ⚠️ Trovati ${problemi.length} saldi negativi nascosti in ${Object.keys(perLogo).length} logo/i
+    </div>
+    ${html}
+    <p style="font-size:11px;color:var(--text3);margin-top:8px">Questi saldi indicano più scarichi che carichi registrati storicamente per quella variante/magazzino. Restano innocui finché lo stock mostra 0, ma "assorbono" silenziosamente le quantità in un trasferimento o carico successivo verso quel magazzino. Per correggerli, modifica manualmente la cella nello Stock (clicca sulla cella) impostando il valore reale, oppure usa "Imposta stock di massa".</p>
+  </div>`;
 }
 
 function getTotaleStock(logoId, catId, mag) {
