@@ -514,7 +514,11 @@
     <!-- ORDINI -->
     <div class="section" id="sec-ordini">
       <div class="card">
-        <div class="card-title">Nuovo ordine fornitore</div>
+        <div id="ord-edit-banner" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--amber-light);border:1px solid #F0D080;border-radius:var(--radius);font-size:13px;color:#7A4A00;display:flex;align-items:center;justify-content:space-between">
+          <span id="ord-edit-banner-text">Stai modificando un ordine esistente</span>
+          <button class="btn btn-sm" onclick="annullaModificaOrdine()">Annulla modifica</button>
+        </div>
+        <div class="card-title" id="ord-form-title">Nuovo ordine fornitore</div>
         <div class="form-row cols4">
           <div class="form-group"><label>Fornitore *</label><select id="o-fornitore"><option value="">-- seleziona --</option></select></div>
           <div class="form-group"><label>Data ordine</label><input id="o-data" type="date"></div>
@@ -527,7 +531,7 @@
         <button class="btn btn-ghost" onclick="addLogoOrdine()" style="margin-bottom:12px">+ Aggiungi logo</button>
         <div class="sep"></div>
         <div style="display:flex;justify-content:flex-end">
-          <button class="btn btn-primary" onclick="salvaOrdine()">Salva ordine</button>
+          <button class="btn btn-primary" id="ord-save-btn" onclick="salvaOrdine()">Salva ordine</button>
         </div>
       </div>
       <div class="card">
@@ -1222,6 +1226,7 @@
     <div id="modal-ordine-body"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('modal-ordine')">Chiudi</button>
+      <button class="btn" style="border-color:var(--accent);color:var(--accent)" onclick="stampaOrdinePDF()">🖨️ Stampa / PDF</button>
       <button class="btn btn-success" id="modal-ricevi-btn" onclick="riceviOrdine()">Segna come ricevuto</button>
     </div>
   </div>
@@ -1467,7 +1472,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.4.4'; // aggiornare ad ogni modifica
+const VERSION = '1.5.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2121,7 +2126,7 @@ function showSection(s, el) {
   if (s === 'dashboard')       { if (needsRender('dashboard')) renderDashboard(); }
   if (s === 'fornitori')       { if (needsRender('fornitori')) { renderFornitori(); populateFornSelects(); } }
   if (s === 'loghi')           { if (needsRender('loghi')) renderLoghi(); populateFornSelects(); }
-  if (s === 'ordini')          { if (needsRender('ordini')) { renderOrdini(); populateFornSelects(); } if (loghiOrdine.length === 0) addLogoOrdine(); document.getElementById('o-data').value = today(); }
+  if (s === 'ordini')          { if (needsRender('ordini')) { renderOrdini(); populateFornSelects(); } if (loghiOrdine.length === 0) addLogoOrdine(); if (!ordineInModificaId) document.getElementById('o-data').value = today(); }
   if (s === 'stock')           { if (needsRender('stock')) { renderStock(); renderStockMetrics(); } populateFornSelects(); }
   if (s === 'stock-accessori') { if (needsRender('accessori')) { renderAccessori(); renderAccMetrics(); } }
   if (s === 'trasferimenti') {
@@ -2412,6 +2417,7 @@ function renderLoghi() {
 // ORDINI
 // ─────────────────────────────────────────────
 let loghiOrdine = [];
+let ordineInModificaId = null; // se valorizzato, salvaOrdine() aggiorna invece di creare
 
 function emptyQta(logoNome) {
   const q = {};
@@ -2556,19 +2562,68 @@ function salvaOrdine() {
   for (const item of loghiOrdine) {
     if (!item.logoId) { showToast('Seleziona il logo per ogni riga', 'red'); return; }
   }
-  db.ordini.push({
-    id: db.nextOrdId++, fornId, data, ref, note,
-    items: loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())) })),
-    stato: 'in attesa',
-  });
-  saveDBFields({ ordini: db.ordini, nextOrdId: db.nextOrdId });
-  ['o-ref','o-note'].forEach(id => document.getElementById(id).value = '');
+  const items = loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())) }));
+
+  if (ordineInModificaId) {
+    // Aggiorna un ordine esistente (non ancora ricevuto)
+    const ord = db.ordini.find(o => o.id === ordineInModificaId);
+    if (!ord) { showToast('Ordine non trovato — potrebbe essere stato eliminato', 'red'); annullaModificaOrdine(); return; }
+    ord.fornId = fornId; ord.data = data; ord.ref = ref; ord.note = note; ord.items = items;
+    saveDBFields({ ordini: db.ordini });
+    showToast('Ordine aggiornato ✓');
+    annullaModificaOrdine(); // esce dalla modalità modifica e pulisce il form
+  } else {
+    db.ordini.push({
+      id: db.nextOrdId++, fornId, data, ref, note, items,
+      stato: 'in attesa',
+    });
+    saveDBFields({ ordini: db.ordini, nextOrdId: db.nextOrdId });
+    ['o-ref','o-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('o-fornitore').value = '';
+    loghiOrdine = [];
+    addLogoOrdine();
+    showToast('Ordine salvato');
+  }
+  renderOrdini();
+  renderDashboard();
+}
+
+function modificaOrdine(id) {
+  const ord = db.ordini.find(o => o.id === id);
+  if (!ord) { showToast('Ordine non trovato'); return; }
+  if (ord.stato === 'ricevuto') { showToast('Un ordine già ricevuto non può essere modificato'); return; }
+  ordineInModificaId = id;
+
+  document.getElementById('o-fornitore').value = ord.fornId;
+  document.getElementById('o-data').value = ord.data || '';
+  document.getElementById('o-ref').value = ord.ref || '';
+  document.getElementById('o-note').value = ord.note || '';
+
+  loghiOrdine = ord.items.map((it, idx) => ({
+    id: Date.now() + idx,
+    logoId: it.logoId,
+    quantita: JSON.parse(JSON.stringify(it.quantita)),
+  }));
+  renderLoghiOrdine();
+
+  document.getElementById('ord-edit-banner').style.display = 'flex';
+  document.getElementById('ord-edit-banner-text').textContent = `Stai modificando l'ordine ${ord.ref || '#'+ord.id} — ${getForn(ord.fornId)?.nome || ''}`;
+  document.getElementById('ord-form-title').textContent = 'Modifica ordine fornitore';
+  document.getElementById('ord-save-btn').textContent = 'Aggiorna ordine';
+
+  // Scorri il form in vista
+  document.getElementById('sec-ordini').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function annullaModificaOrdine() {
+  ordineInModificaId = null;
+  document.getElementById('ord-edit-banner').style.display = 'none';
+  document.getElementById('ord-form-title').textContent = 'Nuovo ordine fornitore';
+  document.getElementById('ord-save-btn').textContent = 'Salva ordine';
+  ['o-ref','o-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('o-fornitore').value = '';
   loghiOrdine = [];
   addLogoOrdine();
-  renderOrdini();
-  renderDashboard();
-  showToast('Ordine salvato');
 }
 
 function renderOrdini() {
@@ -2585,7 +2640,8 @@ function renderOrdini() {
       const totPz = o.items.reduce((a, it) =>
         a + CATEGORIE.reduce((b, cat) => {
           const q = it.quantita[cat.id] || {};
-          return b + (cat.taglie ? (cat.taglieLista||TAGLIE).reduce((c,t)=>c+(q[t]||0),0) : (q._||0));
+          const somma = obj => Object.values(obj||{}).reduce((x,v)=>x+(parseInt(v)||0),0);
+          return b + somma(q.avigliana) + somma(q.napoli);
         }, 0), 0);
       return `<tr>
         <td>${fmtDate(o.data)}</td>
@@ -2596,6 +2652,7 @@ function renderOrdini() {
         <td>${statoOrdBadge(o.stato)}</td>
         <td style="display:flex;gap:6px">
           <button class="btn btn-sm" onclick="apriOrdine(${o.id})">Dettaglio</button>
+          ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="modificaOrdine(${o.id})">Modifica</button>` : ''}
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm btn-success" onclick="apriOrdine(${o.id},true)">Ricevi</button>` : ''}
         </td>
       </tr>`;
@@ -2654,6 +2711,76 @@ function apriOrdine(id, autoRicevi) {
   rBtn.style.display = o.stato === 'ricevuto' ? 'none' : 'inline-block';
   document.getElementById('modal-ordine').classList.add('open');
   if (autoRicevi) riceviOrdine();
+}
+
+// Genera una vista stampabile dell'ordine e apre la finestra di stampa del
+// browser — da lì l'utente può scegliere "Salva come PDF" (Safari Mac/iPad
+// lo offre nativamente nel dialogo di stampa) per inviarlo al fornitore.
+function stampaOrdinePDF() {
+  if (!ordineAperto) return;
+  const o = ordineAperto;
+  const f = getForn(o.fornId);
+  const dataStr = fmtDate(o.data);
+  let rows = '';
+  let totaleGenerale = 0;
+
+  o.items.forEach(item => {
+    const l = getLogo(item.logoId);
+    const cats = getCatPerLogo(l ? l.nome : '');
+    cats.forEach(cat => {
+      const q = item.quantita[cat.id] || {};
+      if (cat.taglie) {
+        const catTl = cat.taglieLista||TAGLIE;
+        const righeTaglie = catTl.map(t => ({ taglia: t, qty: ((q.avigliana||{})[t]||0) + ((q.napoli||{})[t]||0) })).filter(r => r.qty > 0);
+        if (righeTaglie.length === 0) return;
+        const totCat = righeTaglie.reduce((a,r)=>a+r.qty,0);
+        totaleGenerale += totCat;
+        rows += `<tr><td>${l?l.nome:'-'}</td><td>${cat.label}</td><td>${righeTaglie.map(r=>`${r.taglia}: ${r.qty}`).join(', ')}</td><td style="text-align:right;font-weight:600">${totCat}</td></tr>`;
+      } else {
+        const tot = ((q.avigliana||{})._||0) + ((q.napoli||{})._||0);
+        if (tot === 0) return;
+        totaleGenerale += tot;
+        rows += `<tr><td>${l?l.nome:'-'}</td><td>${cat.label}</td><td>—</td><td style="text-align:right;font-weight:600">${tot}</td></tr>`;
+      }
+    });
+  });
+
+  if (!rows) { showToast('Nessuna quantità presente in questo ordine'); return; }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ordine ${o.ref||'#'+o.id}</title>
+  <style>
+    body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #111; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { color:#555; font-size:13px; margin-bottom:20px; }
+    table { width:100%; border-collapse: collapse; margin-top:10px; }
+    th, td { border:1px solid #ccc; padding:8px 10px; font-size:13px; text-align:left; }
+    th { background:#f2f2f2; }
+    .tot-row td { font-weight:700; background:#fafafa; }
+    .meta { display:flex; gap:40px; margin-bottom:20px; font-size:13px; }
+    .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
+    @media print { body { padding: 10mm; } }
+  </style></head><body>
+    <h1>Ordine Fornitore${o.ref?(' — '+o.ref):''}</h1>
+    <div class="sub">GOTHICAT — Ordine acquisto merce</div>
+    <div class="meta">
+      <div><strong>Fornitore</strong>${f?f.nome:'-'}</div>
+      <div><strong>Data ordine</strong>${dataStr}</div>
+      ${o.note?`<div><strong>Note</strong>${o.note}</div>`:''}
+    </div>
+    <table>
+      <thead><tr><th>Logo</th><th>Prodotto</th><th>Taglie e quantità</th><th style="text-align:right">Tot. pz</th></tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="tot-row"><td colspan="3" style="text-align:right">TOTALE ORDINE</td><td style="text-align:right">${totaleGenerale} pz</td></tr>
+      </tbody>
+    </table>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Consenti i popup per generare il PDF'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 300);
 }
 
 function riceviOrdine() {
