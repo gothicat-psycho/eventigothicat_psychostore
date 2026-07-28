@@ -4741,7 +4741,7 @@ function toggleSidebar() {
   const isCollapsed = sidebar.classList.toggle('collapsed');
   main.classList.toggle('expanded', isCollapsed);
   localStorage.setItem('sidebarCollapsed', isCollapsed ? '1' : '0');
-  setTimeout(updateStickyOffsets, 250); // la topbar può cambiare altezza/wrap dopo il toggle
+  setTimeout(updateStickyOffsets, 250);
 }
 
 function restoreSidebar() {
@@ -5994,6 +5994,9 @@ function completaAccesso(email, adminMode) {
   venditeUnlocked = adminMode;
   document.getElementById('modal-login').classList.remove('open');
   document.getElementById('app').style.display = 'flex';
+  // Ora che la topbar è visibile, misura la sua altezza reale per le tab "sticky"
+  updateStickyOffsets();
+  setTimeout(updateStickyOffsets, 200);
   if (adminMode) {
     document.getElementById('ruolo-label').textContent = '🔑 Amministratore';
     document.getElementById('ruolo-label').style.color = 'var(--accent)';
@@ -6675,18 +6678,21 @@ restoreSidebar();
 
 // Misura l'altezza reale della topbar per posizionare correttamente le tab
 // magazzino "appiccicose" (Avigliana/Napoli/Tour/Totale) nello Stock Tessile.
-// Ricalcolato in più momenti perché la topbar può cambiare altezza (a capo su
-// schermi stretti, dopo il caricamento dei font, dopo toggle del menu, resize).
+// IMPORTANTE: l'app resta display:none finché non fai login, quindi qui alla
+// prima esecuzione la topbar ha altezza 0 — il ricalcolo che conta davvero è
+// quello agganciato a completaAccesso() (subito dopo il login). Questi restano
+// come rete di sicurezza aggiuntiva (resize, font, reflow tardivi).
 function updateStickyOffsets() {
   const topbar = document.querySelector('.topbar');
   if (!topbar) return;
-  document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+  const h = topbar.offsetHeight;
+  if (h > 0) document.documentElement.style.setProperty('--topbar-h', h + 'px');
 }
 updateStickyOffsets();
 window.addEventListener('resize', updateStickyOffsets);
 window.addEventListener('load', updateStickyOffsets);
-setTimeout(updateStickyOffsets, 500);   // dopo eventuale reflow/font asincroni
-setTimeout(updateStickyOffsets, 1500);  // ulteriore rete di sicurezza
+setTimeout(updateStickyOffsets, 500);
+setTimeout(updateStickyOffsets, 1500);
 if (document.fonts && document.fonts.ready) {
   document.fonts.ready.then(updateStickyOffsets);
 }
