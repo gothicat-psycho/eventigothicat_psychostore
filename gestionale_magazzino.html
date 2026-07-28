@@ -549,9 +549,14 @@
           </select>
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Data</th><th>N° ordine</th><th>Fornitore</th><th>Loghi</th><th>Pz totali</th><th>Stato</th><th></th></tr></thead>
+          <table><thead><tr><th style="width:36px"></th><th>Data</th><th>N° ordine</th><th>Fornitore</th><th>Loghi</th><th>Pz totali</th><th>Stato</th><th></th></tr></thead>
           <tbody id="tab-ordini"></tbody></table>
         </div>
+      </div>
+      <div class="card" id="blank-necessario-card" style="display:none">
+        <div class="card-title">Blank necessario per la stampa</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Somma dei pezzi per prodotto/taglia negli ordini selezionati, confrontata con lo Stock Blank Tessile disponibile (tutti i brand/colori).</p>
+        <div id="blank-necessario-content"></div>
       </div>
     </div>
 
@@ -1473,7 +1478,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.5.3'; // aggiornare ad ogni modifica
+const VERSION = '1.6.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2419,6 +2424,7 @@ function renderLoghi() {
 // ─────────────────────────────────────────────
 let loghiOrdine = [];
 let ordineInModificaId = null; // se valorizzato, salvaOrdine() aggiorna invece di creare
+let ordiniSelezionatiBlank = new Set(); // id ordini spuntati per il calcolo blank necessario
 
 function emptyQta(logoNome) {
   const q = {};
@@ -2645,6 +2651,7 @@ function renderOrdini() {
           return b + somma(q.avigliana) + somma(q.napoli);
         }, 0), 0);
       return `<tr>
+        <td><input type="checkbox" ${ordiniSelezionatiBlank.has(o.id)?'checked':''} onchange="toggleOrdineBlank(${o.id},this.checked)"></td>
         <td>${fmtDate(o.data)}</td>
         <td class="mono">${o.ref||'-'}</td>
         <td style="font-weight:500">${f?f.nome:'-'}</td>
@@ -2657,7 +2664,104 @@ function renderOrdini() {
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm btn-success" onclick="apriOrdine(${o.id},true)">Ricevi</button>` : ''}
         </td>
       </tr>`;
-    }).join('') : '<tr><td colspan="7" class="empty">Nessun ordine trovato</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine trovato</td></tr>';
+  // Rimuove dalla selezione ordini eliminati nel frattempo
+  [...ordiniSelezionatiBlank].forEach(id => { if (!db.ordini.find(o => o.id === id)) ordiniSelezionatiBlank.delete(id); });
+  renderBlankNecessario();
+}
+
+// ── Calcolo blank necessario per gli ordini fornitore selezionati ──
+function toggleOrdineBlank(id, checked) {
+  if (checked) ordiniSelezionatiBlank.add(id);
+  else ordiniSelezionatiBlank.delete(id);
+  renderBlankNecessario();
+}
+
+function renderBlankNecessario() {
+  const card = document.getElementById('blank-necessario-card');
+  const content = document.getElementById('blank-necessario-content');
+  if (!card || !content) return;
+  if (ordiniSelezionatiBlank.size === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  ensureBlankStructures();
+
+  // Somma le quantità necessarie per catId/taglia sugli ordini selezionati
+  const necessario = {};
+  let escludeFelpe = false;
+  [...ordiniSelezionatiBlank].forEach(id => {
+    const o = db.ordini.find(x => x.id === id);
+    if (!o) return;
+    o.items.forEach(item => {
+      Object.keys(item.quantita||{}).forEach(catId => {
+        const catBlank = getCatBlank(catId);
+        if (!catBlank) { if (catId === 'felpe') escludeFelpe = true; return; }
+        const q = item.quantita[catId] || {};
+        const val = (obj, key) => (obj||{})[key] || 0;
+        const taglieDaSommare = catBlank.taglie ? catBlank.taglieLista : ['_'];
+        taglieDaSommare.forEach(t => {
+          const n = val(q.avigliana, t) + val(q.napoli, t);
+          if (n > 0) {
+            if (!necessario[catId]) necessario[catId] = {};
+            necessario[catId][t] = (necessario[catId][t]||0) + n;
+          }
+        });
+      });
+    });
+  });
+
+  const catIds = Object.keys(necessario);
+  if (catIds.length === 0) {
+    content.innerHTML = `<p style="color:var(--text3);font-size:13px">Gli ordini selezionati non contengono quantità.</p>`;
+    return;
+  }
+
+  // Disponibile nello Stock Blank Tessile: somma su tutti i brand/colore
+  const disponibile = {};
+  db.blankArticoli.forEach(art => {
+    if (!necessario[art.catId]) return;
+    if (!disponibile[art.catId]) disponibile[art.catId] = {};
+    Object.keys(art.qty||{}).forEach(t => {
+      disponibile[art.catId][t] = (disponibile[art.catId][t]||0) + (parseInt(art.qty[t])||0);
+    });
+  });
+
+  const catOrder = CATEGORIE_BLANK.map(c => c.id);
+  catIds.sort((a,b) => catOrder.indexOf(a) - catOrder.indexOf(b));
+
+  let html = '';
+  const carenze = [];
+  catIds.forEach(catId => {
+    const cat = getCatBlank(catId);
+    const righe = (cat.taglie ? cat.taglieLista : ['_']).map(t => {
+      const needed = (necessario[catId]||{})[t] || 0;
+      if (needed === 0) return '';
+      const avail = (disponibile[catId]||{})[t] || 0;
+      const delta = avail - needed;
+      const ok = delta >= 0;
+      if (!ok) carenze.push({ cat: cat.label, taglia: t==='_'?null:t, mancano: -delta });
+      return `<tr>
+        <td>${t==='_'?'—':t}</td>
+        <td class="mono" style="text-align:right">${needed}</td>
+        <td class="mono" style="text-align:right">${avail}</td>
+        <td class="mono" style="text-align:right;font-weight:600;color:${ok?'var(--green)':'var(--red)'}">${ok?'+':''}${delta}</td>
+      </tr>`;
+    }).join('');
+    if (!righe) return;
+    html += `<div style="margin-bottom:16px">
+      <div style="margin-bottom:6px"><span class="stock-cat-label ${getCatLabelClass(catId)}">${cat.label}</span></div>
+      <table style="width:100%;font-size:13px">
+        <thead><tr><th>Taglia</th><th style="text-align:right">Necessario</th><th style="text-align:right">Disponibile</th><th style="text-align:right">Differenza</th></tr></thead>
+        <tbody>${righe}</tbody>
+      </table>
+    </div>`;
+  });
+
+  const alertHtml = carenze.length ? `<div style="margin-bottom:14px;padding:10px 14px;background:#FCEBEB;border-radius:var(--radius);color:#791F1F;font-size:13px">
+    <strong>⚠️ Blank insufficiente per ${carenze.length} variante/i — da ordinare:</strong><br>
+    ${carenze.map(a=>`${a.cat}${a.taglia?' '+a.taglia:''}: mancano ${a.mancano} pz`).join(' · ')}
+  </div>` : `<div style="margin-bottom:14px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Hai blank sufficiente per tutti gli ordini selezionati.</div>`;
+
+  content.innerHTML = alertHtml + html + (escludeFelpe ? `<p style="font-size:11px;color:var(--text3);margin-top:8px">Nota: le Felpe non sono incluse nel calcolo perché non è ancora presente uno Stock Blank dedicato.</p>` : '');
 }
 
 let ordineAperto = null;
