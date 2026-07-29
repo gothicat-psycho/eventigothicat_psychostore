@@ -531,7 +531,8 @@
         <div id="o-items"></div>
         <button class="btn btn-ghost" onclick="addLogoOrdine()" style="margin-bottom:12px">+ Aggiungi logo</button>
         <div class="sep"></div>
-        <div style="display:flex;justify-content:flex-end">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span id="tot-ordine-generale" style="font-size:15px;font-weight:700;color:var(--text)">Totale pezzi ordine: 0</span>
           <button class="btn btn-primary" id="ord-save-btn" onclick="salvaOrdine()">Salva ordine</button>
         </div>
       </div>
@@ -1483,7 +1484,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.6.1'; // aggiornare ad ogni modifica
+const VERSION = '1.6.3'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2489,6 +2490,7 @@ function renderLoghiOrdine() {
           <select style="max-width:280px" onchange="onLogoOrdineChange(${item.id},this.value)">
             ${buildLogoOpts(item.logoId)}
           </select>
+          <span id="tot-logo-${item.id}" style="font-size:12px;font-weight:600;color:var(--text2);margin-left:auto">Tot. logo: ${calcTotaleItem(item)} pz</span>
           <button class="btn btn-sm btn-danger" onclick="removeLogoOrdine(${item.id})">Rimuovi</button>
         </div>
         ${CATEGORIE.map(cat => {
@@ -2535,6 +2537,7 @@ function renderLoghiOrdine() {
         }).join('')}
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px;margin-bottom:12px">Aggiungi almeno un logo all\'ordine</p>';
+  aggiornaTotaliOrdineForm();
 }
 
 function onLogoOrdineChange(id, logoId) {
@@ -2549,6 +2552,7 @@ function onQtyChange(id, catId, taglia, mag, val) {
   if (!item.quantita[catId][mag]) item.quantita[catId][mag] = {};
   item.quantita[catId][mag][taglia] = parseInt(val) || 0;
   aggiornaTotaleCategoria(id, catId);
+  aggiornaTotaliOrdineForm(id);
 }
 
 function calcTotaleCategoria(item, catId) {
@@ -2562,6 +2566,25 @@ function aggiornaTotaleCategoria(id, catId) {
   if (!item) return;
   const el = document.getElementById(`qta-tot-${id}-${catId}`);
   if (el) el.textContent = `Tot: ${calcTotaleCategoria(item, catId)} pz`;
+}
+
+// Totale pezzi di un singolo logo (somma di tutte le categorie) e dell'intero ordine in compilazione
+function calcTotaleItem(item) {
+  return CATEGORIE.reduce((a, cat) => a + calcTotaleCategoria(item, cat.id), 0);
+}
+
+function calcTotaleOrdineForm() {
+  return loghiOrdine.reduce((a, item) => a + calcTotaleItem(item), 0);
+}
+
+function aggiornaTotaliOrdineForm(itemId) {
+  if (itemId) {
+    const item = loghiOrdine.find(x => x.id === itemId);
+    const elItem = document.getElementById(`tot-logo-${itemId}`);
+    if (item && elItem) elItem.textContent = `Tot. logo: ${calcTotaleItem(item)} pz`;
+  }
+  const elTot = document.getElementById('tot-ordine-generale');
+  if (elTot) elTot.textContent = `Totale pezzi ordine: ${calcTotaleOrdineForm()}`;
 }
 
 function salvaOrdine() {
@@ -2854,7 +2877,8 @@ function renderDettaglioStampaLoghi() {
       const v = (g.dati[c.catId]||{})[c.taglia] || 0;
       rowTotal += v;
       colTotali[idx] += v;
-      return `<td class="mono" style="text-align:center">${v>0?v:'—'}</td>`;
+      const colorCls = v > 0 ? `stock-cat-tot ${getCatLabelClass(c.catId)}` : '';
+      return `<td class="mono ${colorCls}" style="text-align:center;${v>0?'font-weight:600':''}">${v>0?v:'—'}</td>`;
     }).join('');
     grandTotal += rowTotal;
     return `<tr>
@@ -2867,7 +2891,10 @@ function renderDettaglioStampaLoghi() {
 
   const footerRow = `<tr style="font-weight:700;background:var(--surface2)">
     <td colspan="2">TOTALE</td>
-    ${colTotali.map(v => `<td class="mono" style="text-align:center">${v>0?v:'—'}</td>`).join('')}
+    ${colTotali.map((v,idx) => {
+      const colorCls = v > 0 ? `stock-cat-tot ${getCatLabelClass(colonne[idx].catId)}` : '';
+      return `<td class="mono ${colorCls}" style="text-align:center">${v>0?v:'—'}</td>`;
+    }).join('')}
     <td class="mono" style="text-align:right">${grandTotal}</td>
   </tr>`;
 
