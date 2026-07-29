@@ -1499,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.8.1'; // aggiornare ad ogni modifica
+const VERSION = '1.8.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3057,22 +3057,14 @@ function stampaOrdinePDF() {
     }
     if (item.note) noteLoghi.push({ nome: l?l.nome:'-', nota: item.note });
 
-    const coloriHtml = (item.coloreFronte || item.coloreRetro) ? `<div class="logo-colori">
-      ${item.coloreFronte ? `<span>Colore fronte: <strong>${item.coloreFronte}</strong></span>` : ''}
-      ${item.coloreRetro ? `<span>Colore retro: <strong>${item.coloreRetro}</strong></span>` : ''}
-    </div>` : '';
-
     sezioni += `<div class="logo-section">
-      <div class="logo-header">
-        <div class="logo-imgs">
-          ${l && l.immagine ? `<div class="img-wrap"><img src="${l.immagine}" class="logo-img" onerror="this.parentElement.style.display='none'">${l.immagineRetro?'<span class="img-label">FRONTE</span>':''}</div>` : ''}
-          ${l && l.immagineRetro ? `<div class="img-wrap"><img src="${l.immagineRetro}" class="logo-img" onerror="this.parentElement.style.display='none'"><span class="img-label">RETRO</span></div>` : ''}
-        </div>
-        <div class="logo-name-wrap">
-          <div class="logo-name">${l ? l.nome : '-'}</div>
-          ${coloriHtml}
-        </div>
+      <div class="logo-title-row">
+        <div class="logo-name">${l ? l.nome : '-'}</div>
         <div class="logo-tot">${totLogo} pz</div>
+      </div>
+      <div class="logo-imgs">
+        ${l && l.immagine ? `<div class="img-wrap"><img src="${l.immagine}" class="logo-img" onerror="this.parentElement.style.display='none'">${l.immagineRetro?'<span class="img-label">FRONTE</span>':''}${item.coloreFronte?`<span class="img-color">Colore: <strong>${item.coloreFronte}</strong></span>`:''}</div>` : ''}
+        ${l && l.immagineRetro ? `<div class="img-wrap"><img src="${l.immagineRetro}" class="logo-img" onerror="this.parentElement.style.display='none'"><span class="img-label">RETRO</span>${item.coloreRetro?`<span class="img-color">Colore: <strong>${item.coloreRetro}</strong></span>`:''}</div>` : ''}
       </div>
       <div class="cat-blocks">${tabelleCat}</div>
     </div>`;
@@ -3099,15 +3091,14 @@ function stampaOrdinePDF() {
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
 
     .logo-section { padding:20px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
-    .logo-header { display:flex; align-items:flex-start; gap:16px; margin-bottom:14px; }
-    .logo-imgs { display:flex; gap:8px; flex-shrink:0; }
-    .img-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .logo-title-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
+    .logo-imgs { display:flex; gap:40px; margin-bottom:6px; }
+    .img-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
     .img-label { font-size:13px; font-weight:800; color:#000; text-transform:uppercase; letter-spacing:.3px; }
     .logo-img { width:170px; height:170px; object-fit:contain; border:1px solid #ddd; border-radius:8px; background:#fafafa; flex-shrink:0; }
-    .logo-name-wrap { flex:1; }
     .logo-name { font-size:20px; font-weight:800; color:#000; }
-    .logo-colori { display:flex; gap:16px; margin-top:6px; font-size:12px; color:#333; }
-    .logo-colori strong { color:#000; }
+    .img-color { font-size:12px; color:#333; }
+    .img-color strong { color:#000; }
     .logo-tot { font-size:18px; font-weight:800; color:#000; }
 
     .cat-blocks { display:flex; flex-wrap:wrap; gap:22px; padding-left:4px; }
