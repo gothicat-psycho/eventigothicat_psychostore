@@ -1499,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.8.0'; // aggiornare ad ogni modifica
+const VERSION = '1.8.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3089,8 +3089,8 @@ function stampaOrdinePDF() {
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titolo}</title>
   <style>
-    @page { margin: 12mm; }
-    body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #000; }
+    @page { margin: 8mm; }
+    body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 12px; color: #000; }
     h1 { font-size: 22px; margin-bottom: 4px; color:#000; }
     .title-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
     .stampa-badge { font-size:13px; font-weight:800; color:#a15c00; background:#fff3da; padding:5px 12px; border-radius:5px; white-space:nowrap; border:1.5px solid #e0b25a; }
@@ -3099,10 +3099,10 @@ function stampaOrdinePDF() {
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
 
     .logo-section { padding:20px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
-    .logo-header { display:flex; align-items:center; gap:16px; margin-bottom:14px; }
+    .logo-header { display:flex; align-items:flex-start; gap:16px; margin-bottom:14px; }
     .logo-imgs { display:flex; gap:8px; flex-shrink:0; }
     .img-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
-    .img-label { font-size:9px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.3px; }
+    .img-label { font-size:13px; font-weight:800; color:#000; text-transform:uppercase; letter-spacing:.3px; }
     .logo-img { width:170px; height:170px; object-fit:contain; border:1px solid #ddd; border-radius:8px; background:#fafafa; flex-shrink:0; }
     .logo-name-wrap { flex:1; }
     .logo-name { font-size:20px; font-weight:800; color:#000; }
