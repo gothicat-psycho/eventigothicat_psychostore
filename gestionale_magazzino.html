@@ -1484,7 +1484,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.6.3'; // aggiornare ad ogni modifica
+const VERSION = '1.7.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2456,7 +2456,7 @@ function emptyQta(logoNome) {
 }
 
 function addLogoOrdine() {
-  loghiOrdine.push({ id: Date.now(), logoId: '', quantita: emptyQta() });
+  loghiOrdine.push({ id: Date.now(), logoId: '', quantita: emptyQta(), note: '' });
   renderLoghiOrdine();
 }
 
@@ -2493,6 +2493,8 @@ function renderLoghiOrdine() {
           <span id="tot-logo-${item.id}" style="font-size:12px;font-weight:600;color:var(--text2);margin-left:auto">Tot. logo: ${calcTotaleItem(item)} pz</span>
           <button class="btn btn-sm btn-danger" onclick="removeLogoOrdine(${item.id})">Rimuovi</button>
         </div>
+        <input type="text" placeholder="Nota per questo logo (opzionale, es. colore, istruzioni stampa...)" value="${(item.note||'').replace(/"/g,'&quot;')}"
+          oninput="onNoteItemChange(${item.id},this.value)" style="width:100%;margin-bottom:10px;font-size:12px">
         ${CATEGORIE.map(cat => {
           const totCat = calcTotaleCategoria(item, cat.id);
           if (cat.taglie) {
@@ -2543,6 +2545,11 @@ function renderLoghiOrdine() {
 function onLogoOrdineChange(id, logoId) {
   const item = loghiOrdine.find(x => x.id === id);
   if (item) item.logoId = parseInt(logoId) || '';
+}
+
+function onNoteItemChange(id, val) {
+  const item = loghiOrdine.find(x => x.id === id);
+  if (item) item.note = val;
 }
 
 function onQtyChange(id, catId, taglia, mag, val) {
@@ -2597,7 +2604,7 @@ function salvaOrdine() {
   for (const item of loghiOrdine) {
     if (!item.logoId) { showToast('Seleziona il logo per ogni riga', 'red'); return; }
   }
-  const items = loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())) }));
+  const items = loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())), note: item.note||'' }));
 
   if (ordineInModificaId) {
     // Aggiorna un ordine esistente (non ancora ricevuto)
@@ -2638,6 +2645,7 @@ function modificaOrdine(id) {
     id: Date.now() + idx,
     logoId: it.logoId,
     quantita: JSON.parse(JSON.stringify(it.quantita)),
+    note: it.note || '',
   }));
   renderLoghiOrdine();
 
@@ -2949,6 +2957,7 @@ function apriOrdine(id, autoRicevi) {
     }).join('');
     html += `<div style="margin-bottom:16px">
       <div style="font-weight:600;font-size:14px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${l?l.nome:'Logo eliminato'}</div>
+      ${item.note ? `<div style="font-size:12px;color:#8a5a00;background:var(--amber-light);padding:6px 10px;border-radius:var(--radius);margin-bottom:8px">📝 ${item.note}</div>` : ''}
       ${catHtml}
     </div>`;
   });
@@ -2967,12 +2976,16 @@ function stampaOrdinePDF() {
   const o = ordineAperto;
   const f = getForn(o.fornId);
   const dataStr = fmtDate(o.data);
-  let rows = '';
+  let sezioni = '';
   let totaleGenerale = 0;
+  let nessunaQuantita = true;
 
   o.items.forEach(item => {
     const l = getLogo(item.logoId);
     const cats = getCatPerLogo(l ? l.nome : '');
+    let totLogo = 0;
+    let tabelleCat = '';
+
     cats.forEach(cat => {
       const q = item.quantita[cat.id] || {};
       if (cat.taglie) {
@@ -2980,53 +2993,91 @@ function stampaOrdinePDF() {
         const righeTaglie = catTl.map(t => ({ taglia: t, qty: ((q.avigliana||{})[t]||0) + ((q.napoli||{})[t]||0) })).filter(r => r.qty > 0);
         if (righeTaglie.length === 0) return;
         const totCat = righeTaglie.reduce((a,r)=>a+r.qty,0);
-        totaleGenerale += totCat;
-        rows += `<tr><td>${l?l.nome:'-'}</td><td>${cat.label}</td><td>${righeTaglie.map(r=>`${r.taglia}: ${r.qty}`).join(', ')}</td><td style="text-align:right;font-weight:600">${totCat}</td></tr>`;
+        totLogo += totCat;
+        tabelleCat += `<div class="cat-block">
+          <div class="cat-name">${cat.label} <span class="cat-tot">${totCat} pz</span></div>
+          <table class="size-table">
+            <tr class="size-hdr">${righeTaglie.map(r=>`<td>${r.taglia}</td>`).join('')}</tr>
+            <tr class="size-qty">${righeTaglie.map(r=>`<td>${r.qty}</td>`).join('')}</tr>
+          </table>
+        </div>`;
       } else {
         const tot = ((q.avigliana||{})._||0) + ((q.napoli||{})._||0);
         if (tot === 0) return;
-        totaleGenerale += tot;
-        rows += `<tr><td>${l?l.nome:'-'}</td><td>${cat.label}</td><td>—</td><td style="text-align:right;font-weight:600">${tot}</td></tr>`;
+        totLogo += tot;
+        tabelleCat += `<div class="cat-block">
+          <div class="cat-name">${cat.label} <span class="cat-tot">${tot} pz</span></div>
+          <table class="size-table"><tr class="size-hdr"><td>Qtà</td></tr><tr class="size-qty"><td>${tot}</td></tr></table>
+        </div>`;
       }
     });
+
+    if (!tabelleCat) return;
+    nessunaQuantita = false;
+    totaleGenerale += totLogo;
+
+    sezioni += `<div class="logo-section">
+      <div class="checkbox" title="Spuntare a stampa completata"></div>
+      <div class="logo-info">
+        ${l && l.immagine ? `<img src="${l.immagine}" class="logo-img" onerror="this.style.display='none'">` : ''}
+        <div>
+          <div class="logo-name">${l ? l.nome : '-'}</div>
+          ${item.note ? `<div class="logo-note">📝 ${item.note}</div>` : ''}
+        </div>
+      </div>
+      <div class="cat-blocks">${tabelleCat}</div>
+      <div class="logo-tot">${totLogo} pz</div>
+    </div>`;
   });
 
-  if (!rows) { showToast('Nessuna quantità presente in questo ordine'); return; }
+  if (nessunaQuantita) { showToast('Nessuna quantità presente in questo ordine'); return; }
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ordine ${o.ref||'#'+o.id}</title>
   <style>
     body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #111; }
-    h1 { font-size: 20px; margin-bottom: 4px; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
     .sub { color:#555; font-size:13px; margin-bottom:20px; }
-    table { width:100%; border-collapse: collapse; margin-top:10px; }
-    th, td { border:1px solid #ccc; padding:8px 10px; font-size:13px; text-align:left; }
-    th { background:#f2f2f2; }
-    .tot-row td { font-weight:700; background:#fafafa; }
-    .meta { display:flex; gap:40px; margin-bottom:20px; font-size:13px; }
+    .meta { display:flex; gap:40px; margin-bottom:24px; font-size:13px; padding-bottom:14px; border-bottom:2px solid #333; }
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
-    @media print { body { padding: 10mm; } }
+
+    .logo-section { display:flex; align-items:flex-start; gap:16px; padding:16px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
+    .checkbox { width:24px; height:24px; border:2.5px solid #333; border-radius:4px; flex-shrink:0; margin-top:6px; }
+    .logo-info { display:flex; align-items:center; gap:10px; min-width:190px; max-width:190px; }
+    .logo-img { width:56px; height:56px; object-fit:contain; border:1px solid #ddd; border-radius:6px; background:#fafafa; flex-shrink:0; }
+    .logo-name { font-size:16px; font-weight:700; }
+    .logo-note { font-size:12px; color:#8a5a00; margin-top:3px; max-width:150px; }
+
+    .cat-blocks { display:flex; flex-wrap:wrap; gap:18px; flex:1; }
+    .cat-block { }
+    .cat-name { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#444; margin-bottom:4px; }
+    .cat-tot { font-weight:400; color:#888; text-transform:none; letter-spacing:0; }
+    .size-table { border-collapse: collapse; }
+    .size-table td { border:1.5px solid #333; text-align:center; min-width:34px; padding:0; }
+    .size-hdr td { font-size:12px; font-weight:700; background:#eee; padding:4px 6px; }
+    .size-qty td { font-size:18px; font-weight:700; padding:6px 6px; }
+
+    .logo-tot { font-size:16px; font-weight:800; min-width:70px; text-align:right; align-self:center; }
+
+    .grand-total { margin-top:20px; padding-top:14px; border-top:3px double #333; text-align:right; font-size:18px; font-weight:800; }
+
+    @media print { body { padding: 10mm; } .logo-section { break-inside: avoid; } }
   </style></head><body>
     <h1>Ordine Fornitore${o.ref?(' — '+o.ref):''}</h1>
     <div class="sub">GOTHICAT — Ordine acquisto merce</div>
     <div class="meta">
       <div><strong>Fornitore</strong>${f?f.nome:'-'}</div>
       <div><strong>Data ordine</strong>${dataStr}</div>
-      ${o.note?`<div><strong>Note</strong>${o.note}</div>`:''}
+      ${o.note?`<div><strong>Note ordine</strong>${o.note}</div>`:''}
     </div>
-    <table>
-      <thead><tr><th>Logo</th><th>Prodotto</th><th>Taglie e quantità</th><th style="text-align:right">Tot. pz</th></tr></thead>
-      <tbody>
-        ${rows}
-        <tr class="tot-row"><td colspan="3" style="text-align:right">TOTALE ORDINE</td><td style="text-align:right">${totaleGenerale} pz</td></tr>
-      </tbody>
-    </table>
+    ${sezioni}
+    <div class="grand-total">TOTALE ORDINE: ${totaleGenerale} pz</div>
   </body></html>`;
 
   const w = window.open('', '_blank');
   if (!w) { showToast('Consenti i popup per generare il PDF'); return; }
   w.document.write(html);
   w.document.close();
-  setTimeout(() => { w.focus(); w.print(); }, 300);
+  setTimeout(() => { w.focus(); w.print(); }, 500);
 }
 
 function riceviOrdine() {
