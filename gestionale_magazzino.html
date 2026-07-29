@@ -1499,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.7.4'; // aggiornare ad ogni modifica
+const VERSION = '1.8.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2475,7 +2475,7 @@ function emptyQta(logoNome) {
 }
 
 function addLogoOrdine() {
-  loghiOrdine.push({ id: Date.now(), logoId: '', quantita: emptyQta(), note: '' });
+  loghiOrdine.push({ id: Date.now(), logoId: '', quantita: emptyQta(), note: '', coloreFronte: '', coloreRetro: '' });
   renderLoghiOrdine();
 }
 
@@ -2512,7 +2512,13 @@ function renderLoghiOrdine() {
           <span id="tot-logo-${item.id}" style="font-size:12px;font-weight:600;color:var(--text2);margin-left:auto">Tot. logo: ${calcTotaleItem(item)} pz</span>
           <button class="btn btn-sm btn-danger" onclick="removeLogoOrdine(${item.id})">Rimuovi</button>
         </div>
-        <input type="text" placeholder="Nota per questo logo (opzionale, es. colore, istruzioni stampa...)" value="${(item.note||'').replace(/"/g,'&quot;')}"
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <input type="text" placeholder="Colore stampa fronte (es. bianco)" value="${(item.coloreFronte||'').replace(/"/g,'&quot;')}"
+            oninput="onColoreItemChange(${item.id},'coloreFronte',this.value)" style="flex:1;font-size:12px">
+          <input type="text" placeholder="Colore stampa retro (es. bianco)" value="${(item.coloreRetro||'').replace(/"/g,'&quot;')}"
+            oninput="onColoreItemChange(${item.id},'coloreRetro',this.value)" style="flex:1;font-size:12px">
+        </div>
+        <input type="text" placeholder="Nota per questo logo (opzionale, es. istruzioni di stampa...)" value="${(item.note||'').replace(/"/g,'&quot;')}"
           oninput="onNoteItemChange(${item.id},this.value)" style="width:100%;margin-bottom:10px;font-size:12px">
         ${CATEGORIE.map(cat => {
           const totCat = calcTotaleCategoria(item, cat.id);
@@ -2571,6 +2577,11 @@ function onNoteItemChange(id, val) {
   if (item) item.note = val;
 }
 
+function onColoreItemChange(id, campo, val) {
+  const item = loghiOrdine.find(x => x.id === id);
+  if (item) item[campo] = val;
+}
+
 function onQtyChange(id, catId, taglia, mag, val) {
   const item = loghiOrdine.find(x => x.id === id);
   if (!item) return;
@@ -2623,7 +2634,7 @@ function salvaOrdine() {
   for (const item of loghiOrdine) {
     if (!item.logoId) { showToast('Seleziona il logo per ogni riga', 'red'); return; }
   }
-  const items = loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())), note: item.note||'' }));
+  const items = loghiOrdine.map(item => ({ logoId: item.logoId, quantita: JSON.parse(JSON.stringify(item.quantita||emptyQta())), note: item.note||'', coloreFronte: item.coloreFronte||'', coloreRetro: item.coloreRetro||'' }));
 
   if (ordineInModificaId) {
     // Aggiorna un ordine esistente (non ancora ricevuto)
@@ -2665,6 +2676,8 @@ function modificaOrdine(id) {
     logoId: it.logoId,
     quantita: JSON.parse(JSON.stringify(it.quantita)),
     note: it.note || '',
+    coloreFronte: it.coloreFronte || '',
+    coloreRetro: it.coloreRetro || '',
   }));
   renderLoghiOrdine();
 
@@ -2976,6 +2989,7 @@ function apriOrdine(id, autoRicevi) {
     }).join('');
     html += `<div style="margin-bottom:16px">
       <div style="font-weight:600;font-size:14px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${l?l.nome:'Logo eliminato'}${l && l.immagineRetro ? ' <span style="font-size:11px;font-weight:500;padding:1px 7px;border-radius:99px;background:var(--amber-light);color:#7A4A00">stampa anche retro</span>' : ''}</div>
+      ${(item.coloreFronte||item.coloreRetro) ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">${item.coloreFronte?`🎨 Fronte: <strong>${item.coloreFronte}</strong>`:''}${item.coloreFronte&&item.coloreRetro?' · ':''}${item.coloreRetro?`🎨 Retro: <strong>${item.coloreRetro}</strong>`:''}</div>` : ''}
       ${item.note ? `<div style="font-size:12px;color:#8a5a00;background:var(--amber-light);padding:6px 10px;border-radius:var(--radius);margin-bottom:8px">📝 ${item.note}</div>` : ''}
       ${catHtml}
     </div>`;
@@ -2993,13 +3007,13 @@ function apriOrdine(id, autoRicevi) {
 function stampaOrdinePDF() {
   if (!ordineAperto) return;
   const o = ordineAperto;
-  const f = getForn(o.fornId);
   const dataStr = fmtDate(o.data);
   let sezioni = '';
   let totaleGenerale = 0;
   let nessunaQuantita = true;
   const nomiLoghi = [];
   const noteLoghi = []; // { nome, nota }
+  const stampaBadges = []; // { nome, testo }
 
   o.items.forEach(item => {
     const l = getLogo(item.logoId);
@@ -3037,8 +3051,16 @@ function stampaOrdinePDF() {
     if (!tabelleCat) return;
     nessunaQuantita = false;
     totaleGenerale += totLogo;
-    if (l) nomiLoghi.push(l.nome);
+    if (l) {
+      nomiLoghi.push(l.nome);
+      stampaBadges.push({ nome: l.nome, testo: l.immagineRetro ? 'STAMPA FRONTE RETRO' : 'STAMPA SOLO FRONTE' });
+    }
     if (item.note) noteLoghi.push({ nome: l?l.nome:'-', nota: item.note });
+
+    const coloriHtml = (item.coloreFronte || item.coloreRetro) ? `<div class="logo-colori">
+      ${item.coloreFronte ? `<span>Colore fronte: <strong>${item.coloreFronte}</strong></span>` : ''}
+      ${item.coloreRetro ? `<span>Colore retro: <strong>${item.coloreRetro}</strong></span>` : ''}
+    </div>` : '';
 
     sezioni += `<div class="logo-section">
       <div class="logo-header">
@@ -3046,7 +3068,10 @@ function stampaOrdinePDF() {
           ${l && l.immagine ? `<div class="img-wrap"><img src="${l.immagine}" class="logo-img" onerror="this.parentElement.style.display='none'">${l.immagineRetro?'<span class="img-label">FRONTE</span>':''}</div>` : ''}
           ${l && l.immagineRetro ? `<div class="img-wrap"><img src="${l.immagineRetro}" class="logo-img" onerror="this.parentElement.style.display='none'"><span class="img-label">RETRO</span></div>` : ''}
         </div>
-        <div class="logo-name">${l ? l.nome : '-'} <span class="retro-tag">${l && l.immagineRetro ? 'STAMPA FRONTE RETRO' : 'STAMPA SOLO FRONTE'}</span></div>
+        <div class="logo-name-wrap">
+          <div class="logo-name">${l ? l.nome : '-'}</div>
+          ${coloriHtml}
+        </div>
         <div class="logo-tot">${totLogo} pz</div>
       </div>
       <div class="cat-blocks">${tabelleCat}</div>
@@ -3056,6 +3081,7 @@ function stampaOrdinePDF() {
   if (nessunaQuantita) { showToast('Nessuna quantità presente in questo ordine'); return; }
 
   const titolo = nomiLoghi.length ? `Ordine ${nomiLoghi.join(', ')}` : `Ordine${o.ref?(' — '+o.ref):''}`;
+  const badgesHtml = stampaBadges.map(b => `<span class="stampa-badge">${stampaBadges.length>1?`${b.nome}: `:''}${b.testo}</span>`).join('');
 
   const noteFinali = [];
   if (o.note) noteFinali.push(`<div class="nota-riga"><strong>Ordine:</strong> ${o.note}</div>`);
@@ -3066,7 +3092,9 @@ function stampaOrdinePDF() {
     @page { margin: 12mm; }
     body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #000; }
     h1 { font-size: 22px; margin-bottom: 4px; color:#000; }
-    .sub { color:#555; font-size:13px; margin-bottom:20px; }
+    .title-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .stampa-badge { font-size:13px; font-weight:800; color:#a15c00; background:#fff3da; padding:5px 12px; border-radius:5px; white-space:nowrap; border:1.5px solid #e0b25a; }
+    .sub { color:#555; font-size:13px; margin:6px 0 20px; }
     .meta { display:flex; gap:40px; margin-bottom:24px; font-size:13px; padding-bottom:14px; border-bottom:2px solid #333; }
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
 
@@ -3076,8 +3104,10 @@ function stampaOrdinePDF() {
     .img-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
     .img-label { font-size:9px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.3px; }
     .logo-img { width:170px; height:170px; object-fit:contain; border:1px solid #ddd; border-radius:8px; background:#fafafa; flex-shrink:0; }
-    .logo-name { font-size:20px; font-weight:800; flex:1; color:#000; }
-    .retro-tag { font-size:10px; font-weight:700; color:#a15c00; background:#fff3da; padding:2px 7px; border-radius:3px; margin-left:4px; white-space:nowrap; vertical-align:middle; }
+    .logo-name-wrap { flex:1; }
+    .logo-name { font-size:20px; font-weight:800; color:#000; }
+    .logo-colori { display:flex; gap:16px; margin-top:6px; font-size:12px; color:#333; }
+    .logo-colori strong { color:#000; }
     .logo-tot { font-size:18px; font-weight:800; color:#000; }
 
     .cat-blocks { display:flex; flex-wrap:wrap; gap:22px; padding-left:4px; }
@@ -3099,10 +3129,12 @@ function stampaOrdinePDF() {
 
     @media print { body { padding: 10mm; } .logo-section { break-inside: avoid; } }
   </style></head><body>
-    <h1>${titolo}</h1>
+    <div class="title-row">
+      <h1>${titolo}</h1>
+      ${badgesHtml}
+    </div>
     <div class="sub">GOTHICAT — Ordine acquisto merce</div>
     <div class="meta">
-      <div><strong>Fornitore</strong>${f?f.nome:'-'}</div>
       <div><strong>Data ordine</strong>${dataStr}</div>
       ${o.ref?`<div><strong>N° ordine</strong>${o.ref}</div>`:''}
     </div>
