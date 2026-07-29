@@ -450,12 +450,19 @@
           <div class="form-group"><label>Nome logo *</label><input id="l-nome" placeholder="es. Meow Division" oninput="toggleFelpeRow('l-nome','l-felpe-row')"></div>
           <div class="form-group"><label>Fornitore principale</label><select id="l-fornitore"><option value="">-- seleziona --</option></select></div>
           <div class="form-group"><label>Scorta minima per variante</label><input id="l-minimo" type="number" min="0" placeholder="3"></div>
-          <div class="form-group"><label>URL immagine</label>
+          <div class="form-group"><label>URL immagine (fronte)</label>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="text" id="l-immagine-url" placeholder="https://drive.google.com/thumbnail?id=..." style="flex:1" oninput="previewUrl('l-immagine-url','l-img-preview')">
               <img id="l-img-preview" class="logo-img-preview" style="display:none">
             </div>
             <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link Google Drive (thumbnail?id=...) o qualsiasi URL immagine diretto</div>
+          </div>
+          <div class="form-group" style="grid-column:span 2"><label>URL immagine retro (opzionale)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="l-immagine-retro-url" placeholder="https://drive.google.com/thumbnail?id=..." style="flex:1" oninput="previewUrl('l-immagine-retro-url','l-img-retro-preview')">
+              <img id="l-img-retro-preview" class="logo-img-preview" style="display:none">
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">Solo se il logo ha anche una stampa sul retro</div>
           </div>
         </div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px">
@@ -1430,12 +1437,20 @@
       <div class="form-group"><label>Scorta minima</label><input id="el-minimo" type="number" min="0" placeholder="3"></div>
     </div>
     <div class="form-group" style="margin-bottom:12px">
-      <label>URL immagine</label>
+      <label>URL immagine (fronte)</label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="el-immagine-url" placeholder="https://drive.google.com/thumbnail?id=..." style="flex:1" oninput="previewUrl('el-immagine-url','el-img-preview')">
         <img id="el-img-preview" class="logo-img-preview" style="display:none">
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:3px">Incolla il link Google Drive (thumbnail?id=...) o qualsiasi URL immagine diretto</div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>URL immagine retro (opzionale)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="el-immagine-retro-url" placeholder="https://drive.google.com/thumbnail?id=..." style="flex:1" oninput="previewUrl('el-immagine-retro-url','el-img-retro-preview')">
+        <img id="el-img-retro-preview" class="logo-img-preview" style="display:none">
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">Solo se il logo ha anche una stampa sul retro</div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:8px">Prezzi per categoria</div>
@@ -1484,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.7.0'; // aggiornare ad ogni modifica
+const VERSION = '1.7.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2349,11 +2364,13 @@ function aggiungiLogo() {
   const nome = document.getElementById('l-nome').value.trim();
   if (!nome) { showToast('Il nome logo è obbligatorio', 'red'); return; }
   const url = document.getElementById('l-immagine-url').value.trim() || null;
+  const urlRetro = document.getElementById('l-immagine-retro-url').value.trim() || null;
   const prev = document.getElementById('l-img-preview');
   db.loghi.push({
     id: db.nextLogoId++, nome,
     fornId: parseInt(document.getElementById('l-fornitore').value) || null,
     immagine: url,
+    immagineRetro: urlRetro,
     prezzi: {
       tshirt_uomo:  { costo: parseFloat(document.getElementById('l-costo-tshirt-uomo').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
       tshirt_donna:   { costo: parseFloat(document.getElementById('l-costo-tshirt-donna').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
@@ -2369,8 +2386,10 @@ function aggiungiLogo() {
   saveDBFields({ loghi: db.loghi, nextLogoId: db.nextLogoId });
   ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-costo-tshirt-bambino','l-prezzo-tshirt',
    'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers',
-   'l-costo-felpe','l-prezzo-felpe','l-minimo','l-note','l-immagine-url']
+   'l-costo-felpe','l-prezzo-felpe','l-minimo','l-note','l-immagine-url','l-immagine-retro-url']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const retroPrev = document.getElementById('l-img-retro-preview');
+  if (retroPrev) retroPrev.style.display = 'none';
   const felpeRow = document.getElementById('l-felpe-row');
   if (felpeRow) felpeRow.style.display = 'none';
   prev.style.display = 'none';
@@ -2411,7 +2430,7 @@ function renderLoghi() {
         : `<div class="logo-img-placeholder" style="width:32px;height:32px;font-size:14px">?</div>`;
       return `<tr>
         <td style="padding:6px 8px">${imgHtml}</td>
-        <td style="font-weight:600">${l.nome}</td>
+        <td style="font-weight:600">${l.nome}${l.immagineRetro?' <span title="Ha anche stampa retro" style="font-size:11px;padding:1px 6px;border-radius:99px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)">retro</span>':''}</td>
         <td>${f?f.nome:'<span style="color:var(--text3)">—</span>'}</td>
         <td class="mono" style="font-size:12px">${fmt(p.tshirt_uomo.costo)} / ${fmt(p.tshirt_donna.costo)}</td>
         <td class="mono" style="font-size:12px">${fmt(p.tshirt_uomo.prezzo)}</td>
@@ -2956,7 +2975,7 @@ function apriOrdine(id, autoRicevi) {
       }
     }).join('');
     html += `<div style="margin-bottom:16px">
-      <div style="font-weight:600;font-size:14px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${l?l.nome:'Logo eliminato'}</div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${l?l.nome:'Logo eliminato'}${l && l.immagineRetro ? ' <span style="font-size:11px;font-weight:500;padding:1px 7px;border-radius:99px;background:var(--amber-light);color:#7A4A00">stampa anche retro</span>' : ''}</div>
       ${item.note ? `<div style="font-size:12px;color:#8a5a00;background:var(--amber-light);padding:6px 10px;border-radius:var(--radius);margin-bottom:8px">📝 ${item.note}</div>` : ''}
       ${catHtml}
     </div>`;
@@ -3019,9 +3038,12 @@ function stampaOrdinePDF() {
     sezioni += `<div class="logo-section">
       <div class="checkbox" title="Spuntare a stampa completata"></div>
       <div class="logo-info">
-        ${l && l.immagine ? `<img src="${l.immagine}" class="logo-img" onerror="this.style.display='none'">` : ''}
+        <div class="logo-imgs">
+          ${l && l.immagine ? `<div class="img-wrap"><img src="${l.immagine}" class="logo-img" onerror="this.parentElement.style.display='none'">${l.immagineRetro?'<span class="img-label">FRONTE</span>':''}</div>` : ''}
+          ${l && l.immagineRetro ? `<div class="img-wrap"><img src="${l.immagineRetro}" class="logo-img" onerror="this.parentElement.style.display='none'"><span class="img-label">RETRO</span></div>` : ''}
+        </div>
         <div>
-          <div class="logo-name">${l ? l.nome : '-'}</div>
+          <div class="logo-name">${l ? l.nome : '-'}${l && l.immagineRetro ? ' <span class="retro-tag">STAMPA ANCHE RETRO</span>' : ''}</div>
           ${item.note ? `<div class="logo-note">📝 ${item.note}</div>` : ''}
         </div>
       </div>
@@ -3042,9 +3064,13 @@ function stampaOrdinePDF() {
 
     .logo-section { display:flex; align-items:flex-start; gap:16px; padding:16px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
     .checkbox { width:24px; height:24px; border:2.5px solid #333; border-radius:4px; flex-shrink:0; margin-top:6px; }
-    .logo-info { display:flex; align-items:center; gap:10px; min-width:190px; max-width:190px; }
-    .logo-img { width:56px; height:56px; object-fit:contain; border:1px solid #ddd; border-radius:6px; background:#fafafa; flex-shrink:0; }
+    .logo-info { display:flex; align-items:center; gap:10px; min-width:190px; max-width:230px; }
+    .logo-imgs { display:flex; gap:6px; flex-shrink:0; }
+    .img-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .img-label { font-size:8px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.3px; }
+    .logo-img { width:52px; height:52px; object-fit:contain; border:1px solid #ddd; border-radius:6px; background:#fafafa; flex-shrink:0; }
     .logo-name { font-size:16px; font-weight:700; }
+    .retro-tag { font-size:9px; font-weight:700; color:#a15c00; background:#fff3da; padding:2px 6px; border-radius:3px; margin-left:2px; white-space:nowrap; }
     .logo-note { font-size:12px; color:#8a5a00; margin-top:3px; max-width:150px; }
 
     .cat-blocks { display:flex; flex-wrap:wrap; gap:18px; flex:1; }
@@ -4247,6 +4273,11 @@ function apriEditLogo(id) {
   urlInput.value = l.immagine || '';
   if (l.immagine) { prev.src = l.immagine; prev.style.display = 'block'; }
   else { prev.style.display = 'none'; }
+  const prevRetro = document.getElementById('el-img-retro-preview');
+  const urlRetroInput = document.getElementById('el-immagine-retro-url');
+  urlRetroInput.value = l.immagineRetro || '';
+  if (l.immagineRetro) { prevRetro.src = l.immagineRetro; prevRetro.style.display = 'block'; }
+  else { prevRetro.style.display = 'none'; }
   document.getElementById('modal-edit-logo').classList.add('open');
 }
 
@@ -4258,12 +4289,14 @@ function salvaLogo() {
 
   const prezzoTshirt = parseFloat(document.getElementById('el-prezzo-tshirt').value) || 0;
   const urlImmagine = document.getElementById('el-immagine-url').value.trim() || null;
+  const urlImmagineRetro = document.getElementById('el-immagine-retro-url').value.trim() || null;
   l.nome = nome;
   l.fornId = parseInt(document.getElementById('el-fornitore').value) || null;
   l.minimo = parseInt(document.getElementById('el-minimo').value) || 3;
   l.stato = document.getElementById('el-stato').value;
   l.note = document.getElementById('el-note').value.trim();
   l.immagine = urlImmagine;
+  l.immagineRetro = urlImmagineRetro;
   l.prezzi = {
     tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
     tshirt_donna:   { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
