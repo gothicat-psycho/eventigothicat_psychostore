@@ -1527,7 +1527,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.9.0'; // aggiornare ad ogni modifica
+const VERSION = '1.9.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -7072,6 +7072,10 @@ async function impostaStockMassa() {
 function ensureBachecaStructures() {
   if (!db.bacheca) db.bacheca = [];
   if (!db.nextBachecaId) db.nextBachecaId = 1;
+  db.bacheca.forEach(n => {
+    if (!n.risposte) n.risposte = [];
+    if (!n.nextRispostaId) n.nextRispostaId = 1;
+  });
 }
 
 function aggiungiNotaBacheca() {
@@ -7085,6 +7089,8 @@ function aggiungiNotaBacheca() {
     autore,
     testo,
     dataOra: new Date().toISOString(),
+    risposte: [],
+    nextRispostaId: 1,
   });
   saveDBFields({ bacheca: db.bacheca, nextBachecaId: db.nextBachecaId });
   testoEl.value = '';
@@ -7093,8 +7099,45 @@ function aggiungiNotaBacheca() {
 }
 
 function eliminaNotaBacheca(id) {
-  if (!confirm('Eliminare questa nota?')) return;
+  if (!confirm('Eliminare questa nota (e le eventuali risposte)?')) return;
   db.bacheca = (db.bacheca||[]).filter(n => n.id !== id);
+  saveDBFields({ bacheca: db.bacheca });
+  renderBacheca();
+}
+
+let bachecaReplyOpen = null; // id della nota con il form di risposta aperto
+
+function toggleRispostaForm(noteId) {
+  bachecaReplyOpen = bachecaReplyOpen === noteId ? null : noteId;
+  renderBacheca();
+  if (bachecaReplyOpen) {
+    setTimeout(() => { const el = document.getElementById(`risp-testo-${noteId}`); if (el) el.focus(); }, 50);
+  }
+}
+
+function aggiungiRisposta(noteId) {
+  ensureBachecaStructures();
+  const nota = db.bacheca.find(n => n.id === noteId);
+  if (!nota) return;
+  const autoreEl = document.getElementById(`risp-autore-${noteId}`);
+  const testoEl = document.getElementById(`risp-testo-${noteId}`);
+  const testo = testoEl.value.trim();
+  if (!testo) { showToast('Scrivi qualcosa nella risposta'); return; }
+  nota.risposte.push({
+    id: nota.nextRispostaId++,
+    autore: autoreEl.value,
+    testo,
+    dataOra: new Date().toISOString(),
+  });
+  saveDBFields({ bacheca: db.bacheca });
+  bachecaReplyOpen = null;
+  renderBacheca();
+}
+
+function eliminaRisposta(noteId, rispostaId) {
+  const nota = db.bacheca.find(n => n.id === noteId);
+  if (!nota) return;
+  nota.risposte = (nota.risposte||[]).filter(r => r.id !== rispostaId);
   saveDBFields({ bacheca: db.bacheca });
   renderBacheca();
 }
@@ -7109,17 +7152,38 @@ function renderBacheca() {
     return;
   }
   const coloriPerAutore = { Matteo: '#FFF3B0', Adriano: '#C9F0D8' };
+  const fmtDataOra = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('it', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' · ' + d.toLocaleTimeString('it', {hour:'2-digit',minute:'2-digit'});
+  };
   grid.innerHTML = note.map(n => {
     const bg = coloriPerAutore[n.autore] || '#FFF3B0';
-    const d = new Date(n.dataOra);
-    const dataStr = d.toLocaleDateString('it', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' · ' + d.toLocaleTimeString('it', {hour:'2-digit',minute:'2-digit'});
-    return `<div style="width:220px;min-height:160px;background:${bg};border-radius:2px;padding:16px;box-shadow:0 3px 8px rgba(0,0,0,0.15);position:relative;display:flex;flex-direction:column;transform:rotate(${(n.id % 2 === 0 ? -1 : 1)}deg)">
+    const risposteHtml = (n.risposte||[]).map(r => `
+      <div style="background:rgba(255,255,255,0.55);border-radius:6px;padding:8px 10px;margin-top:6px;position:relative">
+        <button onclick="eliminaRisposta(${n.id},${r.id})" title="Elimina risposta" style="position:absolute;top:4px;right:6px;background:none;border:none;cursor:pointer;font-size:11px;color:#777;line-height:1">✕</button>
+        <div style="font-size:12px;color:#333;white-space:pre-wrap;padding-right:14px">${r.testo}</div>
+        <div style="font-size:10px;font-weight:700;color:#555;margin-top:4px">${r.autore} <span style="font-weight:400;color:#777">· ${fmtDataOra(r.dataOra)}</span></div>
+      </div>`).join('');
+    const rispostaForm = bachecaReplyOpen === n.id ? `
+      <div style="margin-top:8px">
+        <select id="risp-autore-${n.id}" style="font-size:11px;padding:3px 6px;margin-bottom:5px;width:100%">
+          <option value="Matteo">Matteo</option>
+          <option value="Adriano">Adriano</option>
+        </select>
+        <textarea id="risp-testo-${n.id}" rows="2" placeholder="Scrivi una risposta..." style="width:100%;font-size:12px;padding:6px;border-radius:6px;border:1px solid rgba(0,0,0,0.15);resize:vertical;font-family:inherit"></textarea>
+        <div style="display:flex;gap:6px;margin-top:5px;justify-content:flex-end">
+          <button onclick="toggleRispostaForm(${n.id})" style="font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,0,0,0.2);background:transparent;cursor:pointer">Annulla</button>
+          <button onclick="aggiungiRisposta(${n.id})" style="font-size:11px;padding:3px 8px;border-radius:5px;border:none;background:#333;color:#fff;cursor:pointer">Rispondi</button>
+        </div>
+      </div>` : '';
+    return `<div style="width:240px;min-height:160px;background:${bg};border-radius:2px;padding:16px;box-shadow:0 3px 8px rgba(0,0,0,0.15);position:relative;display:flex;flex-direction:column;transform:rotate(${(n.id % 2 === 0 ? -1 : 1)}deg)">
       <button onclick="eliminaNotaBacheca(${n.id})" title="Elimina nota" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;font-size:14px;color:#666;line-height:1">✕</button>
-      <div style="font-size:13px;color:#333;white-space:pre-wrap;flex:1;margin-bottom:10px;margin-top:4px">${n.testo}</div>
+      <div style="font-size:13px;color:#333;white-space:pre-wrap;margin-bottom:10px;margin-top:4px">${n.testo}</div>
       <div style="font-size:11px;font-weight:700;color:#444;border-top:1px solid rgba(0,0,0,0.1);padding-top:6px">${n.autore}</div>
-      <div style="font-size:10px;color:#666">${dataStr}</div>
-    </div>`;
-  }).join('');
+      <div style="font-size:10px;color:#666;margin-bottom:4px">${fmtDataOra(n.dataOra)}</div>
+      ${risposteHtml}
+      ${bachecaReplyOpen === n.id ? rispostaForm : `<button onclick="toggleRispostaForm(${n.id})" style="align-self:flex-start;margin-top:6px;font-size:11px;padding:3px 9px;border-radius:5px;border:1px solid rgba(0,0,0,0.2);background:rgba(255,255,255,0.5);cursor:pointer;color:#333">💬 Rispondi</button>`}
+    </div>`;  }).join('');
 }
 
 // ─────────────────────────────────────────────
