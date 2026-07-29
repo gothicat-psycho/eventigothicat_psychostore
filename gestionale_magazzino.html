@@ -1499,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.7.1'; // aggiornare ad ogni modifica
+const VERSION = '1.7.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2998,6 +2998,8 @@ function stampaOrdinePDF() {
   let sezioni = '';
   let totaleGenerale = 0;
   let nessunaQuantita = true;
+  const nomiLoghi = [];
+  const noteLoghi = []; // { nome, nota }
 
   o.items.forEach(item => {
     const l = getLogo(item.logoId);
@@ -3018,6 +3020,7 @@ function stampaOrdinePDF() {
           <table class="size-table">
             <tr class="size-hdr">${righeTaglie.map(r=>`<td>${r.taglia}</td>`).join('')}</tr>
             <tr class="size-qty">${righeTaglie.map(r=>`<td>${r.qty}</td>`).join('')}</tr>
+            <tr class="size-chk">${righeTaglie.map(()=>`<td><div class="mini-checkbox" title="Spuntare dopo la stampa"></div></td>`).join('')}</tr>
           </table>
         </div>`;
       } else {
@@ -3026,7 +3029,7 @@ function stampaOrdinePDF() {
         totLogo += tot;
         tabelleCat += `<div class="cat-block">
           <div class="cat-name">${cat.label} <span class="cat-tot">${tot} pz</span></div>
-          <table class="size-table"><tr class="size-hdr"><td>Qtà</td></tr><tr class="size-qty"><td>${tot}</td></tr></table>
+          <table class="size-table"><tr class="size-hdr"><td>Qtà</td></tr><tr class="size-qty"><td>${tot}</td></tr><tr class="size-chk"><td><div class="mini-checkbox"></div></td></tr></table>
         </div>`;
       }
     });
@@ -3034,27 +3037,31 @@ function stampaOrdinePDF() {
     if (!tabelleCat) return;
     nessunaQuantita = false;
     totaleGenerale += totLogo;
+    if (l) nomiLoghi.push(l.nome);
+    if (item.note) noteLoghi.push({ nome: l?l.nome:'-', nota: item.note });
 
     sezioni += `<div class="logo-section">
-      <div class="checkbox" title="Spuntare a stampa completata"></div>
-      <div class="logo-info">
+      <div class="logo-header">
         <div class="logo-imgs">
           ${l && l.immagine ? `<div class="img-wrap"><img src="${l.immagine}" class="logo-img" onerror="this.parentElement.style.display='none'">${l.immagineRetro?'<span class="img-label">FRONTE</span>':''}</div>` : ''}
           ${l && l.immagineRetro ? `<div class="img-wrap"><img src="${l.immagineRetro}" class="logo-img" onerror="this.parentElement.style.display='none'"><span class="img-label">RETRO</span></div>` : ''}
         </div>
-        <div>
-          <div class="logo-name">${l ? l.nome : '-'}${l && l.immagineRetro ? ' <span class="retro-tag">STAMPA ANCHE RETRO</span>' : ''}</div>
-          ${item.note ? `<div class="logo-note">📝 ${item.note}</div>` : ''}
-        </div>
+        <div class="logo-name">${l ? l.nome : '-'}${l && l.immagineRetro ? ' <span class="retro-tag">STAMPA ANCHE RETRO</span>' : ''}</div>
+        <div class="logo-tot">${totLogo} pz</div>
       </div>
       <div class="cat-blocks">${tabelleCat}</div>
-      <div class="logo-tot">${totLogo} pz</div>
     </div>`;
   });
 
   if (nessunaQuantita) { showToast('Nessuna quantità presente in questo ordine'); return; }
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ordine ${o.ref||'#'+o.id}</title>
+  const titolo = nomiLoghi.length ? `Ordine ${nomiLoghi.join(', ')}` : `Ordine${o.ref?(' — '+o.ref):''}`;
+
+  const noteFinali = [];
+  if (o.note) noteFinali.push(`<div class="nota-riga"><strong>Ordine:</strong> ${o.note}</div>`);
+  noteLoghi.forEach(n => noteFinali.push(`<div class="nota-riga"><strong>${n.nome}:</strong> ${n.nota}</div>`));
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titolo}</title>
   <style>
     body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #111; }
     h1 { font-size: 22px; margin-bottom: 4px; }
@@ -3062,41 +3069,45 @@ function stampaOrdinePDF() {
     .meta { display:flex; gap:40px; margin-bottom:24px; font-size:13px; padding-bottom:14px; border-bottom:2px solid #333; }
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
 
-    .logo-section { display:flex; align-items:flex-start; gap:16px; padding:16px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
-    .checkbox { width:24px; height:24px; border:2.5px solid #333; border-radius:4px; flex-shrink:0; margin-top:6px; }
-    .logo-info { display:flex; align-items:center; gap:10px; min-width:190px; max-width:230px; }
-    .logo-imgs { display:flex; gap:6px; flex-shrink:0; }
-    .img-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; }
-    .img-label { font-size:8px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.3px; }
-    .logo-img { width:52px; height:52px; object-fit:contain; border:1px solid #ddd; border-radius:6px; background:#fafafa; flex-shrink:0; }
-    .logo-name { font-size:16px; font-weight:700; }
-    .retro-tag { font-size:9px; font-weight:700; color:#a15c00; background:#fff3da; padding:2px 6px; border-radius:3px; margin-left:2px; white-space:nowrap; }
-    .logo-note { font-size:12px; color:#8a5a00; margin-top:3px; max-width:150px; }
+    .logo-section { padding:20px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
+    .logo-header { display:flex; align-items:center; gap:16px; margin-bottom:14px; }
+    .logo-imgs { display:flex; gap:8px; flex-shrink:0; }
+    .img-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .img-label { font-size:9px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.3px; }
+    .logo-img { width:110px; height:110px; object-fit:contain; border:1px solid #ddd; border-radius:8px; background:#fafafa; flex-shrink:0; }
+    .logo-name { font-size:20px; font-weight:800; flex:1; }
+    .retro-tag { font-size:10px; font-weight:700; color:#a15c00; background:#fff3da; padding:2px 7px; border-radius:3px; margin-left:4px; white-space:nowrap; vertical-align:middle; }
+    .logo-tot { font-size:18px; font-weight:800; }
 
-    .cat-blocks { display:flex; flex-wrap:wrap; gap:18px; flex:1; }
-    .cat-block { }
-    .cat-name { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#444; margin-bottom:4px; }
+    .cat-blocks { display:flex; flex-wrap:wrap; gap:22px; padding-left:4px; }
+    .cat-name { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#444; margin-bottom:5px; }
     .cat-tot { font-weight:400; color:#888; text-transform:none; letter-spacing:0; }
     .size-table { border-collapse: collapse; }
-    .size-table td { border:1.5px solid #333; text-align:center; min-width:34px; padding:0; }
-    .size-hdr td { font-size:12px; font-weight:700; background:#eee; padding:4px 6px; }
-    .size-qty td { font-size:18px; font-weight:700; padding:6px 6px; }
-
-    .logo-tot { font-size:16px; font-weight:800; min-width:70px; text-align:right; align-self:center; }
+    .size-table td { border:1.5px solid #333; text-align:center; min-width:38px; padding:0; }
+    .size-hdr td { font-size:12px; font-weight:700; background:#eee; padding:5px 6px; }
+    .size-qty td { font-size:19px; font-weight:700; padding:7px 6px; }
+    .size-chk td { padding:6px; border-top:none; }
+    .mini-checkbox { width:16px; height:16px; border:2px solid #333; border-radius:3px; margin:0 auto; }
 
     .grand-total { margin-top:20px; padding-top:14px; border-top:3px double #333; text-align:right; font-size:18px; font-weight:800; }
 
+    .note-section { margin-top:28px; padding-top:16px; border-top:2px solid #333; }
+    .note-section-title { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; margin-bottom:10px; color:#444; }
+    .nota-riga { font-size:13px; margin-bottom:6px; color:#333; }
+    .nota-riga strong { color:#8a5a00; }
+
     @media print { body { padding: 10mm; } .logo-section { break-inside: avoid; } }
   </style></head><body>
-    <h1>Ordine Fornitore${o.ref?(' — '+o.ref):''}</h1>
+    <h1>${titolo}</h1>
     <div class="sub">GOTHICAT — Ordine acquisto merce</div>
     <div class="meta">
       <div><strong>Fornitore</strong>${f?f.nome:'-'}</div>
       <div><strong>Data ordine</strong>${dataStr}</div>
-      ${o.note?`<div><strong>Note ordine</strong>${o.note}</div>`:''}
+      ${o.ref?`<div><strong>N° ordine</strong>${o.ref}</div>`:''}
     </div>
     ${sezioni}
     <div class="grand-total">TOTALE ORDINE: ${totaleGenerale} pz</div>
+    ${noteFinali.length ? `<div class="note-section"><div class="note-section-title">📝 Note</div>${noteFinali.join('')}</div>` : ''}
   </body></html>`;
 
   const w = window.open('', '_blank');
