@@ -1499,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.8.2'; // aggiornare ad ogni modifica
+const VERSION = '1.8.3'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3091,7 +3091,7 @@ function stampaOrdinePDF() {
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
 
     .logo-section { padding:20px 0; border-bottom:1px solid #ddd; page-break-inside: avoid; }
-    .logo-title-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
+    .logo-title-row { display:flex; justify-content:flex-start; align-items:baseline; gap:16px; margin-bottom:12px; }
     .logo-imgs { display:flex; gap:40px; margin-bottom:6px; }
     .img-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
     .img-label { font-size:13px; font-weight:800; color:#000; text-transform:uppercase; letter-spacing:.3px; }
@@ -3101,7 +3101,7 @@ function stampaOrdinePDF() {
     .img-color strong { color:#000; }
     .logo-tot { font-size:18px; font-weight:800; color:#000; }
 
-    .cat-blocks { display:flex; flex-wrap:wrap; gap:22px; padding-left:4px; }
+    .cat-blocks { display:flex; flex-wrap:wrap; gap:22px; padding-left:4px; margin-top:22px; }
     .cat-name { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#444; margin-bottom:5px; }
     .cat-tot { font-weight:700; color:#000; text-transform:none; letter-spacing:0; }
     .size-table { border-collapse: collapse; }
