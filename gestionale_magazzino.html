@@ -558,6 +558,11 @@
         <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Somma dei pezzi per prodotto/taglia negli ordini selezionati, confrontata con lo Stock Blank Tessile disponibile (tutti i brand/colori).</p>
         <div id="blank-necessario-content"></div>
       </div>
+      <div class="card" id="dettaglio-stampa-card" style="display:none">
+        <div class="card-title">Dettaglio quantità da stampare per logo</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Pezzi da stampare per ogni logo, divisi per prodotto e taglia, negli ordini selezionati.</p>
+        <div id="dettaglio-stampa-content" style="overflow-x:auto"></div>
+      </div>
     </div>
 
     <!-- STOCK -->
@@ -1478,7 +1483,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.6.0'; // aggiornare ad ogni modifica
+const VERSION = '1.6.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2668,6 +2673,7 @@ function renderOrdini() {
   // Rimuove dalla selezione ordini eliminati nel frattempo
   [...ordiniSelezionatiBlank].forEach(id => { if (!db.ordini.find(o => o.id === id)) ordiniSelezionatiBlank.delete(id); });
   renderBlankNecessario();
+  renderDettaglioStampaLoghi();
 }
 
 // ── Calcolo blank necessario per gli ordini fornitore selezionati ──
@@ -2675,6 +2681,7 @@ function toggleOrdineBlank(id, checked) {
   if (checked) ordiniSelezionatiBlank.add(id);
   else ordiniSelezionatiBlank.delete(id);
   renderBlankNecessario();
+  renderDettaglioStampaLoghi();
 }
 
 function renderBlankNecessario() {
@@ -2762,6 +2769,113 @@ function renderBlankNecessario() {
   </div>` : `<div style="margin-bottom:14px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Hai blank sufficiente per tutti gli ordini selezionati.</div>`;
 
   content.innerHTML = alertHtml + html + (escludeFelpe ? `<p style="font-size:11px;color:var(--text3);margin-top:8px">Nota: le Felpe non sono incluse nel calcolo perché non è ancora presente uno Stock Blank dedicato.</p>` : '');
+}
+
+// ── Dettaglio quantità da stampare per logo (loghi × prodotto × taglia) ──
+function renderDettaglioStampaLoghi() {
+  const card = document.getElementById('dettaglio-stampa-card');
+  const content = document.getElementById('dettaglio-stampa-content');
+  if (!card || !content) return;
+  if (ordiniSelezionatiBlank.size === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // Aggrega per (logo, fornitore): { catId: { taglia: qty } }
+  const gruppi = {};
+  [...ordiniSelezionatiBlank].forEach(id => {
+    const o = db.ordini.find(x => x.id === id);
+    if (!o) return;
+    o.items.forEach(item => {
+      const key = `${item.logoId}_${o.fornId}`;
+      if (!gruppi[key]) gruppi[key] = { logoId: item.logoId, fornId: o.fornId, dati: {} };
+      const g = gruppi[key].dati;
+      Object.keys(item.quantita||{}).forEach(catId => {
+        const cat = getCat(catId);
+        if (!cat) return;
+        const q = item.quantita[catId] || {};
+        const val = (obj,k) => (obj||{})[k] || 0;
+        const taglie = cat.taglie ? (cat.taglieLista||TAGLIE) : ['_'];
+        taglie.forEach(t => {
+          const n = val(q.avigliana,t) + val(q.napoli,t);
+          if (n > 0) {
+            if (!g[catId]) g[catId] = {};
+            g[catId][t] = (g[catId][t]||0) + n;
+          }
+        });
+      });
+    });
+  });
+
+  const righeGruppi = Object.values(gruppi).filter(g => Object.keys(g.dati).length > 0);
+  if (righeGruppi.length === 0) {
+    content.innerHTML = `<p style="color:var(--text3);font-size:13px">Gli ordini selezionati non contengono quantità.</p>`;
+    return;
+  }
+
+  // Determina le colonne (categoria+taglia) effettivamente usate, nell'ordine di CATEGORIE
+  const colonne = [];
+  CATEGORIE.forEach(cat => {
+    if (cat.taglie) {
+      (cat.taglieLista||TAGLIE).forEach(t => {
+        if (righeGruppi.some(g => (g.dati[cat.id]||{})[t] > 0)) colonne.push({ catId: cat.id, taglia: t, catLabel: cat.label });
+      });
+    } else {
+      if (righeGruppi.some(g => (g.dati[cat.id]||{})['_'] > 0)) colonne.push({ catId: cat.id, taglia: '_', catLabel: cat.label });
+    }
+  });
+
+  // Ordina righe per nome logo alfabetico, poi fornitore
+  righeGruppi.sort((a,b) => {
+    const la = getLogo(a.logoId)?.nome || '';
+    const lb = getLogo(b.logoId)?.nome || '';
+    const c = la.localeCompare(lb, 'it');
+    return c !== 0 ? c : (getForn(a.fornId)?.nome||'').localeCompare(getForn(b.fornId)?.nome||'', 'it');
+  });
+
+  // Header su due righe: gruppo categoria (colspan) + singole taglie
+  const catGroups = [];
+  colonne.forEach(c => {
+    const last = catGroups[catGroups.length-1];
+    if (last && last.catId === c.catId) last.count++;
+    else catGroups.push({ catId: c.catId, catLabel: c.catLabel, count: 1 });
+  });
+  const headerRow1 = `<th rowspan="2" style="text-align:left">Logo</th><th rowspan="2" style="text-align:left">Fornitore</th>` +
+    catGroups.map(g => `<th colspan="${g.count}" style="text-align:center"><span class="stock-cat-label ${getCatLabelClass(g.catId)}">${g.catLabel}</span></th>`).join('') +
+    `<th rowspan="2" style="text-align:right">Totale</th>`;
+  const headerRow2 = colonne.map(c => `<th style="text-align:center;font-size:11px">${c.taglia==='_'?'Qtà':c.taglia}</th>`).join('');
+
+  // Corpo tabella + totali
+  const colTotali = colonne.map(() => 0);
+  let grandTotal = 0;
+  const bodyRows = righeGruppi.map(g => {
+    const logo = getLogo(g.logoId);
+    const forn = getForn(g.fornId);
+    let rowTotal = 0;
+    const cells = colonne.map((c, idx) => {
+      const v = (g.dati[c.catId]||{})[c.taglia] || 0;
+      rowTotal += v;
+      colTotali[idx] += v;
+      return `<td class="mono" style="text-align:center">${v>0?v:'—'}</td>`;
+    }).join('');
+    grandTotal += rowTotal;
+    return `<tr>
+      <td style="font-weight:500">${logo?.nome||'—'}</td>
+      <td>${forn?.nome||'—'}</td>
+      ${cells}
+      <td class="mono" style="text-align:right;font-weight:700">${rowTotal}</td>
+    </tr>`;
+  }).join('');
+
+  const footerRow = `<tr style="font-weight:700;background:var(--surface2)">
+    <td colspan="2">TOTALE</td>
+    ${colTotali.map(v => `<td class="mono" style="text-align:center">${v>0?v:'—'}</td>`).join('')}
+    <td class="mono" style="text-align:right">${grandTotal}</td>
+  </tr>`;
+
+  content.innerHTML = `<table class="report-table" style="min-width:max-content">
+    <thead><tr>${headerRow1}</tr><tr>${headerRow2}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+    <tfoot>${footerRow}</tfoot>
+  </table>`;
 }
 
 let ordineAperto = null;
