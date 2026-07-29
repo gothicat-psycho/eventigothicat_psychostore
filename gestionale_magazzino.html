@@ -1499,7 +1499,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.7.2'; // aggiornare ad ogni modifica
+const VERSION = '1.7.3'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3046,7 +3046,7 @@ function stampaOrdinePDF() {
           ${l && l.immagine ? `<div class="img-wrap"><img src="${l.immagine}" class="logo-img" onerror="this.parentElement.style.display='none'">${l.immagineRetro?'<span class="img-label">FRONTE</span>':''}</div>` : ''}
           ${l && l.immagineRetro ? `<div class="img-wrap"><img src="${l.immagineRetro}" class="logo-img" onerror="this.parentElement.style.display='none'"><span class="img-label">RETRO</span></div>` : ''}
         </div>
-        <div class="logo-name">${l ? l.nome : '-'}${l && l.immagineRetro ? ' <span class="retro-tag">STAMPA ANCHE RETRO</span>' : ''}</div>
+        <div class="logo-name">${l ? l.nome : '-'} <span class="retro-tag">${l && l.immagineRetro ? 'STAMPA FRONTE RETRO' : 'STAMPA SOLO FRONTE'}</span></div>
         <div class="logo-tot">${totLogo} pz</div>
       </div>
       <div class="cat-blocks">${tabelleCat}</div>
@@ -3063,8 +3063,9 @@ function stampaOrdinePDF() {
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titolo}</title>
   <style>
-    body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #111; }
-    h1 { font-size: 22px; margin-bottom: 4px; }
+    @page { margin: 12mm; }
+    body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 30px; color: #000; }
+    h1 { font-size: 22px; margin-bottom: 4px; color:#000; }
     .sub { color:#555; font-size:13px; margin-bottom:20px; }
     .meta { display:flex; gap:40px; margin-bottom:24px; font-size:13px; padding-bottom:14px; border-bottom:2px solid #333; }
     .meta div strong { display:block; color:#555; font-size:11px; text-transform:uppercase; margin-bottom:2px; }
@@ -3074,22 +3075,22 @@ function stampaOrdinePDF() {
     .logo-imgs { display:flex; gap:8px; flex-shrink:0; }
     .img-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
     .img-label { font-size:9px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.3px; }
-    .logo-img { width:110px; height:110px; object-fit:contain; border:1px solid #ddd; border-radius:8px; background:#fafafa; flex-shrink:0; }
-    .logo-name { font-size:20px; font-weight:800; flex:1; }
+    .logo-img { width:170px; height:170px; object-fit:contain; border:1px solid #ddd; border-radius:8px; background:#fafafa; flex-shrink:0; }
+    .logo-name { font-size:20px; font-weight:800; flex:1; color:#000; }
     .retro-tag { font-size:10px; font-weight:700; color:#a15c00; background:#fff3da; padding:2px 7px; border-radius:3px; margin-left:4px; white-space:nowrap; vertical-align:middle; }
-    .logo-tot { font-size:18px; font-weight:800; }
+    .logo-tot { font-size:18px; font-weight:800; color:#000; }
 
     .cat-blocks { display:flex; flex-wrap:wrap; gap:22px; padding-left:4px; }
     .cat-name { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#444; margin-bottom:5px; }
     .cat-tot { font-weight:400; color:#888; text-transform:none; letter-spacing:0; }
     .size-table { border-collapse: collapse; }
     .size-table td { border:1.5px solid #333; text-align:center; min-width:38px; padding:0; }
-    .size-hdr td { font-size:12px; font-weight:700; background:#eee; padding:5px 6px; }
-    .size-qty td { font-size:19px; font-weight:700; padding:7px 6px; }
+    .size-hdr td { font-size:12px; font-weight:700; background:#eee; padding:5px 6px; color:#000; }
+    .size-qty td { font-size:19px; font-weight:700; padding:7px 6px; color:#000; }
     .size-chk td { padding:6px; border-top:none; }
     .mini-checkbox { width:16px; height:16px; border:2px solid #333; border-radius:3px; margin:0 auto; }
 
-    .grand-total { margin-top:20px; padding-top:14px; border-top:3px double #333; text-align:right; font-size:18px; font-weight:800; }
+    .grand-total { margin-top:20px; padding-top:14px; border-top:3px double #333; text-align:right; font-size:18px; font-weight:800; color:#000; }
 
     .note-section { margin-top:28px; padding-top:16px; border-top:2px solid #333; }
     .note-section-title { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; margin-bottom:10px; color:#444; }
