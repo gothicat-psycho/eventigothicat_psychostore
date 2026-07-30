@@ -1527,7 +1527,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.0.0'; // aggiornare ad ogni modifica
+const VERSION = '2.0.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -6588,7 +6588,8 @@ function renderReportEvento() {
       loghiData[it.logoId].cats[it.catId] = (loghiData[it.logoId].cats[it.catId]||0) + (it.qty||1);
     }
   }));
-  const topLoghi = Object.entries(loghiData).sort((a,b)=>b[1].tot-a[1].tot).slice(0,10);
+  const topN = parseInt((document.getElementById('r-sel-top-loghi')||{}).value) || 10;
+  const topLoghi = Object.entries(loghiData).sort((a,b)=>b[1].tot-a[1].tot).slice(0,topN);
   const maxTop = topLoghi.length ? topLoghi[0][1].tot : 1;
 
   // Categorie globali
@@ -6616,7 +6617,14 @@ function renderReportEvento() {
     </div>
     <p style="font-size:11px;color:var(--text3);margin:-8px 0 16px">* Costo e utile calcolati con i costi attualmente impostati per ogni prodotto (Loghi/Accessori) — se li hai modificati dopo questo evento, il valore storico esatto potrebbe differire leggermente.</p>
     <div class="report-card">
-      <div class="report-card-title">Top 10 loghi — dettaglio per categoria</div>
+      <div class="report-card-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span>Top ${topN} loghi — dettaglio per categoria</span>
+        <select id="r-sel-top-loghi" onchange="renderReportEvento()" style="max-width:110px;font-size:12px">
+          <option value="10" ${topN===10?'selected':''}>Top 10</option>
+          <option value="20" ${topN===20?'selected':''}>Top 20</option>
+          <option value="30" ${topN===30?'selected':''}>Top 30</option>
+        </select>
+      </div>
       <div style="overflow-x:auto">
       <table class="report-table">
         <thead><tr>
