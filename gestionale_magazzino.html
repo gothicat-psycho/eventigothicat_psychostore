@@ -1527,7 +1527,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.9.1'; // aggiornare ad ogni modifica
+const VERSION = '1.9.3'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1694,6 +1694,7 @@ function avviaListeners() {
     updateFooter();
     const activeSec = document.querySelector('.section.active');
     if (activeSec && activeSec.id === 'sec-bacheca') renderBacheca();
+    checkNuovoMessaggioBacheca();
   });
 }
 
@@ -2370,7 +2371,7 @@ function renderFornitori() {
         <td class="mono">${f.tel||'-'}</td>
         <td class="mono">${f.piva||'-'}</td>
         <td><span class="badge badge-gray">${nOrd} ordini</span></td>
-        <td style="display:flex;gap:6px"><button class="btn btn-sm" onclick="apriEditForn(${f.id})">Modifica</button><button class="btn btn-sm btn-danger" onclick="confirmDel('fornitore',${f.id},'${f.nome}')">Rimuovi</button></td>
+        <td><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="apriEditForn(${f.id})">Modifica</button><button class="btn btn-sm btn-danger" onclick="confirmDel('fornitore',${f.id},'${f.nome}')">Rimuovi</button></div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="7" class="empty">Nessun fornitore inserito</td></tr>';
 }
@@ -2472,7 +2473,7 @@ function renderLoghi() {
         <td class="mono">${l.minimo||3}</td>
         <td class="mono" style="font-weight:500">${tot}</td>
         <td><span class="badge ${statoBadge}">${l.stato}</span></td>
-        <td style="display:flex;gap:6px"><button class="btn btn-sm" onclick="apriEditLogo(${l.id})">Modifica</button><button class="btn btn-sm btn-danger" onclick="confirmDel('logo',${l.id},'${l.nome}')">Rimuovi</button></td>
+        <td><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="apriEditLogo(${l.id})">Modifica</button><button class="btn btn-sm btn-danger" onclick="confirmDel('logo',${l.id},'${l.nome}')">Rimuovi</button></div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="10" class="empty">Nessun logo trovato</td></tr>';
 }
@@ -2759,11 +2760,11 @@ function renderOrdini() {
         <td>${nLoghi} logo/ghi</td>
         <td class="mono">${totPz} pz</td>
         <td>${statoOrdBadge(o.stato)}</td>
-        <td style="display:flex;gap:6px">
+        <td><div style="display:flex;gap:6px">
           <button class="btn btn-sm" onclick="apriOrdine(${o.id})">Dettaglio</button>
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="modificaOrdine(${o.id})">Modifica</button>` : ''}
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm btn-success" onclick="apriOrdine(${o.id},true)">Ricevi</button>` : ''}
-        </td>
+        </div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine trovato</td></tr>';
   // Rimuove dalla selezione ordini eliminati nel frattempo
@@ -4645,14 +4646,14 @@ function renderEventi() {
           }
         })()}</td>
         ` : ''}
-        <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm btn-primary" onclick="attivaEvento(${ev.id})">Usa in cassa</button>
           ${isAdmin ? `<button class="btn btn-sm" onclick="apriEditEvento(${ev.id})">Modifica</button>
           <button class="btn btn-sm btn-danger" onclick="confirmDel('evento',${ev.id},'${ev.nome.replace(/'/g,"\'")}')">Rimuovi</button>
           <button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="faiSnapshot(${ev.id},'apertura')">📸 Apertura</button>
           <button class="btn btn-sm" style="border-color:#E65100;color:#E65100" onclick="faiSnapshot(${ev.id},'chiusura')">📸 Chiusura</button>
           <button class="btn btn-sm" style="border-color:var(--green);color:var(--green)" onclick="apriReportSnapshot(${ev.id})">📊 Report</button>` : ''}
-        </td>
+        </div></td>
       </tr>`;
     }).join('') : `<tr><td colspan="${isAdmin ? 13 : 9}" class="empty">Nessun evento${annoSel ? ' nel ' + annoSel : ' inserito'}</td></tr>`;
 }
@@ -5562,10 +5563,10 @@ function renderVendite() {
         <td class="mono" style="font-weight:500">${totFmt}</td>
         <td style="font-size:12px">${mpLabel}${mpDetail}</td>
         <td style="font-size:12px;color:var(--text3)">${vLabel}</td>
-        <td style="display:flex;gap:6px">
+        <td><div style="display:flex;gap:6px">
           <button class="btn btn-sm" onclick="apriModificaVendita(${v.id})">Modifica</button>
           <button class="btn btn-sm btn-danger" onclick="confirmDel('vendita',${v.id},'scontrino del ${dataOraFmt}')">Elimina</button>
-        </td>
+        </div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="6" class="empty">Nessuna vendita trovata</td></tr>';
 }
@@ -7078,6 +7079,42 @@ function ensureBachecaStructures() {
   });
 }
 
+// Conta note + risposte totali, per rilevare arrivi di nuovi messaggi
+function contaBacheca() {
+  return (db.bacheca||[]).reduce((a,n) => a + 1 + ((n.risposte||[]).length), 0);
+}
+
+// Trova l'autore e il testo del messaggio (nota o risposta) più recente
+function trovaUltimoMessaggioBacheca() {
+  let ultimo = null;
+  (db.bacheca||[]).forEach(n => {
+    if (!ultimo || new Date(n.dataOra) > new Date(ultimo.dataOra)) ultimo = { autore: n.autore, testo: n.testo, dataOra: n.dataOra };
+    (n.risposte||[]).forEach(r => {
+      if (!ultimo || new Date(r.dataOra) > new Date(ultimo.dataOra)) ultimo = { autore: r.autore, testo: r.testo, dataOra: r.dataOra };
+    });
+  });
+  return ultimo;
+}
+
+let _bachecaConteggioPrec = null; // baseline per rilevare nuovi arrivi (non notifica i propri messaggi)
+
+// Chiamata ad ogni aggiornamento realtime: se il conteggio è salito rispetto
+// all'ultima volta, qualcuno ha scritto qualcosa — mostra un avviso.
+function checkNuovoMessaggioBacheca() {
+  ensureBachecaStructures();
+  const attuale = contaBacheca();
+  if (_bachecaConteggioPrec !== null && attuale > _bachecaConteggioPrec) {
+    const ultimo = trovaUltimoMessaggioBacheca();
+    if (ultimo) {
+      const anteprima = ultimo.testo.length > 60 ? ultimo.testo.slice(0,60)+'…' : ultimo.testo;
+      showToast(`📌 ${ultimo.autore} ha scritto in Bacheca: "${anteprima}"`);
+    } else {
+      showToast('📌 Nuovo messaggio in Bacheca');
+    }
+  }
+  _bachecaConteggioPrec = attuale;
+}
+
 function aggiungiNotaBacheca() {
   ensureBachecaStructures();
   const autore = document.getElementById('bac-autore').value;
@@ -7092,6 +7129,7 @@ function aggiungiNotaBacheca() {
     risposte: [],
     nextRispostaId: 1,
   });
+  _bachecaConteggioPrec = contaBacheca(); // evita di notificare a te stesso il tuo stesso messaggio
   saveDBFields({ bacheca: db.bacheca, nextBachecaId: db.nextBachecaId });
   testoEl.value = '';
   renderBacheca();
@@ -7101,6 +7139,7 @@ function aggiungiNotaBacheca() {
 function eliminaNotaBacheca(id) {
   if (!confirm('Eliminare questa nota (e le eventuali risposte)?')) return;
   db.bacheca = (db.bacheca||[]).filter(n => n.id !== id);
+  _bachecaConteggioPrec = contaBacheca();
   saveDBFields({ bacheca: db.bacheca });
   renderBacheca();
 }
@@ -7129,6 +7168,7 @@ function aggiungiRisposta(noteId) {
     testo,
     dataOra: new Date().toISOString(),
   });
+  _bachecaConteggioPrec = contaBacheca(); // evita di notificare a te stesso la tua stessa risposta
   saveDBFields({ bacheca: db.bacheca });
   bachecaReplyOpen = null;
   renderBacheca();
@@ -7138,6 +7178,7 @@ function eliminaRisposta(noteId, rispostaId) {
   const nota = db.bacheca.find(n => n.id === noteId);
   if (!nota) return;
   nota.risposte = (nota.risposte||[]).filter(r => r.id !== rispostaId);
+  _bachecaConteggioPrec = contaBacheca();
   saveDBFields({ bacheca: db.bacheca });
   renderBacheca();
 }
