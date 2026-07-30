@@ -1527,7 +1527,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '1.9.3'; // aggiornare ad ogni modifica
+const VERSION = '2.0.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -6544,6 +6544,22 @@ function fmtTot(eur, czk, rate) {
 }
 
 // ── REPORT EVENTO ──
+// Costo unitario di un articolo venduto, basato sui costi ATTUALI impostati
+// per il prodotto (Loghi per il tessile, Accessori per gli accessori).
+// Le vendite non salvano il costo al momento dell'acquisto, quindi per gli
+// eventi passati il costo usato è quello di oggi — se il costo di un prodotto
+// è cambiato nel frattempo, l'utile calcolato per eventi vecchi userà il
+// valore aggiornato, non quello storico.
+function getCostoItem(it) {
+  if (it.isAccessorio) {
+    const acc = (db.accessori||{})[it.accCatId];
+    return acc ? (parseFloat(acc.costo)||0) : 0;
+  }
+  const logo = getLogo(it.logoId);
+  if (!logo || !logo.prezzi || !logo.prezzi[it.catId]) return 0;
+  return parseFloat(logo.prezzi[it.catId].costo) || 0;
+}
+
 function renderReportEvento() {
   const evId = document.getElementById('r-sel-evento').value;
   const el = document.getElementById('r-evento-content');
@@ -6557,6 +6573,11 @@ function renderReportEvento() {
   const nArt = vend.reduce((a,v)=>a+(v.items||[]).length,0);
   const mediaEur = vendEur.length ? totEur/vendEur.length : 0;
   const totConv = ev.czkRate && totCzk ? totEur + totCzk/ev.czkRate : totEur;
+
+  // Costo merce e utile — basati sui costi ATTUALI dei prodotti (vedi getCostoItem)
+  const costoTotale = vend.reduce((a,v) => a + (v.items||[]).reduce((b,it) => b + getCostoItem(it)*(it.qty||1), 0), 0);
+  const utile = totConv - costoTotale;
+  const margine = totConv > 0 ? (utile/totConv*100) : 0;
 
   // Top 10 loghi con breakdown per categoria
   const loghiData = {}; // { logoId: { tot, cats: { catId: qty } } }
@@ -6590,7 +6611,10 @@ function renderReportEvento() {
       ${totCzk>0?`<div class="metric"><div class="metric-label">Incasso CZK</div><div class="metric-value" style="color:var(--accent)">${Math.round(totCzk).toLocaleString('it')} CZK</div></div>`:''}
       ${totCzk>0&&ev.czkRate?`<div class="metric"><div class="metric-label">Totale in €</div><div class="metric-value green">${fmt(totConv)}</div></div>`:''}
       <div class="metric"><div class="metric-label">Scontrino medio €</div><div class="metric-value">${fmt(mediaEur)}</div></div>
+      <div class="metric"><div class="metric-label">Costo merce venduta</div><div class="metric-value" style="color:var(--red)">${fmt(costoTotale)}</div></div>
+      <div class="metric"><div class="metric-label">Utile stimato</div><div class="metric-value ${utile>=0?'green':''}" style="color:${utile>=0?'var(--green)':'var(--red)'}">${fmt(utile)}</div><div class="metric-sub">${margine.toFixed(1)}% margine</div></div>
     </div>
+    <p style="font-size:11px;color:var(--text3);margin:-8px 0 16px">* Costo e utile calcolati con i costi attualmente impostati per ogni prodotto (Loghi/Accessori) — se li hai modificati dopo questo evento, il valore storico esatto potrebbe differire leggermente.</p>
     <div class="report-card">
       <div class="report-card-title">Top 10 loghi — dettaglio per categoria</div>
       <div style="overflow-x:auto">
