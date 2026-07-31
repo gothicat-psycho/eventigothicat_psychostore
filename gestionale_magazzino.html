@@ -1537,7 +1537,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.3.0'; // aggiornare ad ogni modifica
+const VERSION = '2.3.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2732,6 +2732,22 @@ function duplicaOrdine(id) {
   showToast(`Ordine duplicato da ${ord.ref || '#'+ord.id} — controlla e salva`);
 }
 
+// Elimina un ordine fornitore. Se già ricevuto, lo stock caricato NON viene
+// rimosso (resta nel magazzino) — solo il record dell'ordine viene tolto.
+function eliminaOrdine(id) {
+  const ord = db.ordini.find(o => o.id === id);
+  if (!ord) return;
+  const f = getForn(ord.fornId);
+  const avviso = ord.stato === 'ricevuto' ? '\n\nNOTA: questo ordine è già stato ricevuto — lo stock già caricato in magazzino NON verrà rimosso.' : '';
+  if (!confirm(`Eliminare l'ordine ${ord.ref || '#'+ord.id} (${f?f.nome:'-'})?${avviso}`)) return;
+  if (ordineInModificaId === id) annullaModificaOrdine();
+  db.ordini = db.ordini.filter(o => o.id !== id);
+  saveDBFields({ ordini: db.ordini });
+  renderOrdini();
+  renderDashboard();
+  showToast('Ordine eliminato');
+}
+
 function modificaOrdine(id) {
   const ord = db.ordini.find(o => o.id === id);
   if (!ord) { showToast('Ordine non trovato'); return; }
@@ -2803,6 +2819,7 @@ function renderOrdini() {
           <button class="btn btn-sm" style="border-color:var(--text3);color:var(--text2)" onclick="duplicaOrdine(${o.id})">📋 Duplica</button>
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="modificaOrdine(${o.id})">Modifica</button>` : ''}
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm btn-success" onclick="apriOrdine(${o.id},true)">Ricevi</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="eliminaOrdine(${o.id})">Elimina</button>
         </div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="8" class="empty">Nessun ordine trovato</td></tr>';
