@@ -1537,7 +1537,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.2.1'; // aggiornare ad ogni modifica
+const VERSION = '2.3.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2704,6 +2704,34 @@ function salvaOrdine() {
   renderDashboard();
 }
 
+// Duplica un ordine esistente: precompila il form "Nuovo ordine" con gli
+// stessi loghi/quantità/colori/note, ma come ordine NUOVO (non modifica
+// quello originale). Utile per riordinare rapidamente la stessa merce.
+function duplicaOrdine(id) {
+  const ord = db.ordini.find(o => o.id === id);
+  if (!ord) { showToast('Ordine non trovato'); return; }
+
+  annullaModificaOrdine(); // assicura di non essere in modalità modifica di un altro ordine
+
+  document.getElementById('o-fornitore').value = ord.fornId;
+  document.getElementById('o-data').value = today();
+  document.getElementById('o-ref').value = '';
+  document.getElementById('o-note').value = ord.note || '';
+
+  loghiOrdine = ord.items.map((it, idx) => ({
+    id: Date.now() + idx,
+    logoId: it.logoId,
+    quantita: JSON.parse(JSON.stringify(it.quantita)),
+    note: it.note || '',
+    coloreFronte: it.coloreFronte || '',
+    coloreRetro: it.coloreRetro || '',
+  }));
+  renderLoghiOrdine();
+
+  document.getElementById('sec-ordini').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast(`Ordine duplicato da ${ord.ref || '#'+ord.id} — controlla e salva`);
+}
+
 function modificaOrdine(id) {
   const ord = db.ordini.find(o => o.id === id);
   if (!ord) { showToast('Ordine non trovato'); return; }
@@ -2770,8 +2798,9 @@ function renderOrdini() {
         <td>${nLoghi} logo/ghi</td>
         <td class="mono">${totPz} pz</td>
         <td>${statoOrdBadge(o.stato)}</td>
-        <td><div style="display:flex;gap:6px">
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="apriOrdine(${o.id})">Dettaglio</button>
+          <button class="btn btn-sm" style="border-color:var(--text3);color:var(--text2)" onclick="duplicaOrdine(${o.id})">📋 Duplica</button>
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm" style="border-color:var(--accent);color:var(--accent)" onclick="modificaOrdine(${o.id})">Modifica</button>` : ''}
           ${o.stato !== 'ricevuto' ? `<button class="btn btn-sm btn-success" onclick="apriOrdine(${o.id},true)">Ricevi</button>` : ''}
         </div></td>
