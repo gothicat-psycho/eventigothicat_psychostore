@@ -604,6 +604,7 @@
             <option value="out">Esauriti</option>
           </select>
         </div>
+        <div id="stock-az-index" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
       </div>
       <div id="stock-content"></div>
       <div class="card" style="margin-top:8px;border-style:dashed;border-color:var(--border2)">
@@ -1535,7 +1536,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.1.0'; // aggiornare ad ogni modifica
+const VERSION = '2.2.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3302,6 +3303,8 @@ function renderStock() {
 
   if (!list.length) {
     document.getElementById('stock-content').innerHTML = '<div class="card"><p class="empty">Nessun logo trovato con i filtri selezionati</p></div>';
+    const azIndexEmpty = document.getElementById('stock-az-index');
+    if (azIndexEmpty) azIndexEmpty.innerHTML = '';
     return;
   }
   document.getElementById('stock-content').innerHTML = list.map(l => {
@@ -3416,7 +3419,7 @@ function renderStock() {
     const logoImg = l.immagine
       ? `<img src="${l.immagine}" style="width:36px;height:36px;object-fit:contain;border-radius:4px;background:var(--surface2);flex-shrink:0">`
       : '';
-    return `<div class="card stock-logo-block" style="padding:12px 16px;margin-bottom:8px">
+    return `<div class="card stock-logo-block" id="stock-anchor-${l.id}" style="padding:12px 16px;margin-bottom:8px">
       <div class="stock-logo-title" style="margin-bottom:8px">
         ${logoImg}
         <span style="font-weight:600;font-size:14px">${l.nome}</span>
@@ -3427,6 +3430,43 @@ function renderStock() {
       ${rowHtml}
     </div>`;
   }).join('');
+
+  // Indice A-Z: costruito sulla lista attualmente filtrata (ricerca/filtri)
+  const letterePresenti = new Set();
+  const primaLetteraMap = {};
+  list.forEach(l => {
+    const lettera = l.nome.charAt(0).toUpperCase();
+    if (!letterePresenti.has(lettera)) {
+      letterePresenti.add(lettera);
+      primaLetteraMap[lettera] = l.id;
+    }
+  });
+  const alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const buildLetterBtn = (letra) => {
+    const disponibile = letterePresenti.has(letra);
+    if (!disponibile) {
+      return `<span style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text3);opacity:.3;flex-shrink:0">${letra}</span>`;
+    }
+    return `<button onclick="scrollToStockLogo(${primaLetteraMap[letra]})" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border-radius:50%;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer;flex-shrink:0">${letra}</button>`;
+  };
+  const riga1 = alfabeto.slice(0, 13).map(buildLetterBtn).join('');
+  const riga2 = alfabeto.slice(13).map(buildLetterBtn).join('');
+  const azIndexEl = document.getElementById('stock-az-index');
+  if (azIndexEl) azIndexEl.innerHTML = `<div style="display:flex;gap:5px;justify-content:space-between">${riga1}</div><div style="display:flex;gap:5px;justify-content:space-between">${riga2}</div>`;
+}
+
+// Scorre la pagina fino al logo scelto dall'indice A-Z dello Stock,
+// tenendo conto dell'altezza della topbar e della barra tab "sticky".
+function scrollToStockLogo(logoId) {
+  const el = document.getElementById(`stock-anchor-${parseInt(logoId)}`);
+  if (!el) return;
+  const topbarH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 58;
+  const tabBarH = document.getElementById('stock-tab-bar')?.offsetHeight || 50;
+  const offset = el.getBoundingClientRect().top + window.scrollY - topbarH - tabBarH - 16;
+  window.scrollTo({ top: offset, behavior: 'smooth' });
+  el.style.transition = 'box-shadow .3s';
+  el.style.boxShadow = '0 0 0 3px var(--accent)';
+  setTimeout(() => { el.style.boxShadow = ''; }, 1200);
 }
 
 // ─────────────────────────────────────────────
