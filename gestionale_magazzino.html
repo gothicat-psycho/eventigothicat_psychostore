@@ -1271,10 +1271,18 @@
   <div class="modal">
     <div class="modal-title" id="modal-ordine-title">Dettaglio ordine</div>
     <div id="modal-ordine-body"></div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap">
       <button class="btn" onclick="closeModal('modal-ordine')">Chiudi</button>
       <button class="btn" style="border-color:var(--accent);color:var(--accent)" onclick="stampaOrdinePDF()">🖨️ Stampa / PDF</button>
-      <button class="btn btn-success" id="modal-ricevi-btn" onclick="riceviOrdine()">Segna come ricevuto</button>
+      <div id="ricevi-dest-wrap" style="display:flex;align-items:center;gap:8px">
+        <select id="ricevi-dest-mag" title="Magazzino di destinazione" style="max-width:220px">
+          <option value="">Come impostato nell'ordine</option>
+          <option value="avigliana">Tutto ad Avigliana</option>
+          <option value="napoli">Tutto a Napoli</option>
+          <option value="tour">Tutto Adriano On Tour</option>
+        </select>
+        <button class="btn btn-success" id="modal-ricevi-btn" onclick="riceviOrdine()">Segna come ricevuto</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1527,7 +1535,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.0.1'; // aggiornare ad ogni modifica
+const VERSION = '2.1.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3031,6 +3039,10 @@ function apriOrdine(id, autoRicevi) {
   document.getElementById('modal-ordine-body').innerHTML = html;
   const rBtn = document.getElementById('modal-ricevi-btn');
   rBtn.style.display = o.stato === 'ricevuto' ? 'none' : 'inline-block';
+  const destWrap = document.getElementById('ricevi-dest-wrap');
+  if (destWrap) destWrap.style.display = o.stato === 'ricevuto' ? 'none' : 'flex';
+  const destSel = document.getElementById('ricevi-dest-mag');
+  if (destSel) destSel.value = ''; // reset alla scelta predefinita ad ogni apertura
   document.getElementById('modal-ordine').classList.add('open');
   if (autoRicevi) riceviOrdine();
 }
@@ -3177,22 +3189,38 @@ function stampaOrdinePDF() {
 
 function riceviOrdine() {
   if (!ordineAperto || ordineAperto.stato === 'ricevuto') return;
+  // Se scelto un magazzino di destinazione specifico, consolida lì TUTTE le
+  // quantità dell'ordine (invece di rispettare la suddivisione Avigliana/Napoli
+  // impostata alla creazione dell'ordine).
+  const override = (document.getElementById('ricevi-dest-mag')||{}).value || '';
   ordineAperto.items.forEach(item => {
     const logoRiceviObj = getLogo(item.logoId);
     getCatPerLogo(logoRiceviObj ? logoRiceviObj.nome : '').forEach(cat => {
       const q = item.quantita[cat.id] || {};
-      MAGAZZINI.forEach(mag => {
-        const qMag = q[mag] || {};
+      if (override) {
         if (cat.taglie) {
           (cat.taglieLista||TAGLIE).forEach(t => {
-            const qty = qMag[t] || 0;
-            if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: t, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
+            const qty = MAGAZZINI.reduce((a,mag) => a + ((q[mag]||{})[t] || 0), 0);
+            if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: t, qty, tipo: 'carico', magazzino: override, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
           });
         } else {
-          const qty = qMag._ || 0;
-          if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: null, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
+          const qty = MAGAZZINI.reduce((a,mag) => a + ((q[mag]||{})._ || 0), 0);
+          if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: null, qty, tipo: 'carico', magazzino: override, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
         }
-      });
+      } else {
+        MAGAZZINI.forEach(mag => {
+          const qMag = q[mag] || {};
+          if (cat.taglie) {
+            (cat.taglieLista||TAGLIE).forEach(t => {
+              const qty = qMag[t] || 0;
+              if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: t, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
+            });
+          } else {
+            const qty = qMag._ || 0;
+            if (qty > 0) { const m = { id: db.nextMovId++, logoId: item.logoId, catId: cat.id, taglia: null, qty, tipo: 'carico', magazzino: mag, ordineId: ordineAperto.id, data: today() }; db.movimenti.push(m); saveMovimento(m); }
+          }
+        });
+      }
     });
   });
   ordineAperto.stato = 'ricevuto';
@@ -3200,7 +3228,8 @@ function riceviOrdine() {
   closeModal('modal-ordine');
   renderOrdini();
   renderDashboard();
-  showToast('Merce ricevuta — stock aggiornato');
+  const destLabel = { avigliana:'Avigliana', napoli:'Napoli', tour:'Adriano On Tour' }[override];
+  showToast(destLabel ? `Merce ricevuta — tutto caricato su ${destLabel}` : 'Merce ricevuta — stock aggiornato');
 }
 
 // ─────────────────────────────────────────────
