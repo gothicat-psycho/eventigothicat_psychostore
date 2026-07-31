@@ -222,6 +222,7 @@
   .flex-1 { flex: 1; }
   .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; }
   #stock-tab-bar { position: sticky; top: var(--topbar-h, 58px); z-index: 40; background: var(--bg); padding: 8px 0 10px; margin: -8px 0 8px; }
+  #stock-search-card { position: sticky; top: calc(var(--topbar-h, 58px) + var(--stock-tabbar-h, 50px)); z-index: 35; }
   .tab-btn { padding: 8px 20px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 500; background: var(--surface); color: var(--text2); transition: all .15s; }
   .tab-btn:hover { background: var(--surface2); }
   .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -589,7 +590,7 @@
         <div class="voice-result-query" id="voice-query"></div>
         <div class="voice-result-answer" id="voice-answer"></div>
       </div>
-      <div class="card">
+      <div class="card" id="stock-search-card">
         <div class="flex-row" style="gap:8px">
           <input id="search-stock" placeholder="Cerca logo..." oninput="renderStock()" style="max-width:260px">
           <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Ricerca vocale — premi e parla" style="width:44px;height:44px;font-size:20px">🎤</button>
@@ -1536,7 +1537,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.2.0'; // aggiornare ad ogni modifica
+const VERSION = '2.2.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2194,7 +2195,7 @@ function showSection(s, el) {
   if (s === 'fornitori')       { if (needsRender('fornitori')) { renderFornitori(); populateFornSelects(); } }
   if (s === 'loghi')           { if (needsRender('loghi')) renderLoghi(); populateFornSelects(); }
   if (s === 'ordini')          { if (needsRender('ordini')) { renderOrdini(); populateFornSelects(); } if (loghiOrdine.length === 0) addLogoOrdine(); if (!ordineInModificaId) document.getElementById('o-data').value = today(); }
-  if (s === 'stock')           { if (needsRender('stock')) { renderStock(); renderStockMetrics(); } populateFornSelects(); }
+  if (s === 'stock')           { if (needsRender('stock')) { renderStock(); renderStockMetrics(); } populateFornSelects(); setTimeout(updateStickyOffsets, 50); }
   if (s === 'stock-accessori') { if (needsRender('accessori')) { renderAccessori(); renderAccMetrics(); } }
   if (s === 'trasferimenti') {
     if (needsRender('trasferimenti')) renderTrasferimenti();
@@ -7346,6 +7347,11 @@ function updateStickyOffsets() {
   if (!topbar) return;
   const h = topbar.offsetHeight;
   if (h > 0) document.documentElement.style.setProperty('--topbar-h', h + 'px');
+  const stockTabBar = document.getElementById('stock-tab-bar');
+  if (stockTabBar) {
+    const th = stockTabBar.offsetHeight;
+    if (th > 0) document.documentElement.style.setProperty('--stock-tabbar-h', th + 'px');
+  }
 }
 updateStickyOffsets();
 window.addEventListener('resize', updateStickyOffsets);
