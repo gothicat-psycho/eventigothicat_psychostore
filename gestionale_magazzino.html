@@ -1075,10 +1075,10 @@
           </div>
           <!-- Scontrino -->
           <div class="cassa-sidebar">
-            <div class="card" style="flex:1;overflow-y:auto;max-height:calc(100vh - 360px)">
+            <div class="card" style="flex:1;display:flex;flex-direction:column;max-height:calc(100vh - 360px);padding-bottom:12px">
               <div class="cassa-step">Scontrino</div>
-              <div id="scontrino-items"><p style="color:var(--text3);font-size:13px">Nessun articolo</p></div>
-              <div class="scontrino-totale">
+              <div id="scontrino-items" style="overflow-y:auto;flex:1;min-height:40px"><p style="color:var(--text3);font-size:13px">Nessun articolo</p></div>
+              <div class="scontrino-totale" style="flex-shrink:0">
                 <span class="label">Totale</span>
                 <span class="value" id="scontrino-totale">€ 0.00</span>
               </div>
@@ -1537,7 +1537,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.3.1'; // aggiornare ad ogni modifica
+const VERSION = '2.4.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -5019,6 +5019,7 @@ function cassaSelAccessorio(catId, btnEl) {
   popup.style.left = left + 'px';
   popup.style.top = top + 'px';
   document.getElementById('logo-popup-overlay').classList.add('open');
+  repositionPopup(); // corregge con l'altezza reale
 
   // store catId for confirm
   popup._accCatId = catId;
@@ -5061,6 +5062,24 @@ function aggiungiAccessorio(catId) {
   chiudiPopup();
   renderScontrino();
   showToast(`${cat ? cat.label : catId} ×${qty} aggiunto`);
+}
+
+// Riposiziona il popup logo/taglie in base alla sua altezza REALE (non stimata),
+// così resta sempre interamente visibile anche quando il contenuto cresce
+// (es. dopo aver selezionato la categoria e comparsa la griglia taglie).
+function repositionPopup() {
+  const popup = document.getElementById('logo-popup');
+  if (!popup || popup.style.display === 'none') return;
+  const margin = 12;
+  const rect = popup.getBoundingClientRect();
+  let top = rect.top;
+  let left = rect.left;
+  if (rect.bottom > window.innerHeight - margin) top = window.innerHeight - rect.height - margin;
+  if (top < margin) top = margin;
+  if (rect.right > window.innerWidth - margin) left = window.innerWidth - rect.width - margin;
+  if (left < margin) left = margin;
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
 }
 
 function cassaSelLogo(logoId, btnEl) {
@@ -5106,6 +5125,7 @@ function cassaSelLogo(logoId, btnEl) {
   popup.style.left = left + 'px';
   popup.style.top = top + 'px';
   document.getElementById('logo-popup-overlay').classList.add('open');
+  repositionPopup(); // corregge con l'altezza reale (la stima iniziale può non essere precisa)
 }
 
 function chiudiPopup() {
@@ -5141,6 +5161,7 @@ function cassaSelCat(catId) {
       <div style="font-size:10px;font-weight:400;margin-top:2px">${s}</div>
     </button>`;
   }).join('');
+  repositionPopup(); // il popup è cresciuto (griglia taglie aggiunta) — riallinealo alla viewport
 }
 
 function cassaSelTaglia(taglia) {
@@ -5216,6 +5237,7 @@ function renderScontrino() {
   const tot = scontrino.reduce((a,i) => a + i.prezzo, 0);
   document.getElementById('scontrino-totale').textContent = fmtValuta(tot);
   document.getElementById('btn-concludi').disabled = false;
+  el.scrollTop = el.scrollHeight; // mostra sempre l'ultimo articolo aggiunto
 }
 
 function cambiaQtyScontrino(id, delta) {
