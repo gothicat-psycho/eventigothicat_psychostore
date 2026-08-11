@@ -1090,7 +1090,7 @@
                 <option value="pos">💳 POS</option>
                 <option value="contanti">💵 Contanti</option>
                 <option value="paypal">🅿️ PayPal</option>
-                <option id="opt-cashless" value="cashless" style="display:none">🪙 Cashless (CZK)</option>
+                <option id="opt-cashless" value="cashless" style="display:none">🪙 Cashless</option>
                 <option value="misto">💵+💳 Misto</option>
               </select>
               <div id="misto-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px">
@@ -1387,7 +1387,7 @@
           <option value="contanti">💵 Contanti</option>
           <option value="pos">💳 POS</option>
           <option value="paypal">🅿️ PayPal</option>
-          <option value="cashless">🪙 Cashless (CZK)</option>
+          <option value="cashless">🪙 Cashless</option>
           <option value="misto">💵+💳 Misto</option>
         </select>
       </div>
@@ -1537,7 +1537,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.4.0'; // aggiornare ad ogni modifica
+const VERSION = '2.4.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -4832,26 +4832,26 @@ function initCassa() {
   }
   // Show CZK selector only for Czech events
   const valutaSel = document.getElementById('cassa-valuta-sel');
+  const nomeUpper = (ev.nome||'').toUpperCase();
+  const isSummerBreeze = nomeUpper.includes('SUMMER BREEZE');
   if (isCzEvent(ev)) {
     valutaSel.style.display = 'flex';
     cassaValuta = 'CZK'; // default CZK per eventi cechi
     setCassaValuta('CZK');
-    // Mostra opzione Cashless solo per eventi CZK
-    const cashlessOpt = document.getElementById('opt-cashless');
-    if (cashlessOpt) cashlessOpt.style.display = 'block';
-    // Per Masters of Rock e Metalfest, il metodo di pagamento di default è Cashless
-    const nomeUpper = (ev.nome||'').toUpperCase();
-    const defaultCashless = nomeUpper.includes('MASTERS OF ROCK') || nomeUpper.includes('METALFEST');
-    const mpEl = document.getElementById('metodo-pagamento');
-    if (defaultCashless && mpEl) mpEl.value = 'cashless';
   } else {
     valutaSel.style.display = 'none';
     cassaValuta = 'EUR';
-    const cashlessOpt = document.getElementById('opt-cashless');
-    if (cashlessOpt) cashlessOpt.style.display = 'none';
-    // Ripristina POS se era cashless
-    const mp = document.getElementById('metodo-pagamento');
-    if (mp && mp.value === 'cashless') mp.value = 'pos';
+  }
+  // Mostra l'opzione Cashless per eventi CZK e per Summer Breeze (cashless in EUR)
+  const cashlessOpt = document.getElementById('opt-cashless');
+  if (cashlessOpt) cashlessOpt.style.display = (isCzEvent(ev) || isSummerBreeze) ? 'block' : 'none';
+  const mpEl = document.getElementById('metodo-pagamento');
+  // Default Cashless per Masters of Rock, Metalfest (CZK) e Summer Breeze (EUR)
+  const defaultCashless = nomeUpper.includes('MASTERS OF ROCK') || nomeUpper.includes('METALFEST') || isSummerBreeze;
+  if (defaultCashless && mpEl) {
+    mpEl.value = 'cashless';
+  } else if (mpEl && mpEl.value === 'cashless') {
+    mpEl.value = 'pos'; // ripristina POS se si cambia evento e non è più cashless-default
   }
   buildLoghiGrid();
   resetCassaSteps();
