@@ -654,6 +654,13 @@
           <span style="font-size:11px;color:var(--text3)">Trova varianti dove lo stock reale è negativo (mostrato come 0) — può causare discrepanze nei trasferimenti</span>
         </div>
         <div id="diagnostica-risultati"></div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Correzione una tantum:</div>
+          <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="apriCorreggiNapoli()">🩹 Correggi doppio conteggio Napoli (14/08)</button>
+          <span style="font-size:11px;color:var(--text3)">Sottrae da Napoli le 201 unità (27 loghi) duplicate per errore nella creazione dello stock Tour</span>
+        </div>
+        <div id="correggi-napoli-content"></div>
       </div>
     </div>
 
@@ -1537,7 +1544,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.4.1'; // aggiornare ad ogni modifica
+const VERSION = '2.4.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1698,7 +1705,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -2082,6 +2089,193 @@ function getStock(logoId, catId, taglia, mag) {
 // un successivo trasferimento o rettifica verso quel magazzino — causando
 // discrepanze apparenti. Questo strumento espone quei saldi senza modificarli.
 // ─────────────────────────────────────────────
+// ── CORREZIONE UNA TANTUM: doppio conteggio Napoli (14/08/2026) ──
+// Prima del 14/08 lo stock "Adriano On Tour" era stato creato aggiungendo
+// quantità che avrebbero dovuto essere SOTTRATTE da Napoli — invece Napoli
+// non era mai stato decrementato, creando un doppio conteggio. Il 14/08
+// l'intero stock Tour è stato spostato su Avigliana. Questi 201 pezzi
+// (27 loghi, 103 varianti) vanno quindi sottratti da Napoli. Dati
+// ricostruiti dai movimenti reali del 14/08 (nota "Trasferimento totale
+// tour → avigliana"): [logoId, catId, taglia, qty].
+const CORREZIONE_NAPOLI_14_08 = [
+  [8,"tshirt_uomo","S",4],
+  [8,"tshirt_uomo","M",5],
+  [8,"canotte","S",1],
+  [9,"tshirt_uomo","S",1],
+  [9,"tshirt_donna","S",1],
+  [9,"tshirt_donna","M",1],
+  [12,"tshirt_uomo","S",2],
+  [12,"tshirt_uomo","M",2],
+  [12,"tshirt_uomo","L",2],
+  [12,"tshirt_uomo","XL",1],
+  [12,"tshirt_uomo","2XL",1],
+  [12,"tshirt_donna","S",1],
+  [12,"tshirt_donna","M",2],
+  [12,"tshirt_donna","L",1],
+  [13,"tshirt_uomo","L",1],
+  [13,"tshirt_uomo","2XL",2],
+  [13,"tshirt_uomo","3XL",1],
+  [14,"tshirt_uomo","XL",1],
+  [14,"tshirt_uomo","2XL",1],
+  [16,"tshirt_uomo","M",1],
+  [16,"tshirt_uomo","L",1],
+  [16,"shoppers",null,10],
+  [17,"tshirt_uomo","L",3],
+  [17,"tshirt_uomo","XL",1],
+  [17,"tshirt_uomo","2XL",1],
+  [17,"tshirt_donna","S",1],
+  [18,"tshirt_uomo","M",3],
+  [18,"tshirt_uomo","L",3],
+  [18,"tshirt_donna","S",2],
+  [18,"tshirt_donna","L",1],
+  [18,"canotte","S",3],
+  [18,"canotte","L",1],
+  [19,"tshirt_uomo","S",2],
+  [20,"tshirt_uomo","L",1],
+  [20,"tshirt_uomo","XL",1],
+  [20,"tshirt_donna","XL",1],
+  [21,"tshirt_uomo","S",1],
+  [21,"tshirt_uomo","M",2],
+  [21,"tshirt_uomo","L",4],
+  [21,"canotte","S",1],
+  [21,"canotte","M",1],
+  [21,"canotte","L",4],
+  [24,"tshirt_uomo","S",1],
+  [24,"tshirt_uomo","M",2],
+  [25,"canotte","S",1],
+  [25,"canotte","M",2],
+  [25,"canotte","L",2],
+  [25,"canotte","XL",1],
+  [26,"tshirt_uomo","S",5],
+  [26,"tshirt_uomo","XL",4],
+  [26,"tshirt_donna","S",3],
+  [26,"tshirt_donna","M",1],
+  [26,"tshirt_donna","L",3],
+  [26,"tshirt_donna","XL",1],
+  [27,"tshirt_uomo","S",4],
+  [27,"tshirt_uomo","XL",4],
+  [27,"tshirt_uomo","2XL",2],
+  [27,"tshirt_donna","S",2],
+  [27,"tshirt_donna","M",2],
+  [29,"tshirt_uomo","S",5],
+  [29,"tshirt_uomo","M",4],
+  [29,"tshirt_uomo","L",4],
+  [29,"tshirt_uomo","XL",4],
+  [29,"tshirt_donna","L",5],
+  [29,"canotte","L",1],
+  [44,"tshirt_uomo","XL",3],
+  [44,"tshirt_donna","S",1],
+  [48,"tshirt_uomo","M",2],
+  [48,"tshirt_uomo","L",1],
+  [49,"tshirt_uomo","L",3],
+  [49,"tshirt_donna","L",1],
+  [55,"tshirt_uomo","2XL",2],
+  [56,"tshirt_uomo","S",1],
+  [56,"tshirt_uomo","M",2],
+  [56,"tshirt_uomo","L",2],
+  [56,"tshirt_uomo","XL",1],
+  [56,"tshirt_uomo","2XL",1],
+  [56,"tshirt_donna","S",1],
+  [56,"tshirt_donna","L",1],
+  [60,"tshirt_uomo","2XL",1],
+  [63,"tshirt_uomo","S",1],
+  [63,"tshirt_donna","S",1],
+  [71,"tshirt_uomo","M",2],
+  [71,"tshirt_uomo","L",1],
+  [71,"tshirt_donna","S",1],
+  [71,"tshirt_donna","L",1],
+  [81,"tshirt_donna","S",2],
+  [81,"tshirt_donna","M",2],
+  [81,"tshirt_donna","L",2],
+  [81,"canotte","S",2],
+  [81,"canotte","M",1],
+  [81,"canotte","L",2],
+  [81,"canotte","XL",1],
+  [83,"tshirt_uomo","S",2],
+  [83,"tshirt_uomo","M",2],
+  [83,"tshirt_donna","S",2],
+  [83,"tshirt_donna","M",2],
+  [83,"tshirt_donna","L",2],
+  [84,"tshirt_uomo","L",2],
+  [84,"tshirt_uomo","XL",1],
+  [84,"canotte","S",1],
+  [84,"canotte","L",1],
+  [84,"canotte","2XL",1],
+];
+
+function apriCorreggiNapoli() {
+  const el = document.getElementById('correggi-napoli-content');
+  if (!el) return;
+  if (db.correzioneNapoli140825) {
+    el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Questa correzione è già stata applicata (da questo o da un altro dispositivo).</div>`;
+    return;
+  }
+  const perLogo = {};
+  CORREZIONE_NAPOLI_14_08.forEach(([logoId, catId, taglia, qty]) => {
+    if (!perLogo[logoId]) perLogo[logoId] = { tot: 0, righe: [] };
+    perLogo[logoId].tot += qty;
+    perLogo[logoId].righe.push({ catId, taglia, qty });
+  });
+  const totGenerale = CORREZIONE_NAPOLI_14_08.reduce((a,r) => a+r[3], 0);
+  const righeHtml = Object.keys(perLogo).sort((a,b) => {
+    const la = getLogo(parseInt(a))?.nome || ''; const lb = getLogo(parseInt(b))?.nome || '';
+    return la.localeCompare(lb,'it');
+  }).map(logoId => {
+    const logo = getLogo(parseInt(logoId));
+    const info = perLogo[logoId];
+    const dettaglio = info.righe.map(r => {
+      const cat = getCat(r.catId);
+      return `${cat?.label||r.catId}${r.taglia?' '+r.taglia:''}: ${r.qty}`;
+    }).join(' · ');
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <strong>${logo?.nome||'Logo #'+logoId}</strong> (${info.tot} pz)<br>
+      <span style="color:var(--text3)">${dettaglio}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="margin-top:10px;padding:14px 16px;background:#FCEBEB;border-radius:var(--radius-lg);border:1px solid #E8A5A5">
+    <div style="font-weight:700;color:#791F1F;margin-bottom:8px">⚠️ Conferma correzione: sottrarre ${totGenerale} pz da Napoli (${Object.keys(perLogo).length} loghi)</div>
+    <div style="max-height:300px;overflow-y:auto;margin-bottom:12px;background:var(--surface);border-radius:var(--radius);padding:0 10px">${righeHtml}</div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Verrà scaricato automaticamente un backup di sicurezza prima di procedere.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="document.getElementById('correggi-napoli-content').innerHTML=''">Annulla</button>
+      <button class="btn btn-sm btn-danger" onclick="eseguiCorreggiNapoli()">Conferma — sottrai da Napoli</button>
+    </div>
+  </div>`;
+}
+
+async function eseguiCorreggiNapoli() {
+  if (db.correzioneNapoli140825) { showToast('Correzione già applicata in precedenza'); return; }
+  const totGenerale = CORREZIONE_NAPOLI_14_08.reduce((a,r) => a+r[3], 0);
+  const nLoghi = new Set(CORREZIONE_NAPOLI_14_08.map(r => r[0])).size;
+  if (!confirm(`Confermi di voler sottrarre ${totGenerale} pz da Napoli su ${nLoghi} loghi?\n\nVerrà scaricato prima un backup di sicurezza.`)) return;
+
+  scaricaBackupLocale(true);
+  await new Promise(r => setTimeout(r, 600)); // lascia partire il download prima di modificare i dati
+
+  const nuoviMov = CORREZIONE_NAPOLI_14_08.map(([logoId, catId, taglia, qty]) => ({
+    id: db.nextMovId++, logoId, catId, taglia, qty,
+    tipo: 'scarico', magazzino: 'napoli',
+    data: today(), note: 'Correzione doppio conteggio (creazione Tour non scalata da Napoli)',
+  }));
+  db.movimenti.push(...nuoviMov);
+  db.correzioneNapoli140825 = true;
+  invalidateStockIndex();
+  renderStock();
+
+  const el = document.getElementById('correggi-napoli-content');
+  if (el) el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius);font-size:13px">Salvataggio in corso...</div>`;
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId, correzioneNapoli140825: true });
+    if (el) el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Correzione applicata: ${nuoviMov.length} movimenti di scarico creati su Napoli (${totGenerale} pz, ${nLoghi} loghi).</div>`;
+    showToast('✓ Napoli corretto — 201 pz sottratti');
+  } catch(e) {
+    console.error('Errore correzione Napoli:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
+}
+
 function diagnosticaSaldiNegativi() {
   _ensureStockIndex();
   const problemi = [];
