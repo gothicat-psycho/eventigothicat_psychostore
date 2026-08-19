@@ -397,6 +397,14 @@
     </div>
     <button class="btn btn-sm" style="background:#DC2626;color:#fff;border-color:#DC2626" onclick="ritentaPendingSales()">🔄 Riprova ora</button>
   </div>
+  <div id="pending-mov-banner" style="display:none;background:#FEF3C7;border-bottom:2px solid #D97706;padding:10px 20px;align-items:center;gap:12px;position:sticky;top:0;z-index:199">
+    <span style="font-size:20px">⚠️</span>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:13px;color:#92400E" id="pending-mov-title">Modifiche di stock non sincronizzate!</div>
+      <div style="font-size:12px;color:#B45309">Rettifiche, trasferimenti o ricezioni ordini in attesa di salvataggio — controlla la connessione.</div>
+    </div>
+    <button class="btn btn-sm" style="background:#D97706;color:#fff;border-color:#D97706" onclick="ritentaPendingMovimenti()">🔄 Riprova ora</button>
+  </div>
   <div class="content">
 
     <!-- DASHBOARD -->
@@ -661,6 +669,13 @@
           <span style="font-size:11px;color:var(--text3)">Sottrae da Napoli le 201 unità (27 loghi) duplicate per errore nella creazione dello stock Tour</span>
         </div>
         <div id="correggi-napoli-content"></div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Completamento correzione:</div>
+          <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="apriCompletaCorrezioneNapoli()">🩹 Completa correzione Napoli — 67 righe mancanti</button>
+          <span style="font-size:11px;color:var(--text3)">La correzione del 15/08 si era salvata solo parzialmente (36 righe su 103) — sottrae le restanti 147 unità mancanti</span>
+        </div>
+        <div id="completa-correzione-napoli-content"></div>
       </div>
     </div>
 
@@ -1544,7 +1559,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.4.2'; // aggiornare ad ogni modifica
+const VERSION = '2.5.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1705,7 +1720,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -1961,14 +1976,84 @@ function saveVendita(v) {
   return VEND_COL.doc(String(v.id)).set(v).catch(e => console.error('saveVendita:', e));
 }
 
-// Salva singolo movimento — non bloccante
+// ─────────────────────────────────────────────
+// CODA DI SICUREZZA MOVIMENTI (rettifiche, trasferimenti, ricezioni ordine)
+// Come la coda vendite, ma per i movimenti di magazzino: se il salvataggio
+// fallisce (offline, connessione instabile), il movimento NON va perso —
+// resta in coda e viene ritentato automaticamente appena possibile.
+// ─────────────────────────────────────────────
+const PENDING_MOV_KEY = 'gothicat_pending_movimenti';
+
+function getPendingMovimenti() {
+  try { return JSON.parse(localStorage.getItem(PENDING_MOV_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function setPendingMovimenti(list) {
+  localStorage.setItem(PENDING_MOV_KEY, JSON.stringify(list));
+  updatePendingMovBanner();
+}
+
+function addPendingMovimento(m) {
+  const list = getPendingMovimenti();
+  if (!list.find(x => x.id === m.id)) list.push(m);
+  setPendingMovimenti(list);
+}
+
+function removePendingMovimento(id) {
+  const list = getPendingMovimenti();
+  if (list.length === 0) return;
+  setPendingMovimenti(list.filter(x => x.id !== id));
+}
+
+function updatePendingMovBanner() {
+  const list = getPendingMovimenti();
+  const banner = document.getElementById('pending-mov-banner');
+  if (!banner) return;
+  if (list.length === 0) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  document.getElementById('pending-mov-title').textContent =
+    `${list.length} modifica${list.length>1?'/che':''} di stock non sincronizzata${list.length>1?'/e':''}!`;
+}
+
+async function ritentaPendingMovimenti() {
+  const list = getPendingMovimenti();
+  if (list.length === 0) return;
+  showToast(`Tentativo di sincronizzazione di ${list.length} movimento/i...`);
+  for (const m of list) {
+    try {
+      await MOV_COL.doc(String(m.id)).set(m);
+      removePendingMovimento(m.id);
+    } catch(e) {
+      console.error('Ritento fallito per movimento', m.id, e);
+    }
+  }
+  const stillPending = getPendingMovimenti();
+  if (stillPending.length === 0) showToast('✓ Tutte le modifiche di stock sincronizzate correttamente');
+  else showToast(`⚠️ ${stillPending.length} modifica/che ancora non sincronizzata/e`);
+}
+
+// Riprova automaticamente ogni 15 secondi se ci sono movimenti pendenti
+setInterval(() => {
+  if (getPendingMovimenti().length > 0 && navigator.onLine) ritentaPendingMovimenti();
+}, 15000);
+window.addEventListener('online', () => {
+  if (getPendingMovimenti().length > 0) ritentaPendingMovimenti();
+});
+
+// Salva singolo movimento. In caso di fallimento (offline, errore rete) il
+// movimento viene accodato per il ripescaggio automatico — non va più perso.
 function saveMovimento(m) {
-  return MOV_COL.doc(String(m.id)).set(m).catch(e => console.error('saveMovimento:', e));
+  return MOV_COL.doc(String(m.id)).set(m)
+    .then(() => { removePendingMovimento(m.id); })
+    .catch(e => { console.error('saveMovimento:', e); addPendingMovimento(m); });
 }
 
 // Salva molti movimenti in batch (max 500 per batch, limite Firestore).
 // Molto più efficiente di N scritture singole per operazioni massive
-// (azzeramento stock, trasferimenti totali, ecc.).
+// (azzeramento stock, trasferimenti totali, ecc.). Se un batch fallisce,
+// i movimenti coinvolti vengono accodati per il ripescaggio automatico
+// (il commit è atomico: o va tutto a buon fine o niente in quel chunk).
 async function saveMovimentiBatch(movimenti) {
   const CHUNK = 450; // sotto il limite di 500 per sicurezza
   for (let i = 0; i < movimenti.length; i += CHUNK) {
@@ -1977,8 +2062,10 @@ async function saveMovimentiBatch(movimenti) {
     slice.forEach(m => batch.set(MOV_COL.doc(String(m.id)), m));
     try {
       await batch.commit();
+      slice.forEach(m => removePendingMovimento(m.id));
     } catch(e) {
       console.error('saveMovimentiBatch:', e);
+      slice.forEach(m => addPendingMovimento(m));
       throw e; // propaga per gestire l'errore a monte
     }
   }
@@ -2272,6 +2359,154 @@ async function eseguiCorreggiNapoli() {
     showToast('✓ Napoli corretto — 201 pz sottratti');
   } catch(e) {
     console.error('Errore correzione Napoli:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
+}
+
+// ── COMPLETAMENTO CORREZIONE NAPOLI: le 67 righe che non erano state salvate ──
+// La correzione del 15/08 (CORREZIONE_NAPOLI_14_08, 103 righe) si era salvata
+// solo parzialmente: verificando il backup del 19/08 risultano salvate solo
+// 36 righe su 103. Queste 67 righe (147 pezzi) sono quelle mancanti,
+// ricalcolate per differenza rispetto ai movimenti realmente presenti.
+const COMPLETAMENTO_NAPOLI_67 = [
+  [8,"tshirt_uomo","S",4],
+  [8,"tshirt_uomo","M",5],
+  [8,"canotte","S",1],
+  [9,"tshirt_uomo","S",1],
+  [9,"tshirt_donna","S",1],
+  [9,"tshirt_donna","M",1],
+  [12,"tshirt_uomo","S",2],
+  [12,"tshirt_uomo","M",2],
+  [12,"tshirt_uomo","L",2],
+  [12,"tshirt_uomo","XL",1],
+  [12,"tshirt_uomo","2XL",1],
+  [12,"tshirt_donna","S",1],
+  [12,"tshirt_donna","M",2],
+  [12,"tshirt_donna","L",1],
+  [13,"tshirt_uomo","L",1],
+  [13,"tshirt_uomo","2XL",2],
+  [13,"tshirt_uomo","3XL",1],
+  [14,"tshirt_uomo","XL",1],
+  [14,"tshirt_uomo","2XL",1],
+  [16,"tshirt_uomo","M",1],
+  [16,"tshirt_uomo","L",1],
+  [16,"shoppers",null,10],
+  [17,"tshirt_uomo","L",3],
+  [17,"tshirt_uomo","XL",1],
+  [17,"tshirt_uomo","2XL",1],
+  [17,"tshirt_donna","S",1],
+  [18,"tshirt_uomo","M",3],
+  [18,"tshirt_uomo","L",3],
+  [18,"tshirt_donna","S",2],
+  [18,"tshirt_donna","L",1],
+  [18,"canotte","S",3],
+  [18,"canotte","L",1],
+  [19,"tshirt_uomo","S",2],
+  [20,"tshirt_uomo","L",1],
+  [20,"tshirt_uomo","XL",1],
+  [20,"tshirt_donna","XL",1],
+  [21,"tshirt_uomo","S",1],
+  [21,"tshirt_uomo","M",2],
+  [21,"tshirt_uomo","L",4],
+  [21,"canotte","S",1],
+  [21,"canotte","M",1],
+  [21,"canotte","L",4],
+  [24,"tshirt_uomo","S",1],
+  [24,"tshirt_uomo","M",2],
+  [25,"canotte","S",1],
+  [25,"canotte","M",2],
+  [25,"canotte","L",2],
+  [25,"canotte","XL",1],
+  [26,"tshirt_uomo","S",5],
+  [26,"tshirt_uomo","XL",4],
+  [26,"tshirt_donna","S",3],
+  [26,"tshirt_donna","M",1],
+  [26,"tshirt_donna","L",3],
+  [26,"tshirt_donna","XL",1],
+  [27,"tshirt_uomo","S",4],
+  [27,"tshirt_uomo","XL",4],
+  [27,"tshirt_uomo","2XL",2],
+  [27,"tshirt_donna","S",2],
+  [27,"tshirt_donna","M",2],
+  [29,"tshirt_uomo","S",5],
+  [29,"tshirt_uomo","M",4],
+  [29,"tshirt_uomo","L",4],
+  [29,"tshirt_uomo","XL",4],
+  [29,"tshirt_donna","L",5],
+  [29,"canotte","L",1],
+  [44,"tshirt_uomo","XL",3],
+  [44,"tshirt_donna","S",1],
+];
+
+function apriCompletaCorrezioneNapoli() {
+  const el = document.getElementById('completa-correzione-napoli-content');
+  if (!el) return;
+  if (db.completamentoNapoli67) {
+    el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Il completamento è già stato applicato (da questo o da un altro dispositivo).</div>`;
+    return;
+  }
+  const perLogo = {};
+  COMPLETAMENTO_NAPOLI_67.forEach(([logoId, catId, taglia, qty]) => {
+    if (!perLogo[logoId]) perLogo[logoId] = { tot: 0, righe: [] };
+    perLogo[logoId].tot += qty;
+    perLogo[logoId].righe.push({ catId, taglia, qty });
+  });
+  const totGenerale = COMPLETAMENTO_NAPOLI_67.reduce((a,r) => a+r[3], 0);
+  const righeHtml = Object.keys(perLogo).sort((a,b) => {
+    const la = getLogo(parseInt(a))?.nome || ''; const lb = getLogo(parseInt(b))?.nome || '';
+    return la.localeCompare(lb,'it');
+  }).map(logoId => {
+    const logo = getLogo(parseInt(logoId));
+    const info = perLogo[logoId];
+    const dettaglio = info.righe.map(r => {
+      const cat = getCat(r.catId);
+      return `${cat?.label||r.catId}${r.taglia?' '+r.taglia:''}: ${r.qty}`;
+    }).join(' · ');
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <strong>${logo?.nome||'Logo #'+logoId}</strong> (${info.tot} pz)<br>
+      <span style="color:var(--text3)">${dettaglio}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="margin-top:10px;padding:14px 16px;background:#FCEBEB;border-radius:var(--radius-lg);border:1px solid #E8A5A5">
+    <div style="font-weight:700;color:#791F1F;margin-bottom:8px">⚠️ Conferma completamento: sottrarre altri ${totGenerale} pz da Napoli (${Object.keys(perLogo).length} loghi)</div>
+    <div style="max-height:300px;overflow-y:auto;margin-bottom:12px;background:var(--surface);border-radius:var(--radius);padding:0 10px">${righeHtml}</div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Verrà scaricato automaticamente un backup di sicurezza prima di procedere.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="document.getElementById('completa-correzione-napoli-content').innerHTML=''">Annulla</button>
+      <button class="btn btn-sm btn-danger" onclick="eseguiCompletaCorrezioneNapoli()">Conferma — sottrai da Napoli</button>
+    </div>
+  </div>`;
+}
+
+async function eseguiCompletaCorrezioneNapoli() {
+  if (db.completamentoNapoli67) { showToast('Completamento già applicato in precedenza'); return; }
+  const totGenerale = COMPLETAMENTO_NAPOLI_67.reduce((a,r) => a+r[3], 0);
+  const nLoghi = new Set(COMPLETAMENTO_NAPOLI_67.map(r => r[0])).size;
+  if (!confirm(`Confermi di voler sottrarre altri ${totGenerale} pz da Napoli su ${nLoghi} loghi?\n\nVerrà scaricato prima un backup di sicurezza.`)) return;
+
+  scaricaBackupLocale(true);
+  await new Promise(r => setTimeout(r, 600));
+
+  const nuoviMov = COMPLETAMENTO_NAPOLI_67.map(([logoId, catId, taglia, qty]) => ({
+    id: db.nextMovId++, logoId, catId, taglia, qty,
+    tipo: 'scarico', magazzino: 'napoli',
+    data: today(), note: 'Completamento correzione doppio conteggio (parte mancante del 15/08)',
+  }));
+  db.movimenti.push(...nuoviMov);
+  db.completamentoNapoli67 = true;
+  invalidateStockIndex();
+  renderStock();
+
+  const el = document.getElementById('completa-correzione-napoli-content');
+  if (el) el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius);font-size:13px">Salvataggio in corso...</div>`;
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId, completamentoNapoli67: true });
+    if (el) el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Completamento applicato: ${nuoviMov.length} movimenti di scarico creati su Napoli (${totGenerale} pz, ${nLoghi} loghi).</div>`;
+    showToast('✓ Correzione Napoli completata — 147 pz sottratti');
+  } catch(e) {
+    console.error('Errore completamento correzione Napoli:', e);
     showSyncStatus('⚠️ Errore salvataggio — riprova', true);
   }
 }
@@ -5721,6 +5956,7 @@ function initConnMonitor() {
     // Firestore riprende la sync automaticamente — avvisiamo l'utente
     showToast('🟢 Connessione ripristinata — dati in sincronizzazione');
     if (getPendingSales().length > 0) ritentaPendingSales();
+    if (getPendingMovimenti().length > 0) ritentaPendingMovimenti();
   });
   window.addEventListener('offline', () => {
     updateNetStatus();
@@ -6740,7 +6976,9 @@ function completaAccesso(email, adminMode) {
   avviaListeners();
   initConnMonitor();
   updatePendingBanner();
+  updatePendingMovBanner();
   if (getPendingSales().length > 0) ritentaPendingSales();
+  if (getPendingMovimenti().length > 0) ritentaPendingMovimenti();
   loadDB().then(() => {
     renderDashboard();
     showSection(adminMode ? 'dashboard' : 'dashboard', document.querySelector('.nav-item'));
