@@ -1559,7 +1559,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.5.0'; // aggiornare ad ogni modifica
+const VERSION = '2.5.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1720,7 +1720,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67','trasferimenti','nextTrId'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -2135,20 +2135,15 @@ function _buildStockIndex() {
     add(`${m.logoId}|${m.catId}|${tg}|${mag}`, delta);
     add(`${m.logoId}|${m.catId}|${tg}|*`, delta);
   });
-  (db.trasferimenti||[]).forEach(tr => {
-    (tr.items||[]).forEach(it => {
-      const tg = it.taglia || '_';
-      const da = tr.da || 'avigliana';
-      const a = tr.a || 'napoli';
-      add(`${it.logoId}|${it.catId}|${tg}|${da}`, -it.qty);
-      add(`${it.logoId}|${it.catId}|${tg}|${a}`, it.qty);
-    });
-  });
+  // NOTA: db.trasferimenti NON entra più nel calcolo dello stock — da questa
+  // versione ogni trasferimento crea movimenti veri (scarico+carico) in
+  // db.movimenti, già conteggiati sopra. db.trasferimenti resta solo come
+  // log leggibile per la tabella "Storico trasferimenti" (renderTrasferimenti).
   _stockIndex = idx;
 }
 
 function _ensureStockIndex() {
-  const hash = (db.movimenti||[]).length + '|' + (db.nextMovId||0) + '|' + (db.trasferimenti||[]).length;
+  const hash = (db.movimenti||[]).length + '|' + (db.nextMovId||0);
   if (_stockIndex === null || _stockIndexHash !== hash) {
     _buildStockIndex();
     _stockIndexHash = hash;
@@ -4082,7 +4077,7 @@ async function salvaTrasferimento() {
   const da = document.getElementById('tr-da').value;
   const a = document.getElementById('tr-a').value;
   const data = document.getElementById('tr-data').value || today();
-  const note = document.getElementById('tr-note').value.trim();
+  const note = document.getElementById('tr-note').value.trim() || `Trasferimento ${da} → ${a}`;
   if (da === a) { showToast('I magazzini di origine e destinazione devono essere diversi', 'red'); return; }
   if (trItems.length === 0) { showToast('Aggiungi almeno un articolo', 'red'); return; }
   for (const it of trItems) {
@@ -4093,6 +4088,21 @@ async function salvaTrasferimento() {
       showToast(`Stock insufficiente a ${da} per ${l?l.nome:'?'} ${it.catId} ${it.taglia}`, 'red'); return;
     }
   }
+
+  // Crea movimenti VERI (scarico + carico) per ogni articolo — non più la
+  // vecchia struttura db.trasferimenti, che non veniva mai salvata su Firebase.
+  const nuoviMov = [];
+  trItems.forEach(it => {
+    const logoId = parseInt(it.logoId);
+    const taglia = it.taglia === '_' ? null : (it.taglia || null);
+    const mOut = { id: db.nextMovId++, logoId, catId: it.catId, taglia, qty: it.qty, tipo: 'scarico', magazzino: da, data, note };
+    const mIn  = { id: db.nextMovId++, logoId, catId: it.catId, taglia, qty: it.qty, tipo: 'carico', magazzino: a, data, note };
+    db.movimenti.push(mOut, mIn);
+    nuoviMov.push(mOut, mIn);
+  });
+
+  // Mantiene anche lo storico "leggibile" in db.trasferimenti (solo per la
+  // tabella di riepilogo) — questa volta salvato correttamente.
   if (!db.trasferimenti) db.trasferimenti = [];
   if (!db.nextTrId) db.nextTrId = 1;
   db.trasferimenti.push({
@@ -4103,14 +4113,25 @@ async function salvaTrasferimento() {
       qty: it.qty
     }))
   });
-  await saveDBFields({ nextMovId: db.nextMovId });
-  trItems = [];
-  document.getElementById('tr-da').value = 'avigliana';
-  document.getElementById('tr-a').value = 'napoli';
-  document.getElementById('tr-note').value = '';
-  addTrItem();
+
+  invalidateStockIndex();
+  renderStock();
   renderTrasferimenti();
-  showToast('Trasferimento eseguito');
+  showToast('Salvataggio in corso...');
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId, nextTrId: db.nextTrId, trasferimenti: db.trasferimenti });
+    trItems = [];
+    document.getElementById('tr-da').value = 'avigliana';
+    document.getElementById('tr-a').value = 'napoli';
+    document.getElementById('tr-note').value = '';
+    addTrItem();
+    showToast('✓ Trasferimento eseguito e salvato');
+  } catch(e) {
+    console.error('Errore salvataggio trasferimento:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
 }
 
 // ─────────────────────────────────────────────
