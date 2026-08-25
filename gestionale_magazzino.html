@@ -676,6 +676,13 @@
           <span style="font-size:11px;color:var(--text3)">La correzione del 15/08 si era salvata solo parzialmente (36 righe su 103) — sottrae le restanti 147 unità mancanti</span>
         </div>
         <div id="completa-correzione-napoli-content"></div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text2)">Completamento trasferimento:</div>
+          <button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="apriPuliziaTourResiduo()">🩹 Sposta ad Avigliana il residuo Tour (32 pz)</button>
+          <span style="font-size:11px;color:var(--text3)">Il trasferimento del 21/08 aveva lasciato indietro 13 varianti (6 loghi) caricate su Tour poco prima</span>
+        </div>
+        <div id="pulizia-tour-residuo-content"></div>
       </div>
     </div>
 
@@ -1559,7 +1566,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.5.1'; // aggiornare ad ogni modifica
+const VERSION = '2.6.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1720,7 +1727,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67','trasferimenti','nextTrId'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67','trasferimenti','nextTrId','puliziaTourResiduo0821'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -2502,6 +2509,103 @@ async function eseguiCompletaCorrezioneNapoli() {
     showToast('✓ Correzione Napoli completata — 147 pz sottratti');
   } catch(e) {
     console.error('Errore completamento correzione Napoli:', e);
+    showSyncStatus('⚠️ Errore salvataggio — riprova', true);
+  }
+}
+
+// ── PULIZIA RESIDUO TOUR: 32 pz rimasti indietro nel trasferimento del 21/08 ──
+// Il 19/08 è stato caricato stock su Tour (trasferimento da Napoli). Il
+// 21/08 lo strumento "Sposta TUTTO lo stock" ha spostato il Tour su
+// Avigliana, ma usando dati non ancora aggiornati dal server ha lasciato
+// indietro queste 13 varianti (6 loghi), caricate poco prima. Questo
+// strumento completa lo spostamento: crea scarico Tour + carico Avigliana
+// per ciascuna, esattamente come avrebbe dovuto fare l'operazione originale.
+const PULIZIA_TOUR_RESIDUO = [
+  [1,"tshirt_uomo","S",1],
+  [18,"tshirt_uomo","2XL",1],
+  [18,"tshirt_uomo","L",8],
+  [18,"tshirt_uomo","M",1],
+  [18,"tshirt_uomo","XL",6],
+  [19,"tshirt_uomo","2XL",2],
+  [19,"tshirt_uomo","L",2],
+  [19,"tshirt_uomo","XL",2],
+  [21,"tshirt_uomo","XL",3],
+  [26,"tshirt_uomo","2XL",3],
+  [26,"tshirt_uomo","3XL",1],
+  [48,"tshirt_uomo","2XL",1],
+  [48,"tshirt_uomo","XL",1],
+];
+
+function apriPuliziaTourResiduo() {
+  const el = document.getElementById('pulizia-tour-residuo-content');
+  if (!el) return;
+  if (db.puliziaTourResiduo0821) {
+    el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Questo completamento è già stato applicato (da questo o da un altro dispositivo).</div>`;
+    return;
+  }
+  const perLogo = {};
+  PULIZIA_TOUR_RESIDUO.forEach(([logoId, catId, taglia, qty]) => {
+    if (!perLogo[logoId]) perLogo[logoId] = { tot: 0, righe: [] };
+    perLogo[logoId].tot += qty;
+    perLogo[logoId].righe.push({ catId, taglia, qty });
+  });
+  const totGenerale = PULIZIA_TOUR_RESIDUO.reduce((a,r) => a+r[3], 0);
+  const righeHtml = Object.keys(perLogo).sort((a,b) => {
+    const la = getLogo(parseInt(a))?.nome || ''; const lb = getLogo(parseInt(b))?.nome || '';
+    return la.localeCompare(lb,'it');
+  }).map(logoId => {
+    const logo = getLogo(parseInt(logoId));
+    const info = perLogo[logoId];
+    const dettaglio = info.righe.map(r => {
+      const cat = getCat(r.catId);
+      return `${cat?.label||r.catId}${r.taglia?' '+r.taglia:''}: ${r.qty}`;
+    }).join(' · ');
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <strong>${logo?.nome||'Logo #'+logoId}</strong> (${info.tot} pz)<br>
+      <span style="color:var(--text3)">${dettaglio}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="margin-top:10px;padding:14px 16px;background:#FCEBEB;border-radius:var(--radius-lg);border:1px solid #E8A5A5">
+    <div style="font-weight:700;color:#791F1F;margin-bottom:8px">⚠️ Conferma: sposta ${totGenerale} pz da Tour ad Avigliana (${Object.keys(perLogo).length} loghi)</div>
+    <div style="max-height:300px;overflow-y:auto;margin-bottom:12px;background:var(--surface);border-radius:var(--radius);padding:0 10px">${righeHtml}</div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Verrà scaricato automaticamente un backup di sicurezza prima di procedere.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="document.getElementById('pulizia-tour-residuo-content').innerHTML=''">Annulla</button>
+      <button class="btn btn-sm btn-danger" onclick="eseguiPuliziaTourResiduo()">Conferma — sposta ad Avigliana</button>
+    </div>
+  </div>`;
+}
+
+async function eseguiPuliziaTourResiduo() {
+  if (db.puliziaTourResiduo0821) { showToast('Completamento già applicato in precedenza'); return; }
+  const totGenerale = PULIZIA_TOUR_RESIDUO.reduce((a,r) => a+r[3], 0);
+  const nLoghi = new Set(PULIZIA_TOUR_RESIDUO.map(r => r[0])).size;
+  if (!confirm(`Confermi di voler spostare ${totGenerale} pz da Tour ad Avigliana su ${nLoghi} loghi?\n\nVerrà scaricato prima un backup di sicurezza.`)) return;
+
+  scaricaBackupLocale(true);
+  await new Promise(r => setTimeout(r, 600));
+
+  const nuoviMov = [];
+  PULIZIA_TOUR_RESIDUO.forEach(([logoId, catId, taglia, qty]) => {
+    const mOut = { id: db.nextMovId++, logoId, catId, taglia, qty, tipo: 'scarico', magazzino: 'tour', data: today(), note: 'Completamento trasferimento tour → avigliana (residuo 21/08)' };
+    const mIn  = { id: db.nextMovId++, logoId, catId, taglia, qty, tipo: 'carico', magazzino: 'avigliana', data: today(), note: 'Completamento trasferimento tour → avigliana (residuo 21/08)' };
+    db.movimenti.push(mOut, mIn);
+    nuoviMov.push(mOut, mIn);
+  });
+  db.puliziaTourResiduo0821 = true;
+  invalidateStockIndex();
+  renderStock();
+
+  const el = document.getElementById('pulizia-tour-residuo-content');
+  if (el) el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius);font-size:13px">Salvataggio in corso...</div>`;
+
+  try {
+    await saveMovimentiBatch(nuoviMov);
+    await saveDBFields({ nextMovId: db.nextMovId, puliziaTourResiduo0821: true });
+    if (el) el.innerHTML = `<div style="margin-top:10px;padding:10px 14px;background:#EAF3DE;border-radius:var(--radius);color:#27500A;font-size:13px">✓ Completato: ${totGenerale} pz spostati da Tour ad Avigliana (${nLoghi} loghi).</div>`;
+    showToast('✓ Tour ripulito — 32 pz spostati ad Avigliana');
+  } catch(e) {
+    console.error('Errore pulizia residuo Tour:', e);
     showSyncStatus('⚠️ Errore salvataggio — riprova', true);
   }
 }
@@ -4442,6 +4546,24 @@ function apriReportSnapshot(eventoId) {
 }
 
 // Reminder nel rientro post-evento
+// Ricarica SOLO i movimenti, direttamente dal server (bypassando la cache
+// locale). Usata prima delle operazioni "Sposta TUTTO" / "Sposta tutto il
+// logo", che altrimenti potrebbero basarsi su uno stock non aggiornato se il
+// dispositivo non aveva ancora ricevuto gli ultimi movimenti fatti altrove
+// (es. da un altro dispositivo) — lasciando alcuni articoli indietro pur
+// dichiarando l'operazione riuscita.
+async function refreshMovimentiFreschi() {
+  try {
+    const movSnap = await MOV_COL.orderBy('id').get({ source: 'server' });
+    db.movimenti = movSnap.docs.map(d => d.data());
+    invalidateStockIndex();
+    return true;
+  } catch(e) {
+    console.error('Impossibile aggiornare i movimenti dal server:', e);
+    return false;
+  }
+}
+
 async function trasferimentoLogo() {
   const da = document.getElementById('tr-da').value;
   const a = document.getElementById('tr-a').value;
@@ -4455,6 +4577,12 @@ async function trasferimentoLogo() {
   const logo = getLogo(logoId);
   if (!logo) { showToast('Logo non trovato'); return; }
   const note = document.getElementById('tr-note').value.trim() || `Trasferimento logo ${logo.nome}: ${da} → ${a}`;
+
+  // Aggiorna lo stock dal server PRIMA di calcolare cosa spostare, per non
+  // rischiare di lasciare indietro articoli caricati di recente da un altro dispositivo.
+  showToast('Verifica stock aggiornato...');
+  const ok = await refreshMovimentiFreschi();
+  if (!ok && !confirm('Non è stato possibile verificare lo stock più recente dal server (sei offline?).\n\nProcedere comunque con i dati attualmente disponibili su questo dispositivo? Rischi di lasciare indietro articoli caricati altrove di recente.')) return;
 
   // Raccoglie tutto lo stock > 0 del logo nel magazzino di partenza
   const items = [];
@@ -4509,6 +4637,12 @@ async function trasferimentoTotale() {
   if (da === a) { showToast('I magazzini di partenza e destinazione devono essere diversi'); return; }
 
   const magLabel = m => m === 'tour' ? '🎒 Adriano On Tour' : m.charAt(0).toUpperCase() + m.slice(1);
+
+  // Aggiorna lo stock dal server PRIMA di calcolare cosa spostare, per non
+  // rischiare di lasciare indietro articoli caricati di recente da un altro dispositivo.
+  showToast('Verifica stock aggiornato...');
+  const okRefresh = await refreshMovimentiFreschi();
+  if (!okRefresh && !confirm('Non è stato possibile verificare lo stock più recente dal server (sei offline?).\n\nProcedere comunque con i dati attualmente disponibili su questo dispositivo? Rischi di lasciare indietro articoli caricati altrove di recente.')) return;
 
   // Raccoglie tutto lo stock > 0 nel magazzino di partenza
   const items = [];
