@@ -1577,7 +1577,7 @@ const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
 // stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
 const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
-const VERSION = '2.9.1'; // aggiornare ad ogni modifica
+const VERSION = '2.9.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -4830,7 +4830,7 @@ async function trasferimentoTotale() {
   renderStock();
   renderTrasferimenti();
   renderTourGrid();
-  renderAccessori();
+  accItems.forEach(it => aggiornaCellaStockAccessori(it.catId));
   renderAccTour();
   showToast(`Salvataggio di ${nuoviMov.length} movimenti...`);
 
@@ -4908,7 +4908,7 @@ async function rientroRapido(destinazione) {
 
   invalidateStockIndex();
   renderTrasferimenti();
-  renderAccessori();
+  accItems.forEach(it => aggiornaCellaStockAccessori(it.catId));
   renderAccTour();
   showToast(`Salvataggio di ${nuoviMov.length} movimenti...`);
 
@@ -6945,21 +6945,42 @@ function renderAccessori() {
       <td style="padding:10px 12px;font-weight:600">${c.label}</td>
       <td style="padding:10px 12px;text-align:center"><input type="number" min="0" step="0.01" value="${p.costo||''}" placeholder="0.00" id="acc-costo-${c.id}" style="width:90px;text-align:center"></td>
       <td style="padding:10px 12px;text-align:center"><input type="number" min="0" step="0.01" value="${p.prezzo||''}" placeholder="0.00" id="acc-prezzo-${c.id}" style="width:90px;text-align:center"></td>
-      <td style="padding:10px 12px;text-align:center">
+      <td style="padding:10px 12px;text-align:center" id="acc-stockcell-${c.id}-avigliana">
         <div class="stock-cell editable ${getStockClass(sAvg,0)}" style="display:inline-block;min-width:50px;cursor:pointer"
           title="Clicca per modificare" onclick="rettificaAccStock('${c.id}','avigliana',this)">${sAvg}</div>
       </td>
-      <td style="padding:10px 12px;text-align:center">
+      <td style="padding:10px 12px;text-align:center" id="acc-stockcell-${c.id}-napoli">
         <div class="stock-cell editable ${getStockClass(sNap,0)}" style="display:inline-block;min-width:50px;cursor:pointer"
           title="Clicca per modificare" onclick="rettificaAccStock('${c.id}','napoli',this)">${sNap}</div>
       </td>
-      <td style="padding:10px 12px;text-align:center">
+      <td style="padding:10px 12px;text-align:center" id="acc-stockcell-${c.id}-tour">
         <div class="stock-cell editable ${getStockClass(sTour,0)}" style="display:inline-block;min-width:50px;cursor:pointer;border-color:#F97316"
           title="Clicca per modificare (On Tour)" onclick="rettificaAccStock('${c.id}','tour',this)">${sTour}</div>
       </td>
-      <td style="padding:10px 12px;text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace">${tot}</td>
+      <td style="padding:10px 12px;text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace" id="acc-tot-${c.id}">${tot}</td>
     </tr>`;
   }).join('');
+  renderMovAccessori();
+  renderAccMetrics();
+}
+
+// Aggiorna SOLO le celle di stock di una categoria accessorio (dopo una
+// rettifica), senza toccare i campi prezzo/costo — che altrimenti, se
+// rigenerati da renderAccessori(), perderebbero un valore digitato ma non
+// ancora salvato con "Salva prezzi accessori".
+function aggiornaCellaStockAccessori(catId) {
+  const sAvg = getAccStock(catId, 'avigliana');
+  const sNap = getAccStock(catId, 'napoli');
+  const sTour = getAccStock(catId, 'tour');
+  const tot = sAvg + sNap + sTour;
+  const cellAvg = document.getElementById(`acc-stockcell-${catId}-avigliana`);
+  const cellNap = document.getElementById(`acc-stockcell-${catId}-napoli`);
+  const cellTour = document.getElementById(`acc-stockcell-${catId}-tour`);
+  const cellTot = document.getElementById(`acc-tot-${catId}`);
+  if (cellAvg) cellAvg.innerHTML = `<div class="stock-cell editable ${getStockClass(sAvg,0)}" style="display:inline-block;min-width:50px;cursor:pointer" title="Clicca per modificare" onclick="rettificaAccStock('${catId}','avigliana',this)">${sAvg}</div>`;
+  if (cellNap) cellNap.innerHTML = `<div class="stock-cell editable ${getStockClass(sNap,0)}" style="display:inline-block;min-width:50px;cursor:pointer" title="Clicca per modificare" onclick="rettificaAccStock('${catId}','napoli',this)">${sNap}</div>`;
+  if (cellTour) cellTour.innerHTML = `<div class="stock-cell editable ${getStockClass(sTour,0)}" style="display:inline-block;min-width:50px;cursor:pointer;border-color:#F97316" title="Clicca per modificare (On Tour)" onclick="rettificaAccStock('${catId}','tour',this)">${sTour}</div>`;
+  if (cellTot) cellTot.textContent = tot;
   renderMovAccessori();
   renderAccMetrics();
 }
@@ -6988,7 +7009,7 @@ async function registraMovAccessori() {
   db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty, tipo, data: today(), note: '' });
   await saveDBFields({ movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId });
   document.getElementById('acc-qty').value = '';
-  renderAccessori();
+  aggiornaCellaStockAccessori(catId);
   showToast('Movimento registrato');
 }
 
@@ -7009,7 +7030,7 @@ function rettificaAccStock(catId, mag, el) {
     if (!db.movimentiAcc) db.movimentiAcc = [];
     if (!db.nextMovAccId) db.nextMovAccId = 1;
     db.movimentiAcc.push({ id: db.nextMovAccId++, catId, mag, magazzino: mag, qty: Math.abs(delta), tipo: delta > 0 ? 'carico' : 'scarico', data: today(), note: 'Rettifica manuale' });
-    renderAccessori();
+    aggiornaCellaStockAccessori(catId);
     renderAccTour();
     showToast(`Stock aggiornato: ${attuale} → ${nuovo}`);
     saveDBFields({ movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId })
