@@ -197,6 +197,7 @@
   .stock-cat-tot.cat-can     { color: #065F46; }
   .stock-cat-tot.cat-shop    { color: var(--text2); }
   .stock-taglia-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .stock-taglia-row.aligned { display: grid; grid-template-columns: repeat(9, 50px); gap: 6px; }
   .stock-taglia-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
   .stock-cell { width: 50px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 16px; padding: 12px 4px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); }
   .stock-cell.zero { color: var(--text3); }
@@ -1571,7 +1572,12 @@
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
 const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
-const VERSION = '2.8.0'; // aggiornare ad ogni modifica
+// Ordine di riferimento per allineare in colonna le taglie tra categorie
+// diverse (T-Shirt Uomo/Donna, Canotte, Felpe) — così "S" cade sempre nella
+// stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
+const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
+const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
+const VERSION = '2.9.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3979,11 +3985,14 @@ function renderStock() {
             ? `<div class="stock-cell ${cls}">${s}</div>`
             : `<div class="stock-cell editable ${cls}" title="Clicca per modificare"
                 onclick="apriEditStock(this,${l.id},'${cat.id}','${t}','${magFilter}')">${s}</div>`;
-          return `<div class="stock-taglia-cell">
+          const colStyle = CAT_ALLINEABILI.includes(cat.id) && MASTER_TAGLIE_ORDER.includes(t)
+            ? ` style="grid-column:${MASTER_TAGLIE_ORDER.indexOf(t)+1}"` : '';
+          return `<div class="stock-taglia-cell"${colStyle}>
             <div class="stock-taglia-hdr">${t}</div>
             ${cellInner}
           </div>`;
         }).join('');
+        const rowClass = CAT_ALLINEABILI.includes(cat.id) ? 'stock-taglia-row aligned' : 'stock-taglia-row';
         const setAllBtn = isTotale ? '' : `
           <div style="display:flex;align-items:center;gap:4px">
             <input type="number" id="${setAllId}" min="0" placeholder="0" style="width:52px;padding:8px 4px;font-size:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);text-align:center">
@@ -3991,7 +4000,7 @@ function renderStock() {
           </div>`;
         return `<div class="stock-cat-block${invChecked?' inventario-ok':''}" id="${blockId}">
           <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
-          <div class="stock-taglia-row">${cells}</div>
+          <div class="${rowClass}">${cells}</div>
           ${setAllBtn}
           ${invCheckboxHtml}
         </div>`;
@@ -4031,19 +4040,23 @@ function renderStock() {
         logoCategorie.map(cat => {
           const catTl = cat.taglieLista || TAGLIE;
           const lblCls = catLabelClass[cat.id] || 'cat-shop';
+          const allineabile = CAT_ALLINEABILI.includes(cat.id);
+          const colStyle = t => allineabile && MASTER_TAGLIE_ORDER.includes(t) ? `style="grid-column:${MASTER_TAGLIE_ORDER.indexOf(t)+1}"` : '';
+          const rowStyle = allineabile ? `style="display:grid;grid-template-columns:repeat(9,50px);gap:4px"` : `style="display:flex;gap:4px"`;
+          const hdrRowStyle = allineabile ? `style="display:grid;grid-template-columns:repeat(9,50px);gap:4px;padding-left:36px"` : `style="display:flex;gap:4px;padding-left:36px"`;
           if (cat.taglie) {
             return `<div class="stock-cat-block" style="align-items:flex-start;overflow-x:auto">
               <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span></div>
               <div style="display:flex;flex-direction:column;gap:4px">
-                <div style="display:flex;gap:4px;padding-left:36px">${catTl.map(t => `<div class="stock-taglia-hdr">${t}</div>`).join('')}</div>
+                <div ${hdrRowStyle}>${catTl.map(t => `<div class="stock-taglia-hdr" ${colStyle(t)}>${t}</div>`).join('')}</div>
                 ${MAGAZZINI.map(m => {
                   const cells = catTl.map(t => {
                     const s = getStock(l.id, cat.id, t, m);
-                    return `<div class="stock-cell ${getStockClass(s,l.minimo||3)}">${s}</div>`;
+                    return `<div class="stock-cell ${getStockClass(s,l.minimo||3)}" ${colStyle(t)}>${s}</div>`;
                   }).join('');
                   return `<div style="display:flex;gap:4px;align-items:center">
                     <span class="mag-badge mag-${m}" style="font-size:9px;min-width:32px">${m.slice(0,3).toUpperCase()}</span>
-                    ${cells}
+                    <div ${rowStyle}>${cells}</div>
                   </div>`;
                 }).join('')}
               </div>
@@ -6398,7 +6411,8 @@ function renderVendite() {
 // ─────────────────────────────────────────────
 const ACC_CATS = [
   { id: 'toppe_schiena',  label: 'Back Patches',     immagine: 'https://drive.google.com/thumbnail?id=1qLcEAmf3n83GmTDWhi1wyPiazfBWJZHb&sz=w400' },
-  { id: 'bandanas',       label: 'Bandanas',         immagine: 'https://drive.google.com/thumbnail?id=1Ap4__RiyCKVmj1OAZloSlD1rXk-1slNH&sz=w400' },
+  { id: 'bandanas',       label: 'Bandana HELLCATS', immagine: 'https://drive.google.com/thumbnail?id=1Ap4__RiyCKVmj1OAZloSlD1rXk-1slNH&sz=w400' },
+  { id: 'bandanas_mgt',   label: 'Bandana MGT',      immagine: null },
   { id: 'badge',          label: 'Badge',            immagine: 'https://drive.google.com/thumbnail?id=11G8zPXTo3PyfKdw48n4oAo_NZqLnZiyx&sz=w400' },
   { id: 'telimare',       label: 'Beach Towels',     immagine: 'https://drive.google.com/thumbnail?id=1GpnLVjaNmbv7jssqxHV4N_4uwlSVgpDY&sz=w400' },
   { id: 'carte',          label: 'Cards',            immagine: null },
