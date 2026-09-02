@@ -176,11 +176,13 @@
 
   /* STOCK TABLE */
   .stock-logo-block { margin-bottom: 20px; }
-  .stock-logo-block.inventario-ok { background: #EAF3DE; border-color: #B8D9A0; }
+  .stock-cat-block.inventario-ok { background: #EAF3DE; border: 1px solid #B8D9A0; }
+  .inventario-badge { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); font-weight: 500; }
+  .inventario-badge-complete { background: #EAF3DE; color: #27500A; border-color: #B8D9A0; font-weight: 700; }
   .stock-logo-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
   .stock-genere-title { font-size: 12px; font-weight: 500; color: var(--text2); margin: 8px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
   .stock-inline-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
-  .stock-cat-block { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; padding: 8px 10px; background: var(--surface2); border-radius: 8px; flex-wrap: wrap; }
+  .stock-cat-block { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; padding: 8px 10px; background: var(--surface2); border-radius: 8px; flex-wrap: wrap; border: 1px solid transparent; }
   .stock-cat-block .stock-cat-head { min-width: 130px; flex-shrink: 0; }
   .stock-cat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; padding: 2px 6px; border-radius: 20px; display: inline-block; }
   .stock-cat-label.cat-uomo    { background: #DBEAFE; color: #1E40AF; }
@@ -1568,7 +1570,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.7.0'; // aggiornare ad ogni modifica
+const VERSION = '2.7.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2164,25 +2166,45 @@ function invalidateStockIndex() {
 }
 
 // ─────────────────────────────────────────────
-// CONTROLLO INVENTARIO — spunta per logo/magazzino durante il conteggio fisico
+// CONTROLLO INVENTARIO — spunta per logo/categoria/magazzino durante il conteggio fisico
 // ─────────────────────────────────────────────
 function ensureInventarioCheck() {
   if (!db.inventarioCheck) db.inventarioCheck = {};
   ['avigliana','napoli','tour'].forEach(m => { if (!db.inventarioCheck[m]) db.inventarioCheck[m] = {}; });
 }
 
-function isInventarioChecked(logoId, mag) {
+function isInventarioChecked(logoId, catId, mag) {
   ensureInventarioCheck();
-  return !!(db.inventarioCheck[mag] && db.inventarioCheck[mag][logoId]);
+  return !!(db.inventarioCheck[mag] && db.inventarioCheck[mag][`${logoId}_${catId}`]);
 }
 
-function toggleInventarioCheck(logoId, mag, checked) {
+function toggleInventarioCheck(logoId, catId, mag, checked) {
   ensureInventarioCheck();
-  if (checked) db.inventarioCheck[mag][logoId] = true;
-  else delete db.inventarioCheck[mag][logoId];
+  const key = `${logoId}_${catId}`;
+  if (checked) db.inventarioCheck[mag][key] = true;
+  else delete db.inventarioCheck[mag][key];
   saveDBFields({ inventarioCheck: db.inventarioCheck });
-  const card = document.getElementById(`stock-anchor-${logoId}`);
-  if (card) card.classList.toggle('inventario-ok', checked);
+  const block = document.getElementById(`invcat-${logoId}-${catId}-${mag}`);
+  if (block) block.classList.toggle('inventario-ok', checked);
+  aggiornaBadgeInventarioLogo(logoId, mag);
+}
+
+// Conta quante categorie di un logo sono state controllate in un magazzino,
+// per mostrare un piccolo indicatore riepilogativo sulla card del logo.
+function contaInventarioLogo(logoId, mag, totCategorie) {
+  ensureInventarioCheck();
+  const prefix = `${logoId}_`;
+  const n = Object.keys(db.inventarioCheck[mag]||{}).filter(k => k.startsWith(prefix)).length;
+  return { fatte: n, totali: totCategorie };
+}
+
+function aggiornaBadgeInventarioLogo(logoId, mag) {
+  const badge = document.getElementById(`invbadge-${logoId}-${mag}`);
+  if (!badge) return;
+  const totCategorie = parseInt(badge.dataset.tot) || 0;
+  const { fatte } = contaInventarioLogo(logoId, mag, totCategorie);
+  badge.textContent = `${fatte}/${totCategorie} controllate`;
+  badge.classList.toggle('inventario-badge-complete', fatte === totCategorie && totCategorie > 0);
 }
 
 function resetInventarioCheck(mag) {
@@ -2190,7 +2212,7 @@ function resetInventarioCheck(mag) {
   const magLabel = mag === 'tour' ? 'Adriano On Tour' : mag.charAt(0).toUpperCase()+mag.slice(1);
   const n = Object.keys(db.inventarioCheck[mag]||{}).length;
   if (n === 0) { showToast(`Nessun controllo da azzerare su ${magLabel}`); return; }
-  if (!confirm(`Azzerare tutti i controlli inventario su ${magLabel}? (${n} loghi spuntati verranno smarcati)`)) return;
+  if (!confirm(`Azzerare tutti i controlli inventario su ${magLabel}? (${n} categorie spuntate verranno smarcate)`)) return;
   db.inventarioCheck[mag] = {};
   saveDBFields({ inventarioCheck: db.inventarioCheck });
   renderStock();
@@ -3942,6 +3964,12 @@ function renderStock() {
       const catTot = getTotaleStock(l.id, cat.id, magFilter);
       const lblCls = catLabelClass[cat.id] || 'cat-shop';
       const setAllId = `sall_${l.id}_${cat.id}_${magFilter}`;
+      const invChecked = !isTotale && isInventarioChecked(l.id, cat.id, magFilter);
+      const invCheckboxHtml = !isTotale ? `<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;margin-left:auto;white-space:nowrap;color:var(--text2)">
+          <input type="checkbox" ${invChecked?'checked':''} onchange="toggleInventarioCheck(${l.id},'${cat.id}','${magFilter}',this.checked)" style="width:14px;height:14px;cursor:pointer">
+          Controllato
+        </label>` : '';
+      const blockId = `invcat-${l.id}-${cat.id}-${magFilter}`;
       if (cat.taglie) {
         const cells = catTl.map(t => {
           const s = getStock(l.id, cat.id, t, magFilter);
@@ -3956,14 +3984,15 @@ function renderStock() {
           </div>`;
         }).join('');
         const setAllBtn = isTotale ? '' : `
-          <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+          <div style="display:flex;align-items:center;gap:4px">
             <input type="number" id="${setAllId}" min="0" placeholder="0" style="width:52px;padding:8px 4px;font-size:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);text-align:center">
             <button onclick="impostaTutteTaglie(${l.id},'${cat.id}','${magFilter}','${setAllId}')" style="font-size:11px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap">Imposta tutto</button>
           </div>`;
-        return `<div class="stock-cat-block">
+        return `<div class="stock-cat-block${invChecked?' inventario-ok':''}" id="${blockId}">
           <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
           <div class="stock-taglia-row">${cells}</div>
           ${setAllBtn}
+          ${invCheckboxHtml}
         </div>`;
       } else {
         const s = getStock(l.id, cat.id, null, magFilter);
@@ -3982,13 +4011,14 @@ function renderStock() {
             </div>
           </div>`;
         }
-        return `<div class="stock-cat-block">
+        return `<div class="stock-cat-block${invChecked?' inventario-ok':''}" id="${blockId}">
           <div class="stock-cat-head"><span class="stock-cat-label ${lblCls}">${cat.label}</span> <span class="stock-cat-tot ${lblCls}">${catTot}</span></div>
           <div class="stock-taglia-cell">
             <div class="stock-taglia-hdr">tot</div>
             <div class="stock-cell editable ${cls}" title="Clicca per modificare"
               onclick="apriEditStock(this,${l.id},'${cat.id}',null,'${magFilter}')">${s}</div>
           </div>
+          ${invCheckboxHtml}
         </div>`;
       }
     };
@@ -4041,18 +4071,20 @@ function renderStock() {
     const logoImg = l.immagine
       ? `<img src="${l.immagine}" style="width:36px;height:36px;object-fit:contain;border-radius:4px;background:var(--surface2);flex-shrink:0">`
       : '';
-    const invChecked = !isTotale && isInventarioChecked(l.id, mag);
-    const invCheckboxHtml = !isTotale ? `<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;margin-left:auto;white-space:nowrap;color:var(--text2)">
-        <input type="checkbox" ${invChecked?'checked':''} onchange="toggleInventarioCheck(${l.id},'${mag}',this.checked)" style="width:15px;height:15px;cursor:pointer">
-        Controllato
-      </label>` : '';
-    return `<div class="card stock-logo-block${invChecked?' inventario-ok':''}" id="stock-anchor-${l.id}" style="padding:12px 16px;margin-bottom:8px">
+    let invBadgeHtml = '';
+    if (!isTotale) {
+      const totCategorie = logoCategorie.length;
+      const { fatte } = contaInventarioLogo(l.id, mag, totCategorie);
+      const completo = fatte === totCategorie && totCategorie > 0;
+      invBadgeHtml = `<span id="invbadge-${l.id}-${mag}" data-tot="${totCategorie}" class="inventario-badge${completo?' inventario-badge-complete':''}" style="font-size:10px;padding:2px 8px;border-radius:99px">${fatte}/${totCategorie} controllate</span>`;
+    }
+    return `<div class="card stock-logo-block" id="stock-anchor-${l.id}" style="padding:12px 16px;margin-bottom:8px">
       <div class="stock-logo-title" style="margin-bottom:8px">
         ${logoImg}
         <span style="font-weight:600;font-size:14px">${l.nome}</span>
         ${f ? `<span class="badge badge-gray" style="font-size:10px">${f.nome}</span>` : ''}
         <span class="mag-badge mag-${isTotale?'totale':mag}" style="font-size:10px">${isTotale?'Totale':mag.charAt(0).toUpperCase()+mag.slice(1)}</span>
-        ${invCheckboxHtml}
+        ${invBadgeHtml}
         <span style="margin-left:${isTotale?'auto':'12px'};font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text2)">${tot} pz tot.</span>
       </div>
       ${rowHtml}
