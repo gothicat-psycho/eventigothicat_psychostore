@@ -517,14 +517,14 @@
       <div class="card">
         <div class="card-title">Catalogo loghi</div>
         <div class="flex-row" style="margin-bottom:12px;gap:8px">
-          <input id="search-loghi" placeholder="Cerca logo..." oninput="renderLoghi()" style="max-width:260px">
-          <select id="filter-logo-stato" onchange="renderLoghi()" style="max-width:160px">
+          <input id="search-loghi" placeholder="Cerca logo..." oninput="onSearchLoghiInput()" style="max-width:260px">
+          <select id="filter-logo-stato" onchange="onSearchLoghiInput()" style="max-width:160px">
             <option value="">Tutti gli stati</option>
             <option value="attivo">Attivi</option>
             <option value="storico">Storici</option>
             <option value="archiviato">Archiviati</option>
           </select>
-          <select id="filter-logo-forn" onchange="renderLoghi()" style="max-width:200px">
+          <select id="filter-logo-forn" onchange="onSearchLoghiInput()" style="max-width:200px">
             <option value="">Tutti i fornitori</option>
           </select>
         </div>
@@ -1577,7 +1577,7 @@ const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
 // stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
 const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
-const VERSION = '2.9.0'; // aggiornare ad ogni modifica
+const VERSION = '2.9.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -3079,6 +3079,17 @@ function renderLoghi() {
         <td><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="apriEditLogo(${l.id})">Modifica</button><button class="btn btn-sm btn-danger" onclick="confirmDel('logo',${l.id},'${l.nome}')">Rimuovi</button></div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="10" class="empty">Nessun logo trovato</td></tr>';
+}
+
+// Wrapper per l'input di ricerca: dopo aver filtrato, riporta la vista al
+// campo di ricerca — se i risultati si riducono molto (es. da 80 a 1 logo),
+// la pagina si accorcia e senza questo la vista resterebbe alla vecchia
+// posizione di scroll, lontano dal risultato. Non tocca gli altri punti che
+// richiamano renderLoghi() (salvataggio, eliminazione, ecc.) per non
+// disturbare lo scroll in quei casi.
+function onSearchLoghiInput() {
+  renderLoghi();
+  document.getElementById('search-loghi')?.scrollIntoView({ behavior: 'auto', block: 'start' });
 }
 
 // ─────────────────────────────────────────────
