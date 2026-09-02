@@ -176,6 +176,7 @@
 
   /* STOCK TABLE */
   .stock-logo-block { margin-bottom: 20px; }
+  .stock-logo-block.inventario-ok { background: #EAF3DE; border-color: #B8D9A0; }
   .stock-logo-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
   .stock-genere-title { font-size: 12px; font-weight: 500; color: var(--text2); margin: 8px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
   .stock-inline-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
@@ -614,6 +615,7 @@
           </select>
         </div>
         <div id="stock-az-index" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
+        <div id="stock-inventario-reset" style="margin-top:8px"></div>
       </div>
       <div id="stock-content"></div>
       <div class="card" style="margin-top:8px;border-style:dashed;border-color:var(--border2)">
@@ -1566,7 +1568,7 @@
 // ─────────────────────────────────────────────
 const TAGLIE = ['S','M','L','XL','2XL','3XL'];
 const TAGLIE_UOMO = ['S','M','L','XL','2XL','3XL','4XL','5XL'];
-const VERSION = '2.6.0'; // aggiornare ad ogni modifica
+const VERSION = '2.7.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1727,7 +1729,7 @@ function avviaListeners() {
   _unsubscribeData = DOC_REF.onSnapshot(snap => {
     if (!snap.exists) return;
     const nuovi = snap.data();
-    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67','trasferimenti','nextTrId','puliziaTourResiduo0821'];
+    const campiLeggeri = ['fornitori','loghi','ordini','eventi','movimentiAcc','accessori','nextFornId','nextLogoId','nextOrdId','nextMovId','nextVendId','nextMovAccId','nextEvId','snapshots','prezziCzk','blankArticoli','blankOrdini','nextBlankId','nextBlankOrdId','blankToppe','bacheca','nextBachecaId','correzioneNapoli140825','completamentoNapoli67','trasferimenti','nextTrId','puliziaTourResiduo0821','inventarioCheck'];
     campiLeggeri.forEach(k => { if (nuovi[k] !== undefined) db[k] = nuovi[k]; });
     invalidateAll();
     updateFooter();
@@ -2159,6 +2161,40 @@ function _ensureStockIndex() {
 
 function invalidateStockIndex() {
   _stockIndex = null;
+}
+
+// ─────────────────────────────────────────────
+// CONTROLLO INVENTARIO — spunta per logo/magazzino durante il conteggio fisico
+// ─────────────────────────────────────────────
+function ensureInventarioCheck() {
+  if (!db.inventarioCheck) db.inventarioCheck = {};
+  ['avigliana','napoli','tour'].forEach(m => { if (!db.inventarioCheck[m]) db.inventarioCheck[m] = {}; });
+}
+
+function isInventarioChecked(logoId, mag) {
+  ensureInventarioCheck();
+  return !!(db.inventarioCheck[mag] && db.inventarioCheck[mag][logoId]);
+}
+
+function toggleInventarioCheck(logoId, mag, checked) {
+  ensureInventarioCheck();
+  if (checked) db.inventarioCheck[mag][logoId] = true;
+  else delete db.inventarioCheck[mag][logoId];
+  saveDBFields({ inventarioCheck: db.inventarioCheck });
+  const card = document.getElementById(`stock-anchor-${logoId}`);
+  if (card) card.classList.toggle('inventario-ok', checked);
+}
+
+function resetInventarioCheck(mag) {
+  ensureInventarioCheck();
+  const magLabel = mag === 'tour' ? 'Adriano On Tour' : mag.charAt(0).toUpperCase()+mag.slice(1);
+  const n = Object.keys(db.inventarioCheck[mag]||{}).length;
+  if (n === 0) { showToast(`Nessun controllo da azzerare su ${magLabel}`); return; }
+  if (!confirm(`Azzerare tutti i controlli inventario su ${magLabel}? (${n} loghi spuntati verranno smarcati)`)) return;
+  db.inventarioCheck[mag] = {};
+  saveDBFields({ inventarioCheck: db.inventarioCheck });
+  renderStock();
+  showToast(`✓ Controlli inventario azzerati su ${magLabel}`);
 }
 
 // Stock per logoId, categoria, taglia, magazzino — lookup O(1) tramite indice
@@ -3880,6 +3916,17 @@ function renderStock() {
     document.getElementById('stock-content').innerHTML = '<div class="card"><p class="empty">Nessun logo trovato con i filtri selezionati</p></div>';
     const azIndexEmpty = document.getElementById('stock-az-index');
     if (azIndexEmpty) azIndexEmpty.innerHTML = '';
+    const invResetEmpty = document.getElementById('stock-inventario-reset');
+    if (invResetEmpty) {
+      if (mag) {
+        ensureInventarioCheck();
+        const magLabel = mag === 'tour' ? 'Adriano On Tour' : mag.charAt(0).toUpperCase()+mag.slice(1);
+        const nChecked = Object.keys(db.inventarioCheck[mag]||{}).length;
+        invResetEmpty.innerHTML = `<button class="btn btn-sm" style="border-color:var(--text3);color:var(--text2)" onclick="resetInventarioCheck('${mag}')">↺ Azzera controlli inventario ${magLabel} (${nChecked} spuntati)</button>`;
+      } else {
+        invResetEmpty.innerHTML = '';
+      }
+    }
     return;
   }
   document.getElementById('stock-content').innerHTML = list.map(l => {
@@ -3994,13 +4041,19 @@ function renderStock() {
     const logoImg = l.immagine
       ? `<img src="${l.immagine}" style="width:36px;height:36px;object-fit:contain;border-radius:4px;background:var(--surface2);flex-shrink:0">`
       : '';
-    return `<div class="card stock-logo-block" id="stock-anchor-${l.id}" style="padding:12px 16px;margin-bottom:8px">
+    const invChecked = !isTotale && isInventarioChecked(l.id, mag);
+    const invCheckboxHtml = !isTotale ? `<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;margin-left:auto;white-space:nowrap;color:var(--text2)">
+        <input type="checkbox" ${invChecked?'checked':''} onchange="toggleInventarioCheck(${l.id},'${mag}',this.checked)" style="width:15px;height:15px;cursor:pointer">
+        Controllato
+      </label>` : '';
+    return `<div class="card stock-logo-block${invChecked?' inventario-ok':''}" id="stock-anchor-${l.id}" style="padding:12px 16px;margin-bottom:8px">
       <div class="stock-logo-title" style="margin-bottom:8px">
         ${logoImg}
         <span style="font-weight:600;font-size:14px">${l.nome}</span>
         ${f ? `<span class="badge badge-gray" style="font-size:10px">${f.nome}</span>` : ''}
         <span class="mag-badge mag-${isTotale?'totale':mag}" style="font-size:10px">${isTotale?'Totale':mag.charAt(0).toUpperCase()+mag.slice(1)}</span>
-        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text2)">${tot} pz tot.</span>
+        ${invCheckboxHtml}
+        <span style="margin-left:${isTotale?'auto':'12px'};font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text2)">${tot} pz tot.</span>
       </div>
       ${rowHtml}
     </div>`;
@@ -4028,6 +4081,19 @@ function renderStock() {
   const riga2 = alfabeto.slice(13).map(buildLetterBtn).join('');
   const azIndexEl = document.getElementById('stock-az-index');
   if (azIndexEl) azIndexEl.innerHTML = `<div style="display:flex;gap:5px;justify-content:space-between">${riga1}</div><div style="display:flex;gap:5px;justify-content:space-between">${riga2}</div>`;
+
+  // Bottone azzera controlli inventario — solo per i magazzini fisici (non Totale)
+  const invResetEl = document.getElementById('stock-inventario-reset');
+  if (invResetEl) {
+    if (mag) {
+      ensureInventarioCheck();
+      const magLabel = mag === 'tour' ? 'Adriano On Tour' : mag.charAt(0).toUpperCase()+mag.slice(1);
+      const nChecked = Object.keys(db.inventarioCheck[mag]||{}).length;
+      invResetEl.innerHTML = `<button class="btn btn-sm" style="border-color:var(--text3);color:var(--text2)" onclick="resetInventarioCheck('${mag}')">↺ Azzera controlli inventario ${magLabel} (${nChecked} spuntati)</button>`;
+    } else {
+      invResetEl.innerHTML = '';
+    }
+  }
 }
 
 // Scorre la pagina fino al logo scelto dall'indice A-Z dello Stock,
