@@ -1023,8 +1023,13 @@
           <div></div><div></div>
         </div>
         <div class="form-row cols4" style="margin-bottom:6px">
-          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Ventagli</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Fan Classic</div>
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-ventagli" type="number" min="0" step="1" placeholder="es. 200"></div>
+          <div></div><div></div>
+        </div>
+        <div class="form-row cols4" style="margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Fan Rounded</div>
+          <div class="form-group"><label>Prezzo CZK</label><input id="czk-ventagli_rounded" type="number" min="0" step="1" placeholder="es. 200"></div>
           <div></div><div></div>
         </div>
         <div class="form-row cols4" style="margin-bottom:6px">
@@ -1577,7 +1582,7 @@ const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
 // stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
 const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
-const VERSION = '2.9.2'; // aggiornare ad ogni modifica
+const VERSION = '3.0.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -5359,6 +5364,7 @@ function salvaPrezzicCzk() {
     cappelli: parseFloat(document.getElementById('czk-cappelli').value) || 0,
     telimare: parseFloat(document.getElementById('czk-telimare').value) || 0,
     ventagli: parseFloat(document.getElementById('czk-ventagli').value) || 0,
+    ventagli_rounded: parseFloat(document.getElementById('czk-ventagli_rounded').value) || 0,
     ombrelli: parseFloat(document.getElementById('czk-ombrelli').value) || 0,
     tappeti: parseFloat(document.getElementById('czk-tappeti').value) || 0,
     mousepad: parseFloat(document.getElementById('czk-mousepad').value) || 0,
@@ -5369,7 +5375,7 @@ function salvaPrezzicCzk() {
 
 function loadPrezzicCzk() {
   const p = db.prezziCzk || {};
-  ['tshirt','tshirt-bambino','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli','ombrelli','tappeti','mousepad'].forEach(k => {
+  ['tshirt','tshirt-bambino','canotte','shoppers','toppe','badge','adesivi','cappelli','telimare','ventagli','ventagli_rounded','ombrelli','tappeti','mousepad'].forEach(k => {
     const el = document.getElementById('czk-' + k);
     if (el) el.value = p[k] || '';
   });
@@ -6428,7 +6434,8 @@ const ACC_CATS = [
   { id: 'telimare',       label: 'Beach Towels',     immagine: 'https://drive.google.com/thumbnail?id=1GpnLVjaNmbv7jssqxHV4N_4uwlSVgpDY&sz=w400' },
   { id: 'carte',          label: 'Cards',            immagine: null },
   { id: 'tappeti',        label: 'Carpets',          immagine: 'https://drive.google.com/thumbnail?id=1jf7HDZDhMo68W_iWZYkrc-r6nbeeBGk0&sz=w400' },
-  { id: 'ventagli',       label: 'Fan',              immagine: 'https://drive.google.com/thumbnail?id=1lzUs7Os-6oVNnqOJ8ROLByQ27517ridK&sz=w400' },
+  { id: 'ventagli',       label: 'Fan Classic',      immagine: 'https://drive.google.com/thumbnail?id=1lzUs7Os-6oVNnqOJ8ROLByQ27517ridK&sz=w400' },
+  { id: 'ventagli_rounded', label: 'Fan Rounded',    immagine: null },
   { id: 'zainetti',       label: 'Gym Bag',          immagine: 'https://drive.google.com/thumbnail?id=1c6grmCJ55JcjRsBKLtzH6mjTq1b1V9ai&sz=w400' },
   { id: 'cappelli',       label: 'Hats',             immagine: 'https://drive.google.com/thumbnail?id=1wPNHk1IN36UCBpZoF1-5-h87t93iyTey&sz=w400' },
   { id: 'maglioni',       label: 'Jumpers',          immagine: 'https://drive.google.com/thumbnail?id=1D94l1ujNiPVL4_uQvhiBDj_4_VVcAGKc&sz=w400' },
@@ -6928,7 +6935,8 @@ function renderAccMetrics() {
     <div class="metric"><div class="metric-label">Adesivi</div><div class="metric-value">${getAccStock('adesivi',null)}</div></div>
     <div class="metric"><div class="metric-label">Cappelli</div><div class="metric-value">${getAccStock('cappelli',null)}</div></div>
     <div class="metric"><div class="metric-label">Teli Mare</div><div class="metric-value">${getAccStock('telimare',null)}</div></div>
-    <div class="metric"><div class="metric-label">Ventagli</div><div class="metric-value">${getAccStock('ventagli',null)}</div></div>
+    <div class="metric"><div class="metric-label">Fan Classic</div><div class="metric-value">${getAccStock('ventagli',null)}</div></div>
+    <div class="metric"><div class="metric-label">Fan Rounded</div><div class="metric-value">${getAccStock('ventagli_rounded',null)}</div></div>
     <div class="metric"><div class="metric-label">Valore magazzino</div><div class="metric-value green">${fmt(valMag)}</div><div class="metric-sub">a prezzo acquisto</div></div>
   `;
 }
