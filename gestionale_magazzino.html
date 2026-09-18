@@ -190,12 +190,14 @@
   .stock-cat-label.cat-bambino { background: #FEF3C7; color: #92400E; }
   .stock-cat-label.cat-can     { background: #D1FAE5; color: #065F46; }
   .stock-cat-label.cat-shop    { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .stock-cat-label.cat-teli    { background: #E0E7FF; color: #3730A3; }
   .stock-cat-tot { font-size: 14px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; vertical-align: middle; }
   .stock-cat-tot.cat-uomo    { color: #1E40AF; }
   .stock-cat-tot.cat-donna   { color: #9D174D; }
   .stock-cat-tot.cat-bambino { color: #92400E; }
   .stock-cat-tot.cat-can     { color: #065F46; }
   .stock-cat-tot.cat-shop    { color: var(--text2); }
+  .stock-cat-tot.cat-teli    { color: #3730A3; }
   .stock-taglia-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .stock-taglia-row.aligned { display: grid; grid-template-columns: repeat(9, 50px); gap: 6px; }
   .stock-taglia-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -426,7 +428,7 @@
         <div class="card">
           <div class="card-title">Stock per logo (top 8)</div>
           <div class="table-wrap">
-            <table><thead><tr><th>Logo</th><th>T-shirt</th><th>Canotte</th><th>Shoppers</th><th>Totale</th></tr></thead>
+            <table><thead><tr><th>Logo</th><th>T-shirt</th><th>Canotte</th><th>Shoppers</th><th>Teli</th><th>Totale</th></tr></thead>
             <tbody id="dash-stock"></tbody></table>
           </div>
         </div>
@@ -495,10 +497,16 @@
             <div class="form-group"><label>P. vendita (€)</label><input id="l-prezzo-canotte" type="number" min="0" step="0.01" placeholder="0.00"></div>
             <div></div>
           </div>
-          <div class="form-row cols4">
+          <div class="form-row cols4" style="margin-bottom:6px">
             <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:28px">Shoppers</div>
             <div class="form-group"><label>P. acquisto (€)</label><input id="l-costo-shoppers" type="number" min="0" step="0.01" placeholder="0.00"></div>
             <div class="form-group"><label>P. vendita (€)</label><input id="l-prezzo-shoppers" type="number" min="0" step="0.01" placeholder="0.00"></div>
+            <div></div>
+          </div>
+          <div class="form-row cols4">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:28px">Teli Mare</div>
+            <div class="form-group"><label>P. acquisto (€)</label><input id="l-costo-telimare" type="number" min="0" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label>P. vendita (€)</label><input id="l-prezzo-telimare" type="number" min="0" step="0.01" placeholder="0.00"></div>
             <div></div>
           </div>
           <div class="form-row cols4" id="l-felpe-row" style="display:none">
@@ -528,8 +536,16 @@
             <option value="">Tutti i fornitori</option>
           </select>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius)">
+          <span class="stock-cat-label cat-teli" style="margin:0">Teli Mare</span>
+          <span style="font-size:12px;color:var(--text2)">prezzo uguale per tutti i loghi:</span>
+          <input id="teli-costo-tutti" type="number" min="0" step="0.01" placeholder="acquisto €" style="width:110px">
+          <input id="teli-prezzo-tutti" type="number" min="0" step="0.01" placeholder="vendita €" style="width:110px">
+          <button class="btn btn-sm" onclick="applicaPrezziTeliATutti()">Applica a tutti i loghi</button>
+          <span style="font-size:11px;color:var(--text3)">Lascia vuoto un campo per non toccarlo. Puoi sempre correggere il singolo logo con "Modifica".</span>
+        </div>
         <div class="table-wrap">
-          <table><thead><tr><th></th><th>Nome logo</th><th>Fornitore</th><th>T-shirt U/D/B acq.</th><th>T-shirt vend.</th><th>Canotte acq./vend.</th><th>Shoppers acq./vend.</th><th>Scorta min.</th><th>Stock tot.</th><th>Stato</th><th></th></tr></thead>
+          <table><thead><tr><th></th><th>Nome logo</th><th>Fornitore</th><th>T-shirt U/D/B acq.</th><th>T-shirt vend.</th><th>Canotte acq./vend.</th><th>Shoppers acq./vend.</th><th>Teli mare acq./vend.</th><th>Scorta min.</th><th>Stock tot.</th><th>Stato</th><th></th></tr></thead>
           <tbody id="tab-loghi"></tbody></table>
         </div>
       </div>
@@ -720,17 +736,7 @@
         <div class="card-title">Rettifica stock manuale</div>
         <div class="form-row cols4">
           <div class="form-group"><label>Categoria</label>
-            <select id="acc-cat">
-              <option value="toppe">Toppe</option>
-              <option value="badge">Badge</option>
-              <option value="adesivi">Adesivi</option>
-              <option value="cappelli">Cappelli</option>
-              <option value="telimare">Teli Mare</option>
-              <option value="ventagli">Ventagli</option>
-              <option value="ombrelli">Ombrelli</option>
-              <option value="tappeti">Tappeti</option>
-              <option value="mousepad">Mouse Pad</option>
-            </select>
+            <select id="acc-cat"></select>
           </div>
           <div class="form-group"><label>Magazzino</label>
             <select id="acc-mag">
@@ -1018,7 +1024,7 @@
           <div></div><div></div>
         </div>
         <div class="form-row cols4" style="margin-bottom:6px">
-          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Teli Mare</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2);padding-top:24px">Teli Mare<div style="font-size:10px;font-weight:400;color:var(--text3)">prodotto per logo</div></div>
           <div class="form-group"><label>Prezzo CZK</label><input id="czk-telimare" type="number" min="0" step="1" placeholder="es. 600"></div>
           <div></div><div></div>
         </div>
@@ -1505,6 +1511,27 @@
 </div>
 
 <!-- MODAL modifica logo -->
+<!-- Conversione dei teli mare residui da accessorio generico a prodotto per logo -->
+<div class="modal-backdrop" id="modal-conv-teli">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">Converti i Teli Mare nei loghi</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">
+      I teli mare erano un accessorio generico: qui assegni i pezzi fisici al logo che hanno stampato sopra.
+      Ogni conversione scarica l'accessorio e carica la stessa quantità sullo stock del logo, nello stesso magazzino.
+    </p>
+    <div id="conv-teli-residuo" style="font-size:13px;margin-bottom:14px"></div>
+    <div class="form-row cols3">
+      <div class="form-group"><label>Logo *</label><select id="conv-teli-logo"></select></div>
+      <div class="form-group"><label>Magazzino *</label><select id="conv-teli-mag"></select></div>
+      <div class="form-group"><label>Quantità *</label><input id="conv-teli-qty" type="number" min="1" placeholder="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-conv-teli')">Chiudi</button>
+      <button class="btn btn-primary" onclick="confermaConversioneTeliMare()">Converti</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-edit-logo">
   <div class="modal" style="width:600px">
     <div class="modal-title">Modifica logo</div>
@@ -1543,10 +1570,16 @@
         <div class="form-group"><label>Vendita (€)</label><input id="el-prezzo-canotte" type="number" min="0" step="0.01"></div>
         <div></div>
       </div>
-      <div class="form-row cols4">
+      <div class="form-row cols4" style="margin-bottom:4px">
         <div style="font-size:11px;font-weight:600;color:var(--text2);padding-top:24px">Shoppers</div>
         <div class="form-group"><label>Acquisto (€)</label><input id="el-costo-shoppers" type="number" min="0" step="0.01"></div>
         <div class="form-group"><label>Vendita (€)</label><input id="el-prezzo-shoppers" type="number" min="0" step="0.01"></div>
+        <div></div>
+      </div>
+      <div class="form-row cols4">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);padding-top:24px">Teli Mare</div>
+        <div class="form-group"><label>Acquisto (€)</label><input id="el-costo-telimare" type="number" min="0" step="0.01"></div>
+        <div class="form-group"><label>Vendita (€)</label><input id="el-prezzo-telimare" type="number" min="0" step="0.01"></div>
         <div></div>
       </div>
       <div class="form-row cols4" id="el-felpe-row" style="display:none">
@@ -1582,7 +1615,7 @@ const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
 // stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
 const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
-const VERSION = '3.1.0'; // aggiornare ad ogni modifica
+const VERSION = '3.2.0'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1593,6 +1626,7 @@ const CATEGORIE = [
   { id: 'tshirt_donna',   label: 'T-Shirt Donna',   taglie: true,  taglieLista: TAGLIE_DONNA,   prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
   { id: 'canotte',        label: 'Canotte Unisex',  taglie: true,  taglieLista: TAGLIE_CANOTTE, prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
   { id: 'shoppers',       label: 'Shoppers',         taglie: false, taglieLista: [],             prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
+  { id: 'teli_mare',      label: 'Teli Mare',       taglie: false, taglieLista: [],             prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: null },
   { id: 'tshirt_bambino', label: 'T-Shirt Bambino', taglie: true,  taglieLista: TAGLIE_BAMBINO, prezzoProprio: false, gruppoPrezzo: 'tshirt', logoFilter: null },
   { id: 'felpe',          label: 'Felpe Unisex',    taglie: true,  taglieLista: TAGLIE_FELPE,   prezzoProprio: true,  gruppoPrezzo: null,     logoFilter: 'MGT1' },
 ];
@@ -1632,7 +1666,7 @@ function getCatPerLogo(logoNome) {
 }
 
 function getCat(id) { return CATEGORIE.find(c => c.id === id); }
-const CAT_LABEL_CLASS = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+const CAT_LABEL_CLASS = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', teli_mare:'cat-teli', felpe:'cat-can' };
 function getCatLabelClass(catId) { return CAT_LABEL_CLASS[catId] || 'cat-shop'; }
 const MAGAZZINI = ['avigliana', 'napoli', 'tour'];
 let stockTab = 'avigliana'; // current tab
@@ -2929,6 +2963,7 @@ function renderDashboard() {
     tshirt: getTotaleStock(l.id,'tshirt_uomo',null) + getTotaleStock(l.id,'tshirt_donna',null),
     canotte: getTotaleStock(l.id,'canotte',null),
     shoppers: getTotaleStock(l.id,'shoppers',null),
+    teli: getTotaleStock(l.id,'teli_mare',null),
     tot: getTotaleLogoStock(l.id, null)
   })).sort((a,b) => b.tot - a.tot).slice(0,8);
 
@@ -2938,8 +2973,9 @@ function renderDashboard() {
       <td class="mono">${x.tshirt}</td>
       <td class="mono">${x.canotte}</td>
       <td class="mono">${x.shoppers}</td>
+      <td class="mono">${x.teli}</td>
       <td class="mono" style="font-weight:500">${x.tot}</td>
-    </tr>`).join('') : '<tr><td colspan="5" class="empty">Nessun logo</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">Nessun logo</td></tr>';
 }
 
 function statoOrdBadge(stato) {
@@ -3019,6 +3055,7 @@ function aggiungiLogo() {
       tshirt_bambino: { costo: parseFloat((document.getElementById('l-costo-tshirt-bambino')||{}).value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-tshirt').value)||0 },
       canotte:        { costo: parseFloat(document.getElementById('l-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-canotte').value)||0 },
       shoppers:     { costo: parseFloat(document.getElementById('l-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('l-prezzo-shoppers').value)||0 },
+      teli_mare:    { costo: parseFloat((document.getElementById('l-costo-telimare')||{}).value)||0, prezzo: parseFloat((document.getElementById('l-prezzo-telimare')||{}).value)||0 },
       felpe:        { costo: parseFloat((document.getElementById('l-costo-felpe')||{}).value)||0, prezzo: parseFloat((document.getElementById('l-prezzo-felpe')||{}).value)||0 },
     },
     minimo: parseInt(document.getElementById('l-minimo').value) || 3,
@@ -3028,6 +3065,7 @@ function aggiungiLogo() {
   saveDBFields({ loghi: db.loghi, nextLogoId: db.nextLogoId });
   ['l-nome','l-costo-tshirt-uomo','l-costo-tshirt-donna','l-costo-tshirt-bambino','l-prezzo-tshirt',
    'l-costo-canotte','l-prezzo-canotte','l-costo-shoppers','l-prezzo-shoppers',
+   'l-costo-telimare','l-prezzo-telimare',
    'l-costo-felpe','l-prezzo-felpe','l-minimo','l-note','l-immagine-url','l-immagine-retro-url']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const retroPrev = document.getElementById('l-img-retro-preview');
@@ -3041,15 +3079,53 @@ function aggiungiLogo() {
 
 function getPrezzi(l) {
   // backward compat: old logos had flat costo/prezzo
-  if (l.prezzi) return l.prezzi;
+  if (l.prezzi) {
+    // Categorie aggiunte dopo la creazione del logo (es. teli_mare) possono
+    // mancare dall'oggetto salvato: le completiamo a zero senza scrivere sul db,
+    // così ogni lettore trova sempre { costo, prezzo } per ogni categoria.
+    CATEGORIE.forEach(c => { if (!l.prezzi[c.id]) l.prezzi[c.id] = { costo: 0, prezzo: 0 }; });
+    return l.prezzi;
+  }
   return {
     tshirt_uomo:    { costo: l.costo||0, prezzo: l.prezzo||0 },
     tshirt_donna:   { costo: l.costo||0, prezzo: l.prezzo||0 },
     tshirt_bambino: { costo: 0, prezzo: l.prezzo||0 },
     canotte:        { costo: 0, prezzo: 0 },
     shoppers:       { costo: 0, prezzo: 0 },
+    teli_mare:      { costo: 0, prezzo: 0 },
     felpe:          { costo: 0, prezzo: 0 },
   };
+}
+
+// I teli mare nascono con prezzo 0 su tutti i loghi: senza questo, per venderli
+// bisognerebbe aprire uno per uno gli 80+ loghi. Applica costo e/o prezzo a tutti
+// in un colpo solo; il campo lasciato vuoto non viene toccato.
+async function applicaPrezziTeliATutti() {
+  const cEl = document.getElementById('teli-costo-tutti');
+  const pEl = document.getElementById('teli-prezzo-tutti');
+  const cVal = cEl.value.trim(), pVal = pEl.value.trim();
+  if (cVal === '' && pVal === '') { showToast('Inserisci almeno un prezzo', 'red'); return; }
+  const costo = cVal === '' ? null : parseFloat(cVal);
+  const prezzo = pVal === '' ? null : parseFloat(pVal);
+  if ((costo !== null && (isNaN(costo) || costo < 0)) || (prezzo !== null && (isNaN(prezzo) || prezzo < 0))) {
+    showToast('Prezzi non validi', 'red'); return;
+  }
+  const descr = [costo !== null ? `acquisto ${fmt(costo)}` : null, prezzo !== null ? `vendita ${fmt(prezzo)}` : null]
+    .filter(Boolean).join(' e ');
+  if (!confirm(`Impostare i Teli Mare a ${descr} su tutti i ${db.loghi.length} loghi?\n\nI prezzi delle altre categorie non vengono toccati.`)) return;
+
+  db.loghi.forEach(l => {
+    const p = getPrezzi(l);
+    if (!p.teli_mare) p.teli_mare = { costo: 0, prezzo: 0 };
+    if (costo !== null) p.teli_mare.costo = costo;
+    if (prezzo !== null) p.teli_mare.prezzo = prezzo;
+    l.prezzi = p;
+  });
+  renderLoghi();
+  cEl.value = ''; pEl.value = '';
+  showToast(`Teli Mare aggiornati su ${db.loghi.length} loghi`);
+  try { await saveDBFields({ loghi: db.loghi }); }
+  catch (e) { console.error('Errore salvataggio prezzi teli:', e); showSyncStatus('Errore salvataggio!', true); }
 }
 
 function renderLoghi() {
@@ -3078,12 +3154,13 @@ function renderLoghi() {
         <td class="mono" style="font-size:12px">${fmt(p.tshirt_uomo.prezzo)}</td>
         <td class="mono" style="font-size:12px">${fmt(p.canotte.costo)} / ${fmt(p.canotte.prezzo)}</td>
         <td class="mono" style="font-size:12px">${fmt(p.shoppers.costo)} / ${fmt(p.shoppers.prezzo)}</td>
+        <td class="mono" style="font-size:12px">${fmt((p.teli_mare||{}).costo||0)} / ${fmt((p.teli_mare||{}).prezzo||0)}</td>
         <td class="mono">${l.minimo||3}</td>
         <td class="mono" style="font-weight:500">${tot}</td>
         <td><span class="badge ${statoBadge}">${l.stato}</span></td>
         <td><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="apriEditLogo(${l.id})">Modifica</button><button class="btn btn-sm btn-danger" onclick="confirmDel('logo',${l.id},'${l.nome}')">Rimuovi</button></div></td>
       </tr>`;
-    }).join('') : '<tr><td colspan="10" class="empty">Nessun logo trovato</td></tr>';
+    }).join('') : '<tr><td colspan="11" class="empty">Nessun logo trovato</td></tr>';
 }
 
 // Wrapper per l'input di ricerca: dopo aver filtrato, riporta la vista al
@@ -3980,7 +4057,7 @@ function renderStock() {
 
     // Build compact inline row: all categories side by side
     const logoCategorie = getCatPerLogo(l.nome);
-    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+    const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', teli_mare:'cat-teli', felpe:'cat-can' };
 
     const buildCatBlock = (cat, magFilter) => {
       const catTl = cat.taglieLista || TAGLIE;
@@ -4384,7 +4461,7 @@ function renderTourGrid() {
   const logo = getLogo(logoId);
   if (!logo) return;
   const cats = getCatPerLogo(logo.nome);
-  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', felpe:'cat-can' };
+  const catLabelClass = { tshirt_uomo:'cat-uomo', tshirt_donna:'cat-donna', tshirt_bambino:'cat-bambino', canotte:'cat-can', shoppers:'cat-shop', teli_mare:'cat-teli', felpe:'cat-can' };
 
   let totaleGlobale = 0;
   let html = `<div style="margin-bottom:10px;font-weight:700;font-size:18px">${logo.nome}</div>`;
@@ -5069,7 +5146,7 @@ async function eseguiRientro() {
 function renderAccTour() {
   const tbody = document.getElementById('tab-acc-tour');
   if (!tbody) return;
-  tbody.innerHTML = ACC_CATS.map(c => {
+  tbody.innerHTML = accCatsVisibili().map(c => {
     const s = getAccStock(c.id, 'tour');
     return `<tr>
       <td style="padding:10px 12px;font-weight:600">${c.label}</td>
@@ -5159,6 +5236,8 @@ function apriEditLogo(id) {
   document.getElementById('el-prezzo-canotte').value = p.canotte.prezzo || '';
   document.getElementById('el-costo-shoppers').value = p.shoppers.costo || '';
   document.getElementById('el-prezzo-shoppers').value = p.shoppers.prezzo || '';
+  document.getElementById('el-costo-telimare').value = (p.teli_mare||{costo:0}).costo || '';
+  document.getElementById('el-prezzo-telimare').value = (p.teli_mare||{prezzo:0}).prezzo || '';
   const felpeRow = document.getElementById('el-felpe-row');
   if (felpeRow) {
     const showFelpe = (l.nome||'').toUpperCase().replace(/[\s\-_]/g,'').includes('MGT');
@@ -5166,6 +5245,11 @@ function apriEditLogo(id) {
     if (showFelpe) {
       document.getElementById('el-costo-felpe').value = (p.felpe||{costo:0}).costo || '';
       document.getElementById('el-prezzo-felpe').value = (p.felpe||{prezzo:0}).prezzo || '';
+    } else {
+      // Riga nascosta ma input ancora nel DOM: azzeriamoli, altrimenti al salvataggio
+      // questo logo erediterebbe i prezzi felpe del logo MGT aperto in precedenza.
+      document.getElementById('el-costo-felpe').value = '';
+      document.getElementById('el-prezzo-felpe').value = '';
     }
   }
   // show current image URL
@@ -5198,13 +5282,22 @@ function salvaLogo() {
   l.note = document.getElementById('el-note').value.trim();
   l.immagine = urlImmagine;
   l.immagineRetro = urlImmagineRetro;
+  // Se un campo non è presente nel modale (es. costo bambino, o le felpe per un
+  // logo non-MGT), NON azzeriamo il valore già salvato: teniamo quello vecchio.
+  const pPrec = getPrezzi(l);
+  const campoOpz = (elId, catId, chiave) => {
+    const el = document.getElementById(elId);
+    if (!el) return (pPrec[catId] || {})[chiave] || 0;
+    return parseFloat(el.value) || 0;
+  };
   l.prezzi = {
     tshirt_uomo:  { costo: parseFloat(document.getElementById('el-costo-tshirt-uomo').value)||0, prezzo: prezzoTshirt },
     tshirt_donna:   { costo: parseFloat(document.getElementById('el-costo-tshirt-donna').value)||0, prezzo: prezzoTshirt },
-    tshirt_bambino: { costo: parseFloat((document.getElementById('el-costo-tshirt-bambino')||{}).value)||0, prezzo: prezzoTshirt },
+    tshirt_bambino: { costo: campoOpz('el-costo-tshirt-bambino','tshirt_bambino','costo'), prezzo: prezzoTshirt },
     canotte:        { costo: parseFloat(document.getElementById('el-costo-canotte').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-canotte').value)||0 },
     shoppers:     { costo: parseFloat(document.getElementById('el-costo-shoppers').value)||0, prezzo: parseFloat(document.getElementById('el-prezzo-shoppers').value)||0 },
-    felpe:        { costo: parseFloat((document.getElementById('el-costo-felpe')||{}).value)||0, prezzo: parseFloat((document.getElementById('el-prezzo-felpe')||{}).value)||0 },
+    teli_mare:    { costo: campoOpz('el-costo-telimare','teli_mare','costo'), prezzo: campoOpz('el-prezzo-telimare','teli_mare','prezzo') },
+    felpe:        { costo: campoOpz('el-costo-felpe','felpe','costo'), prezzo: campoOpz('el-prezzo-felpe','felpe','prezzo') },
   };
   delete l.costo; delete l.prezzo;
   saveDBFields({ loghi: db.loghi, nextLogoId: db.nextLogoId });
@@ -5392,6 +5485,9 @@ function getPrezzoCzk(catId, accCatId) {
   if (catId === 'tshirt_bambino') return p.tshirt_bambino || p.tshirt || 0;
   if (catId === 'canotte') return p.canotte || 0;
   if (catId === 'shoppers') return p.shoppers || 0;
+  // I teli mare sono passati da accessorio a prodotto per logo: riusiamo lo
+  // stesso prezzo CZK già configurato, così non va reinserito.
+  if (catId === 'teli_mare') return p.telimare || 0;
   return 0;
 }
 
@@ -5673,8 +5769,9 @@ function buildLoghiGrid() {
   const azIndexEl = document.getElementById('cassa-az-index');
   if (azIndexEl) azIndexEl.innerHTML = azIndexHtml;
 
-  // Accessori buttons
-  const accHtml = ACC_CATS.map(c => {
+  // Accessori buttons — gli accessori archiviati compaiono solo finché hanno
+  // stock residuo da smaltire (vedere accArchiviatoVisibile).
+  const accHtml = accCatsVisibili().map(c => {
     const s = getAccStock(c.id, mag);
     const icons = { toppe:'◈', badge:'◉', adesivi:'★' };
     const imgHtml = c.immagine
@@ -6435,7 +6532,13 @@ const ACC_CATS = [
   { id: 'bandanas',       label: 'Bandana HELLCATS', immagine: 'https://drive.google.com/thumbnail?id=1Ap4__RiyCKVmj1OAZloSlD1rXk-1slNH&sz=w400' },
   { id: 'bandanas_mgt',   label: 'Bandana MGT',      immagine: null },
   { id: 'badge',          label: 'Badge',            immagine: 'https://drive.google.com/thumbnail?id=11G8zPXTo3PyfKdw48n4oAo_NZqLnZiyx&sz=w400' },
-  { id: 'telimare',       label: 'Beach Towels',     immagine: 'https://drive.google.com/thumbnail?id=1GpnLVjaNmbv7jssqxHV4N_4uwlSVgpDY&sz=w400' },
+  // ARCHIVIATO (v3.2.0): i teli mare sono diventati un prodotto per logo
+  // (categoria 'teli_mare'). La voce resta qui, e NON va cancellata, per due
+  // motivi: 1) le vendite storiche hanno accCatId:'telimare' e senza questa riga
+  // perderebbero l'etichetta nei report; 2) finché resta stock residuo va
+  // mostrato e convertito. Sparisce da solo da tabella, cassa e metriche quando
+  // lo stock residuo arriva a 0 — vedere accArchiviatoVisibile().
+  { id: 'telimare',       label: 'Beach Towels',     immagine: 'https://drive.google.com/thumbnail?id=1GpnLVjaNmbv7jssqxHV4N_4uwlSVgpDY&sz=w400', archiviato: true },
   { id: 'carte',          label: 'Cards',            immagine: null },
   { id: 'tappeti',        label: 'Carpets',          immagine: 'https://drive.google.com/thumbnail?id=1jf7HDZDhMo68W_iWZYkrc-r6nbeeBGk0&sz=w400' },
   { id: 'ventagli',       label: 'Fan Classic',      immagine: 'https://drive.google.com/thumbnail?id=1lzUs7Os-6oVNnqOJ8ROLByQ27517ridK&sz=w400' },
@@ -6453,6 +6556,22 @@ const ACC_CATS = [
 function getAccPrezzi() {
   if (!db.accessori) db.accessori = {};
   return db.accessori;
+}
+
+// Un accessorio archiviato resta visibile (tabella, cassa, metriche, rettifica
+// manuale) solo finché ha stock residuo da smaltire o convertire; a zero sparisce.
+function accArchiviatoVisibile(c) {
+  if (!c.archiviato) return true;
+  return getAccStock(c.id, null) > 0;
+}
+// Lista da usare in TUTTE le viste operative. Per risolvere l'etichetta di una
+// vendita storica usare sempre ACC_CATS, non questa.
+function accCatsVisibili() {
+  return ACC_CATS.filter(accArchiviatoVisibile);
+}
+function getAccLabel(catId) {
+  const c = ACC_CATS.find(x => x.id === catId);
+  return c ? c.label : catId;
 }
 
 function getAccStock(catId, mag) {
@@ -6938,23 +7057,111 @@ function renderAccMetrics() {
     <div class="metric"><div class="metric-label">Badge</div><div class="metric-value">${getAccStock('badge',null)}</div></div>
     <div class="metric"><div class="metric-label">Adesivi</div><div class="metric-value">${getAccStock('adesivi',null)}</div></div>
     <div class="metric"><div class="metric-label">Cappelli</div><div class="metric-value">${getAccStock('cappelli',null)}</div></div>
-    <div class="metric"><div class="metric-label">Teli Mare</div><div class="metric-value">${getAccStock('telimare',null)}</div></div>
+    ${getAccStock('telimare',null) > 0
+      ? `<div class="metric"><div class="metric-label">Teli Mare</div><div class="metric-value amber">${getAccStock('telimare',null)}</div><div class="metric-sub">storico — da convertire</div></div>`
+      : `<div class="metric"><div class="metric-label">Ombrelli</div><div class="metric-value">${getAccStock('ombrelli',null)}</div></div>`}
     <div class="metric"><div class="metric-label">Fan Classic</div><div class="metric-value">${getAccStock('ventagli',null)}</div></div>
     <div class="metric"><div class="metric-label">Fan Rounded</div><div class="metric-value">${getAccStock('ventagli_rounded',null)}</div></div>
     <div class="metric"><div class="metric-label">Valore magazzino</div><div class="metric-value green">${fmt(valMag)}</div><div class="metric-sub">a prezzo acquisto</div></div>
   `;
 }
 
+// ── Conversione Teli Mare: accessorio generico → prodotto per logo ──
+// I teli fisici hanno un logo stampato sopra, quindi non possono essere
+// "spostati" in automatico: qui l'utente dichiara quanti pezzi di quale logo
+// ci sono, e per ogni conferma scarichiamo l'accessorio e carichiamo lo stesso
+// numero di pezzi sulla categoria teli_mare del logo, nello stesso magazzino.
+// Il totale dei pezzi in casa resta invariato a ogni passaggio.
+function magLabelConv(m) { return m === 'tour' ? 'Adriano On Tour' : m.charAt(0).toUpperCase()+m.slice(1); }
+
+function apriConversioneTeliMare() {
+  const selLogo = document.getElementById('conv-teli-logo');
+  selLogo.innerHTML = '<option value="">-- scegli il logo --</option>' +
+    [...db.loghi].sort((a,b) => a.nome.localeCompare(b.nome,'it'))
+      .map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+  document.getElementById('conv-teli-qty').value = '';
+  aggiornaResiduoConvTeli();
+  document.getElementById('modal-conv-teli').classList.add('open');
+}
+
+function aggiornaResiduoConvTeli() {
+  const selMag = document.getElementById('conv-teli-mag');
+  const prec = selMag.value;
+  const conStock = MAGAZZINI.filter(m => getAccStock('telimare', m) > 0);
+  selMag.innerHTML = conStock.length
+    ? conStock.map(m => `<option value="${m}">${magLabelConv(m)} — ${getAccStock('telimare',m)} pz</option>`).join('')
+    : '<option value="">nessuno stock residuo</option>';
+  if (prec && conStock.includes(prec)) selMag.value = prec;
+  const tot = getAccStock('telimare', null);
+  document.getElementById('conv-teli-residuo').innerHTML = tot > 0
+    ? `Da convertire: <strong>${tot} pz</strong> — ` + MAGAZZINI.map(m => `${magLabelConv(m)}: <strong>${getAccStock('telimare',m)}</strong>`).join(' · ')
+    : '<span style="color:var(--green);font-weight:600">✓ Nessun telo residuo — la voce accessorio è stata smaltita del tutto.</span>';
+}
+
+async function confermaConversioneTeliMare() {
+  const logoId = parseInt(document.getElementById('conv-teli-logo').value);
+  const mag = document.getElementById('conv-teli-mag').value;
+  const qty = parseInt(document.getElementById('conv-teli-qty').value) || 0;
+  if (!logoId) { showToast('Scegli il logo', 'red'); return; }
+  if (!mag) { showToast('Scegli il magazzino', 'red'); return; }
+  if (qty <= 0) { showToast('Inserisci una quantità valida', 'red'); return; }
+  const disponibili = getAccStock('telimare', mag);
+  if (qty > disponibili) { showToast(`In ${magLabelConv(mag)} ci sono solo ${disponibili} pz`, 'red'); return; }
+
+  const logo = getLogo(logoId);
+  const data = today();
+  const note = 'Conversione Teli Mare da accessorio a prodotto per logo';
+
+  if (!db.movimentiAcc) db.movimentiAcc = [];
+  if (!db.nextMovAccId) db.nextMovAccId = 1;
+  db.movimentiAcc.push({ id: db.nextMovAccId++, catId: 'telimare', mag, magazzino: mag, qty, tipo: 'scarico', data, note });
+
+  const m = {
+    id: db.nextMovId++,
+    logoId, catId: 'teli_mare', taglia: null,
+    magazzino: mag, qty, tipo: 'carico',
+    ordineId: null, data, note,
+  };
+  db.movimenti.push(m);
+  invalidateStockIndex();
+
+  showToast(`${qty} teli → ${logo ? logo.nome : 'logo'} (${magLabelConv(mag)})`);
+  document.getElementById('conv-teli-qty').value = '';
+  renderAccessori();
+  aggiornaResiduoConvTeli();
+
+  try {
+    await Promise.all([
+      saveMovimento(m),
+      saveDBFields({ nextMovId: db.nextMovId, movimentiAcc: db.movimentiAcc, nextMovAccId: db.nextMovAccId }),
+    ]);
+  } catch (e) {
+    console.error('Errore salvataggio conversione teli mare:', e);
+    showSyncStatus('Errore salvataggio!', true);
+  }
+
+  if (getAccStock('telimare', null) === 0) {
+    closeModal('modal-conv-teli');
+    showToast('Conversione completata: la voce accessorio Beach Towels è sparita');
+  }
+}
+
 function renderAccessori() {
   const prezzi = getAccPrezzi();
-  document.getElementById('tab-accessori').innerHTML = ACC_CATS.map(c => {
+  document.getElementById('tab-accessori').innerHTML = accCatsVisibili().map(c => {
     const p = prezzi[c.id] || { costo: 0, prezzo: 0 };
     const sAvg = getAccStock(c.id, 'avigliana');
     const sNap = getAccStock(c.id, 'napoli');
     const sTour = getAccStock(c.id, 'tour');
     const tot = sAvg + sNap + sTour;
+    const nomeCella = c.archiviato
+      ? `${c.label}
+         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#92400E;background:var(--amber-light);border-radius:99px;padding:1px 7px;display:inline-block;margin-left:4px">storico</div>
+         <div style="font-size:11px;font-weight:400;color:var(--text2);margin-top:4px;max-width:230px">Ora è un prodotto per logo (Teli Mare). Converti i ${tot} pz residui e la voce sparirà da sola.</div>
+         <button class="btn btn-sm" style="margin-top:6px" onclick="apriConversioneTeliMare()">↪ Converti nei loghi</button>`
+      : c.label;
     return `<tr>
-      <td style="padding:10px 12px;font-weight:600">${c.label}</td>
+      <td style="padding:10px 12px;font-weight:600">${nomeCella}</td>
       <td style="padding:10px 12px;text-align:center"><input type="number" min="0" step="0.01" value="${p.costo||''}" placeholder="0.00" id="acc-costo-${c.id}" style="width:90px;text-align:center"></td>
       <td style="padding:10px 12px;text-align:center"><input type="number" min="0" step="0.01" value="${p.prezzo||''}" placeholder="0.00" id="acc-prezzo-${c.id}" style="width:90px;text-align:center"></td>
       <td style="padding:10px 12px;text-align:center" id="acc-stockcell-${c.id}-avigliana">
@@ -6972,8 +7179,21 @@ function renderAccessori() {
       <td style="padding:10px 12px;text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace" id="acc-tot-${c.id}">${tot}</td>
     </tr>`;
   }).join('');
+  popolaSelectAccCat();
   renderMovAccessori();
   renderAccMetrics();
+}
+
+// Il menù "Rettifica stock manuale" è costruito da ACC_CATS, così resta sempre
+// allineato all'elenco reale (prima ne elencava solo una parte a mano) e perde
+// da solo le voci archiviate senza più stock.
+function popolaSelectAccCat() {
+  const sel = document.getElementById('acc-cat');
+  if (!sel) return;
+  const prec = sel.value;
+  sel.innerHTML = accCatsVisibili()
+    .map(c => `<option value="${c.id}">${c.label}${c.archiviato ? ' (storico)' : ''}</option>`).join('');
+  if (prec && sel.querySelector(`option[value="${prec}"]`)) sel.value = prec;
 }
 
 // Aggiorna SOLO le celle di stock di una categoria accessorio (dopo una
@@ -6999,10 +7219,16 @@ function aggiornaCellaStockAccessori(catId) {
 
 async function salvaAccessori() {
   if (!db.accessori) db.accessori = {};
+  // Solo le righe effettivamente a schermo: per gli accessori archiviati e non
+  // più mostrati i campi non esistono, e i prezzi già salvati vanno conservati
+  // (servono ai report sulle vendite storiche).
   ACC_CATS.forEach(c => {
+    const elCosto = document.getElementById(`acc-costo-${c.id}`);
+    const elPrezzo = document.getElementById(`acc-prezzo-${c.id}`);
+    if (!elCosto || !elPrezzo) return;
     db.accessori[c.id] = {
-      costo: parseFloat(document.getElementById(`acc-costo-${c.id}`).value) || 0,
-      prezzo: parseFloat(document.getElementById(`acc-prezzo-${c.id}`).value) || 0,
+      costo: parseFloat(elCosto.value) || 0,
+      prezzo: parseFloat(elPrezzo.value) || 0,
     };
   });
   await saveDBFields({ accessori: db.accessori });
@@ -7142,7 +7368,8 @@ function processaVoce(testo) {
 
   // ─ Find category ─
   let catFound = null;
-  if (testoLow.includes('donna') || testoLow.includes('female') || testoLow.includes('woman')) catFound = 'tshirt_donna';
+  if (testoLow.includes('telo') || testoLow.includes('teli') || testoLow.includes('towel')) catFound = 'teli_mare';
+  else if (testoLow.includes('donna') || testoLow.includes('female') || testoLow.includes('woman')) catFound = 'tshirt_donna';
   else if (testoLow.includes('uomo') || testoLow.includes('uomini') || testoLow.includes('male') || testoLow.includes('man')) catFound = 'tshirt_uomo';
   else if (testoLow.includes('canott') || testoLow.includes('tank')) catFound = 'canotte';
   else if (testoLow.includes('shopper') || testoLow.includes('borsa') || testoLow.includes('bag')) catFound = 'shoppers';
