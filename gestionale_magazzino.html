@@ -1615,7 +1615,7 @@ const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
 // stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
 const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
-const VERSION = '3.2.0'; // aggiornare ad ogni modifica
+const VERSION = '3.2.1'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -2190,7 +2190,15 @@ function _buildStockIndex() {
     const delta = m.tipo === 'carico' ? m.qty : -m.qty;
     const tg = m.taglia || '_';
     add(`${m.logoId}|${m.catId}|${tg}|${mag}`, delta);
-    add(`${m.logoId}|${m.catId}|${tg}|*`, delta);
+  });
+  // Totale di una variante = somma di quello che CONTI nei tre magazzini, cioè
+  // dei saldi già troncati a 0 — non la somma dei saldi grezzi. Sommando i saldi
+  // grezzi, un saldo negativo nascosto in un magazzino (più scarichi che carichi
+  // registrati) sottrarrebbe pezzi realmente presenti in un altro, e il tab
+  // "Totale" mostrerebbe meno pezzi della somma delle tre tab. (v3.2.1)
+  Object.keys(idx).forEach(key => {
+    const base = key.substring(0, key.lastIndexOf('|'));
+    add(`${base}|*`, Math.max(0, idx[key]));
   });
   // NOTA: db.trasferimenti NON entra più nel calcolo dello stock — da questa
   // versione ogni trasferimento crea movimenti veri (scarico+carico) in
@@ -2759,7 +2767,65 @@ function renderDiagnosticaRisultati(problemi) {
     </div>
     ${html}
     <p style="font-size:11px;color:var(--text3);margin-top:8px">Questi saldi indicano più scarichi che carichi registrati storicamente per quella variante/magazzino. Restano innocui finché lo stock mostra 0, ma "assorbono" silenziosamente le quantità in un trasferimento o carico successivo verso quel magazzino. Per correggerli, modifica manualmente la cella nello Stock (clicca sulla cella) impostando il valore reale, oppure usa "Imposta stock di massa".</p>
+    <div style="margin-top:10px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg)">
+      <div style="font-weight:600;font-size:13px;margin-bottom:4px">Azzerare tutto in un colpo solo</div>
+      <p style="font-size:12px;color:var(--text2);margin:0 0 8px">
+        Porta a 0 il saldo reale di tutte e ${problemi.length} le varianti qui sopra, con una rettifica di carico per ciascuna.
+        <strong>Non inventa pezzi</strong>: nello Stock quelle caselle mostrano già 0 e continueranno a mostrare 0.
+        Serve a togliere il "debito" nascosto, così il prossimo trasferimento o carico verso quei magazzini non si mangia più silenziosamente dei pezzi.
+      </p>
+      <button class="btn btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="azzeraSaldiNegativi()">⚖️ Azzera i ${problemi.length} saldi negativi</button>
+    </div>
   </div>`;
+}
+
+// Neutralizza i saldi negativi nascosti: per ogni variante con saldo reale < 0
+// registra un carico di pari importo, portando il saldo esatto a 0. Lo stock
+// mostrato non cambia (era già troncato a 0): sparisce solo il "debito" che
+// altrimenti assorbirebbe i pezzi di un trasferimento o di un carico futuro.
+async function azzeraSaldiNegativi() {
+  _ensureStockIndex();
+  const daSistemare = [];
+  Object.keys(_stockIndex).forEach(key => {
+    const parts = key.split('|');
+    if (parts[3] === '*') return;
+    const v = _stockIndex[key];
+    if (v < 0) daSistemare.push({ logoId: parseInt(parts[0]), catId: parts[1], taglia: parts[2] === '_' ? null : parts[2], mag: parts[3], saldo: v });
+  });
+  if (!daSistemare.length) { showToast('Nessun saldo negativo da azzerare'); return; }
+
+  const pezzi = daSistemare.reduce((a, p) => a + Math.abs(p.saldo), 0);
+  const perMag = {};
+  daSistemare.forEach(p => { perMag[p.mag] = (perMag[p.mag] || 0) + Math.abs(p.saldo); });
+  const riepilogo = Object.entries(perMag).map(([m, q]) => `  • ${m}: ${q} pz`).join('\n');
+  if (!confirm(
+    `Azzerare ${daSistemare.length} saldi negativi (${pezzi} pz di debito nascosto)?\n\n${riepilogo}\n\n` +
+    `Lo stock che vedi NON cambia: quelle caselle mostrano già 0.\n` +
+    `Verranno registrate ${daSistemare.length} rettifiche di carico con nota "Azzeramento saldo negativo".\n\n` +
+    `Consigliato: fai prima un Backup.`
+  )) return;
+
+  const data = today();
+  const nuovi = daSistemare.map(p => ({
+    id: db.nextMovId++,
+    logoId: p.logoId, catId: p.catId, taglia: p.taglia,
+    magazzino: p.mag, qty: Math.abs(p.saldo), tipo: 'carico',
+    ordineId: null, data, note: 'Azzeramento saldo negativo',
+  }));
+  nuovi.forEach(m => db.movimenti.push(m));
+  invalidateStockIndex();
+
+  showToast(`${daSistemare.length} saldi azzerati (${pezzi} pz di debito rimosso)`);
+  diagnosticaSaldiNegativi();
+  renderStock();
+
+  try {
+    await saveMovimentiBatch(nuovi);
+    await saveDBFields({ nextMovId: db.nextMovId });
+  } catch (e) {
+    console.error('Errore salvataggio azzeramento saldi:', e);
+    showSyncStatus('Errore salvataggio!', true);
+  }
 }
 
 function getTotaleStock(logoId, catId, mag) {
