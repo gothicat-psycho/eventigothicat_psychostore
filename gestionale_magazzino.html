@@ -1615,7 +1615,7 @@ const TAGLIE_CANOTTE = ['XS','S','M','L','XL','2XL','3XL'];
 // stessa colonna anche se una categoria ha taglie in più (es. XS o 4XL/5XL).
 const MASTER_TAGLIE_ORDER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 const CAT_ALLINEABILI = ['tshirt_uomo','tshirt_donna','canotte','felpe'];
-const VERSION = '3.2.1'; // aggiornare ad ogni modifica
+const VERSION = '3.2.2'; // aggiornare ad ogni modifica
 
 // Categorie prodotto con le loro proprietà
 const TAGLIE_DONNA = ['S','M','L','XL','2XL']; // donna: S to 2XL
@@ -1767,7 +1767,49 @@ let _unsubscribeData = null;
 let _unsubscribeVendite = null;
 let _unsubscribeMovimenti = null;
 
+// ── LISTENER STRETTO: solo i movimenti creati da Shopify (id >= 900000001) ──
+// Non rilegge l'intera collezione: riceve soltanto i documenti nuovi/modificati,
+// quindi costa pochissime letture. Serve a vedere subito gli ordini web.
+const SHOPIFY_ID_BASE = 900000001;
+let _unsubscribeShopify = null;
+
+function avviaListenerShopify() {
+  if (_unsubscribeShopify) _unsubscribeShopify();
+  _unsubscribeShopify = MOV_COL.where('id', '>=', SHOPIFY_ID_BASE).onSnapshot(snap => {
+    const cambi = snap.docChanges();
+    const primo = _shopifyPrimoCaricamento;
+    _shopifyPrimoCaricamento = false;
+    if (!cambi.length) return;
+    if (!Array.isArray(db.movimenti)) db.movimenti = [];
+    let nuoviOrdini = 0;
+    cambi.forEach(ch => {
+      const m = ch.doc.data();
+      const idx = db.movimenti.findIndex(x => x.id === m.id);
+      if (ch.type === 'removed') {
+        if (idx >= 0) db.movimenti.splice(idx, 1);
+      } else if (idx >= 0) {
+        db.movimenti[idx] = m;
+      } else {
+        db.movimenti.push(m);
+        if (!snap.metadata.fromCache && !primo) nuoviOrdini++;
+      }
+    });
+    invalidateStockIndex();
+    invalidateAll();
+    const att = document.querySelector('.section.active');
+    if (att) {
+      try {
+        if (att.id === 'sec-stock') { renderStock(); renderStockMetrics(); }
+        else if (att.id === 'sec-dashboard') { renderDashboard(); }
+      } catch (e) { console.warn('Rendering dopo movimento Shopify:', e); }
+    }
+    if (nuoviOrdini > 0) showToast('🛒 Nuovo movimento da Shopify — stock aggiornato');
+  }, err => console.warn('Listener Shopify:', err));
+}
+let _shopifyPrimoCaricamento = true;
+
 function avviaListeners() {
+  avviaListenerShopify();
   // Listener SOLO sul documento principale (leggero: 1 documento).
   // I listener su vendite/movimenti sono stati rimossi perché rileggevano
   // l'intera collezione ad ogni modifica, consumando enormi quantità di letture
